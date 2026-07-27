@@ -1,44 +1,254 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Quiénes somos · Observatorio de Datos del ERSeP."><title>Quiénes somos · Portal Observatorio ERSeP</title><link rel="stylesheet" href="../../assets/css/style.css"><link rel="stylesheet" href="../../assets/css/portal-pages.css"><link rel="stylesheet" href="../../assets/css/standalone.css"><link rel="stylesheet" href="../../assets/css/auth.css"><link rel="icon" href="../../assets/img/favicon.ico"></head>
-<body class="tool-page" data-login-path="../../"><div class="wrap" data-protected hidden>
-<header class="header"><div class="header-left"><h1>Quiénes somos</h1><span class="header-badge">Portal Observatorio · Institucional</span></div><div class="header-right"><a class="nav-chip" href="../../"><span>⌂</span> Menú</a><button class="theme-toggle" data-theme-toggle type="button">🌙</button><button class="logout-button" data-logout type="button">Cerrar sesión</button></div></header>
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Quiénes somos · Observatorio de Datos del ERSeP.">
 
-<section class="tool-hero"><div><div class="tool-kicker">Institucional</div><h2>Observatorio de Datos</h2><p>Subdirección de Costos y Tarifas · Ente Regulador de Servicios Públicos de la Provincia de Córdoba.</p></div><div class="hero-symbol">🏛️</div></section>
+<title>Quiénes somos · Portal Observatorio ERSeP</title>
 
-<section class="card"><div class="card-body">
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="stylesheet" href="../../assets/css/portal-pages.css">
+<link rel="stylesheet" href="../../assets/css/standalone.css">
+<link rel="stylesheet" href="../../assets/css/auth.css">
+
+<link rel="icon" href="../../assets/img/favicon.ico">
+
+<style>
+.org-chart{
+    text-align:center;
+    padding:20px 0;
+}
+
+.org-box{
+    display:inline-block;
+    background:#fff;
+    border:2px solid #0b4a8b;
+    border-radius:14px;
+    padding:18px 22px;
+    min-width:290px;
+    box-shadow:0 8px 20px rgba(0,0,0,.08);
+}
+
+.org-box.blue{
+    background:#dcecff;
+    border-color:#8fb7e8;
+}
+
+.org-title{
+    font-size:20px;
+    font-weight:700;
+    color:#143b72;
+    margin-bottom:6px;
+}
+
+.org-subtitle{
+    color:#666;
+    font-size:15px;
+}
+
+.org-line{
+    width:3px;
+    height:34px;
+    background:#0b4a8b;
+    margin:0 auto;
+}
+
+.org-employees{
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+    gap:28px;
+    flex-wrap:wrap;
+    position:relative;
+    margin-top:25px;
+}
+
+.org-employees::before{
+    content:"";
+    position:absolute;
+    top:-18px;
+    left:10%;
+    width:80%;
+    height:3px;
+    background:#0b4a8b;
+}
+
+.employee{
+    position:relative;
+    background:white;
+    border:2px solid #0b4a8b;
+    border-radius:14px;
+    width:280px;
+    padding:20px;
+    box-shadow:0 8px 18px rgba(0,0,0,.08);
+}
+
+.employee::before{
+    content:"";
+    position:absolute;
+    top:-20px;
+    left:50%;
+    transform:translateX(-50%);
+    width:3px;
+    height:20px;
+    background:#0b4a8b;
+}
+
+.employee h4{
+    margin:0 0 14px;
+    color:#143b72;
+    font-size:20px;
+}
+
+.employee .puesto{
+    font-weight:700;
+    margin-bottom:8px;
+    color:#333;
+}
+
+.employee .area{
+    color:#666;
+    font-size:15px;
+}
+
+@media(max-width:900px){
+
+.org-employees::before{
+    display:none;
+}
+
+.employee::before{
+    display:none;
+}
+
+.org-employees{
+    flex-direction:column;
+    align-items:center;
+}
+
+}
+</style>
+
+</head>
+
+<body class="tool-page" data-login-path="../../">
+
+<div class="wrap" data-protected hidden>
+
+<header class="header">
+<div class="header-left">
+<h1>Quiénes somos</h1>
+<span class="header-badge">Portal Observatorio · Institucional</span>
+</div>
+
+<div class="header-right">
+<a class="nav-chip" href="../../"><span>⌂</span> Menú</a>
+<button class="theme-toggle" data-theme-toggle type="button">🌙</button>
+<button class="logout-button" data-logout type="button">Cerrar sesión</button>
+</div>
+</header>
+
+<section class="tool-hero">
+<div>
+<div class="tool-kicker">Institucional</div>
+<h2>Observatorio de Datos</h2>
+<p>Subdirección de Costos y Tarifas · Ente Regulador de Servicios Públicos de la Provincia de Córdoba.</p>
+</div>
+
+<div class="hero-symbol">🏛️</div>
+</section>
+
+<section class="card">
+<div class="card-body">
+
 <p style="font-size:16px;line-height:1.7;color:var(--text);margin:0 0 14px;">
 El <strong>Observatorio de Datos de la Subdirección de Costos y Tarifas</strong> del
 <strong>Ente Regulador de Servicios Públicos de la Provincia de Córdoba</strong> es el espacio
 de trabajo interno destinado a consolidar información, herramientas y análisis para el
 seguimiento de costos, tarifas e indicadores de los servicios públicos regulados.
 </p>
+
 <p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0;">
 Desde este portal se centralizan los distintos módulos de consulta y análisis que apoyan
 la tarea técnica de la Subdirección, integrando datos de las diferentes áreas reguladas
 en un único punto de acceso institucional.
 </p>
-</div></section>
-<section class="card">
-    <div class="card-body">
-        <h3 style="margin-top:0;">Organigrama</h3>
 
-        <p style="color:var(--text-muted);margin-bottom:20px;">
-            Estructura funcional del Observatorio de Datos dentro de la Subdirección de Jurisdicción de Costos y Tarifas del ERSeP.
-        </p>
-
-        <div style="text-align:center;">
-            <img
-                src="../../assets/img/organigrama-observatorio.png"
-                alt="Organigrama del Observatorio de Datos"
-                style="
-                    width:100%;
-                    max-width:1100px;
-                    height:auto;
-                    border-radius:14px;
-                    border:1px solid var(--border);
-                    box-shadow:0 10px 30px rgba(0,0,0,.08);
-                ">
-        </div>
-    </div>
+</div>
 </section>
 
-</div><script src="../../assets/js/auth-config.js"></script><script src="../../assets/js/auth.js"></script><script src="../../assets/js/theme.js" defer></script></body></html>
+<section class="card">
+<div class="card-body">
+
+<h2 style="text-align:center;margin-bottom:30px;">
+Organigrama Institucional
+</h2>
+
+<div class="org-chart">
+
+<div class="org-box blue">
+<div class="org-title">
+Subdirección de Jurisdicción de Costos y Tarifas del ERSeP
+</div>
+</div>
+
+<div class="org-line"></div>
+
+<div class="org-box">
+<div class="org-title">
+Contador Lucas S. González Etienot
+</div>
+<div class="org-subtitle">
+Subdirector de Jurisdicción
+</div>
+<div class="org-subtitle">
+Costos y Tarifas del ERSeP
+</div>
+</div>
+
+<div class="org-line"></div>
+
+<div class="org-box blue">
+<div class="org-title">
+Observatorio de Datos
+</div>
+</div>
+
+<div class="org-line"></div>
+
+<div class="org-employees">
+
+<div class="employee">
+<h4>Lic. Marcos Nanini</h4>
+<div class="puesto">Coordinador</div>
+<div class="area">Costos y Tarifas</div>
+</div>
+
+<div class="employee">
+<h4>Rodrigo San Martín Bustos</h4>
+<div class="puesto">Analista</div>
+<div class="area">Costos y Tarifas</div>
+</div>
+
+<div class="employee">
+<h4>Leandro Ramallo</h4>
+<div class="puesto">Analista</div>
+<div class="area">Gerencia de Transporte Interurbano</div>
+</div>
+
+</div>
+
+</div>
+
+</div>
+</section>
+
+</div>
+
+<script src="../../assets/js/auth-config.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/theme.js" defer></script>
+
+</body>
+</html>
