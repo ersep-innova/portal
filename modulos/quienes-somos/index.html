@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="es">
+
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -11,108 +12,144 @@
 <link rel="stylesheet" href="../../assets/css/portal-pages.css">
 <link rel="stylesheet" href="../../assets/css/standalone.css">
 <link rel="stylesheet" href="../../assets/css/auth.css">
-
 <link rel="icon" href="../../assets/img/favicon.ico">
 
 <style>
-.org-chart{
+
+/* ---------------- ORGANIGRAMA ---------------- */
+
+.organigrama-full{
+    width:min(1800px,96vw);
+    margin:40px auto 60px;
+    padding:0 20px;
+}
+
+.organigrama-card{
+    background:var(--surface,#fff);
+    border-radius:18px;
+    box-shadow:0 10px 28px rgba(0,0,0,.08);
+    padding:45px;
+}
+
+.organigrama-card h2{
     text-align:center;
-    padding:20px 0;
+    margin:0 0 40px;
+}
+
+.org-chart{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
 }
 
 .org-box{
     display:inline-block;
-    background:#fff;
-    border:2px solid #0b4a8b;
+    padding:18px 26px;
     border-radius:14px;
-    padding:18px 22px;
-    min-width:290px;
-    box-shadow:0 8px 20px rgba(0,0,0,.08);
+    border:2px solid #1d5ca8;
+    background:#fff;
+    box-shadow:0 8px 18px rgba(0,0,0,.08);
 }
 
 .org-box.blue{
-    background:#dcecff;
-    border-color:#8fb7e8;
+    color:#fff;
+    border:none;
+    background:linear-gradient(135deg,#1f4f95,#2b79c2);
 }
 
 .org-title{
-    font-size:20px;
+    font-size:22px;
     font-weight:700;
-    color:#143b72;
-    margin-bottom:6px;
+    line-height:1.35;
 }
 
 .org-subtitle{
-    color:#666;
-    font-size:15px;
+    margin-top:8px;
+    font-size:16px;
+    line-height:1.45;
+    color:#555;
+}
+
+.org-box.blue .org-subtitle{
+    color:#f3f7ff;
 }
 
 .org-line{
     width:3px;
     height:34px;
-    background:#0b4a8b;
-    margin:0 auto;
+    background:#1d5ca8;
 }
 
 .org-employees{
-    display:flex;
-    justify-content:center;
-    align-items:flex-start;
-    gap:28px;
-    flex-wrap:wrap;
     position:relative;
-    margin-top:25px;
+    display:grid;
+    grid-template-columns:repeat(3,minmax(340px,1fr));
+    gap:34px;
+    width:100%;
+    max-width:1550px;
+    margin-top:35px;
+    padding-top:28px;
 }
 
 .org-employees::before{
     content:"";
     position:absolute;
-    top:-18px;
-    left:10%;
-    width:80%;
+    top:0;
+    left:16%;
+    width:68%;
     height:3px;
-    background:#0b4a8b;
+    background:#1d5ca8;
 }
 
 .employee{
     position:relative;
-    background:white;
-    border:2px solid #0b4a8b;
-    border-radius:14px;
-    width:280px;
-    padding:20px;
+    background:#fff;
+    border:2px solid #1d5ca8;
+    border-radius:16px;
+    padding:24px;
+    text-align:center;
     box-shadow:0 8px 18px rgba(0,0,0,.08);
 }
 
 .employee::before{
     content:"";
     position:absolute;
-    top:-20px;
+    width:3px;
+    height:28px;
+    background:#1d5ca8;
+    top:-28px;
     left:50%;
     transform:translateX(-50%);
-    width:3px;
-    height:20px;
-    background:#0b4a8b;
 }
 
 .employee h4{
-    margin:0 0 14px;
-    color:#143b72;
-    font-size:20px;
+    margin:0 0 18px;
+    color:#173f78;
+    font-size:22px;
+}
+
+.employee hr{
+    border:none;
+    border-top:1px solid #d7dce2;
+    margin:15px 0;
 }
 
 .employee .puesto{
+    font-size:18px;
     font-weight:700;
-    margin-bottom:8px;
     color:#333;
 }
 
 .employee .area{
+    font-size:16px;
     color:#666;
-    font-size:15px;
 }
 
-@media(max-width:900px){
+@media(max-width:1200px){
+
+.org-employees{
+    grid-template-columns:repeat(2,minmax(320px,1fr));
+}
 
 .org-employees::before{
     display:none;
@@ -122,12 +159,28 @@
     display:none;
 }
 
+}
+
+@media(max-width:800px){
+
+.organigrama-card{
+    padding:25px;
+}
+
 .org-employees{
-    flex-direction:column;
-    align-items:center;
+    grid-template-columns:1fr;
+}
+
+.org-title{
+    font-size:18px;
+}
+
+.employee h4{
+    font-size:20px;
 }
 
 }
+
 </style>
 
 </head>
@@ -137,53 +190,74 @@
 <div class="wrap" data-protected hidden>
 
 <header class="header">
+
 <div class="header-left">
 <h1>Quiénes somos</h1>
 <span class="header-badge">Portal Observatorio · Institucional</span>
 </div>
 
 <div class="header-right">
-<a class="nav-chip" href="../../"><span>⌂</span> Menú</a>
+<a class="nav-chip" href="../../">
+<span>⌂</span> Menú
+</a>
+
 <button class="theme-toggle" data-theme-toggle type="button">🌙</button>
 <button class="logout-button" data-logout type="button">Cerrar sesión</button>
+
 </div>
+
 </header>
 
 <section class="tool-hero">
+
 <div>
 <div class="tool-kicker">Institucional</div>
+
 <h2>Observatorio de Datos</h2>
-<p>Subdirección de Costos y Tarifas · Ente Regulador de Servicios Públicos de la Provincia de Córdoba.</p>
+
+<p>
+Subdirección de Costos y Tarifas ·
+Ente Regulador de Servicios Públicos de la Provincia de Córdoba.
+</p>
+
 </div>
 
 <div class="hero-symbol">🏛️</div>
+
 </section>
 
 <section class="card">
+
 <div class="card-body">
 
 <p style="font-size:16px;line-height:1.7;color:var(--text);margin:0 0 14px;">
 El <strong>Observatorio de Datos de la Subdirección de Costos y Tarifas</strong> del
-<strong>Ente Regulador de Servicios Públicos de la Provincia de Córdoba</strong> es el espacio
-de trabajo interno destinado a consolidar información, herramientas y análisis para el
-seguimiento de costos, tarifas e indicadores de los servicios públicos regulados.
+<strong>Ente Regulador de Servicios Públicos de la Provincia de Córdoba</strong>
+es el espacio de trabajo interno destinado a consolidar información,
+herramientas y análisis para el seguimiento de costos, tarifas e
+indicadores de los servicios públicos regulados.
 </p>
 
 <p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0;">
-Desde este portal se centralizan los distintos módulos de consulta y análisis que apoyan
-la tarea técnica de la Subdirección, integrando datos de las diferentes áreas reguladas
-en un único punto de acceso institucional.
+Desde este portal se centralizan los distintos módulos de consulta y
+análisis que apoyan la tarea técnica de la Subdirección, integrando
+datos de las diferentes áreas reguladas en un único punto de acceso
+institucional.
 </p>
 
 </div>
+
 </section>
 
-<section class="card">
-<div class="card-body">
+</div>
 
-<h2 style="text-align:center;margin-bottom:30px;">
-Organigrama Institucional
-</h2>
+<!-- ORGANIGRAMA A ANCHO COMPLETO -->
+
+<section class="organigrama-full">
+
+<div class="organigrama-card">
+
+<h2>Organigrama Institucional</h2>
 
 <div class="org-chart">
 
@@ -199,11 +273,10 @@ Subdirección de Jurisdicción de Costos y Tarifas del ERSeP
 <div class="org-title">
 Contador Lucas S. González Etienot
 </div>
+
 <div class="org-subtitle">
-Subdirector de Jurisdicción
-</div>
-<div class="org-subtitle">
-Costos y Tarifas del ERSeP
+Subdirector de Jurisdicción<br>
+de Costos y Tarifas del ERSeP
 </div>
 </div>
 
@@ -221,19 +294,25 @@ Observatorio de Datos
 
 <div class="employee">
 <h4>Lic. Marcos Nanini</h4>
+<hr>
 <div class="puesto">Coordinador</div>
+<hr>
 <div class="area">Costos y Tarifas</div>
 </div>
 
 <div class="employee">
 <h4>Rodrigo San Martín Bustos</h4>
+<hr>
 <div class="puesto">Analista</div>
+<hr>
 <div class="area">Costos y Tarifas</div>
 </div>
 
 <div class="employee">
 <h4>Leandro Ramallo</h4>
+<hr>
 <div class="puesto">Analista</div>
+<hr>
 <div class="area">Gerencia de Transporte Interurbano</div>
 </div>
 
@@ -242,9 +321,8 @@ Observatorio de Datos
 </div>
 
 </div>
-</section>
 
-</div>
+</section>
 
 <script src="../../assets/js/auth-config.js"></script>
 <script src="../../assets/js/auth.js"></script>
