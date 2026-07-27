@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const BIRTHDAYS = Array.isArray(window.ERSEP_BIRTHDAYS) ? window.ERSEP_BIRTHDAYS : [];
+  let BIRTHDAYS = [];
   const ALL_AREAS = "Todas";
   const DAY_MS = 24 * 60 * 60 * 1000;
   let activeArea = ALL_AREAS;
@@ -227,7 +227,46 @@
       }).format(now)}.`;
   }
 
-  function init() {
+  function renderBarChart(containerId, entries, formatter = value => value) {
+    const container = document.getElementById(containerId);
+    const max = Math.max(...entries.map(item => item.value), 1);
+    container.innerHTML = entries.map(item => `
+      <div class="bar-row"><span class="bar-label" title="${escapeHtml(item.label)}">${escapeHtml(item.label)}</span>
+      <div class="bar-track"><span class="bar-fill" style="width:${Math.max(3, item.value / max * 100)}%"></span></div>
+      <strong>${escapeHtml(formatter(item.value))}</strong></div>`).join("");
+  }
+
+  function renderAnalytics() {
+    const schedule = getBirthdaySchedule();
+    const monthNames = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+    const months = monthNames.map((label, index) => ({ label, value: BIRTHDAYS.filter(x => x.month === index + 1).length }));
+    const peak = months.reduce((a,b) => b.value > a.value ? b : a, months[0]);
+    const areas = Array.from(BIRTHDAYS.reduce((map,x) => map.set(x.area,(map.get(x.area)||0)+1),new Map()).entries())
+      .map(([label,value]) => ({label,value})).sort((a,b)=>b.value-a.value).slice(0,8);
+    document.getElementById("stat_total").textContent = BIRTHDAYS.length;
+    document.getElementById("stat_peak_month").textContent = `${peak.label} · ${peak.value}`;
+    document.getElementById("stat_next_30").textContent = schedule.filter(x => x.days <= 30).length;
+    document.getElementById("stat_locations").textContent = new Set(BIRTHDAYS.map(x => x.location)).size;
+    renderBarChart("chart_months", months);
+    renderBarChart("chart_areas", areas);
+  }
+
+  async function loadEncryptedBirthdays() {
+    const password = window.ERSEP_AUTH?.getPassword();
+    if (!password) { location.href = "../../"; return false; }
+    const response = await fetch("../../assets/data/cumpleanos.enc.json", { cache: "no-store" });
+    if (!response.ok) throw new Error("No se pudo cargar la nómina cifrada.");
+    const payload = await response.json();
+    BIRTHDAYS = await window.ERSEP_AUTH.decryptPayload(payload, password);
+    return Array.isArray(BIRTHDAYS);
+  }
+
+  async function init() {
+    try { await loadEncryptedBirthdays(); } catch (error) {
+      document.getElementById("status").textContent = "Error de acceso a la nómina";
+      document.getElementById("birthday_list").innerHTML = `<div class="birthday-empty">${escapeHtml(error.message)}</div>`;
+      return;
+    }
     if (!BIRTHDAYS.length) {
       document.getElementById("status").textContent = "No se pudo cargar la nómina";
       document.getElementById("birthday_list").innerHTML =
@@ -237,6 +276,7 @@
 
     renderAreaFilters();
     renderBirthdayPanel();
+    renderAnalytics();
 
     let renderedDay = localDateOnly().getTime();
     setInterval(() => {
