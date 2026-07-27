@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Portal estático de consultas de Recursos Humanos del ERSeP.">
+  <title>Portal RR.HH. · ERSeP</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/standalone.css">
+  <link rel="icon" href="assets/img/favicon.ico">
+</head>
+<body>
+<section class="portal-screen menu-screen">
+  <div class="menu-topbar">
+    <div class="menu-brand">
+      <div class="ersep-mark compact"><span>ER</span><span>SeP</span></div>
+      <div>
+        <strong>Portal RR.HH.</strong>
+        <span>Centro de consultas institucionales</span>
+      </div>
+    </div>
+    <div class="menu-actions">
+      <span class="static-status">GitHub Pages · sin servidor</span>
+      <button class="theme-toggle" data-theme-toggle type="button" aria-label="Cambiar tema">🌙</button>
+    </div>
+  </div>
+
+  <main class="menu-main">
+    <header class="menu-hero">
+      <div>
+        <div class="menu-kicker">ERSeP · Recursos Humanos</div>
+        <h1>¿Qué necesitás consultar?</h1>
+        <p>Un portal independiente, liviano y preparado para reunir distintas herramientas de RR.HH. sin consumir recursos de Render.</p>
+      </div>
+      <div class="tariff-visual" aria-hidden="true">
+        <div class="tariff-ring"></div>
+        <div class="tariff-wave w1"></div>
+        <div class="tariff-wave w2"></div>
+        <div class="tariff-value">RR.HH.</div>
+      </div>
+    </header>
+
+    <div class="tool-grid">
+      <a class="tool-card featured" href="modulos/cumpleanos/">
+        <span class="tool-icon">🎂</span>
+        <span class="tool-meta">Agenda institucional</span>
+        <strong>Cumpleaños RR.HH. ERSeP</strong>
+        <small>Consultar los próximos cumpleaños de toda la nómina y filtrar por Gerencia o Área.</small>
+        <span class="menu-card-badge">Disponible</span>
+        <span class="tool-arrow">Abrir panel →</span>
+      </a>
+
+      <article class="tool-card disabled" aria-disabled="true">
+        <span class="tool-icon">◫</span>
+        <span class="tool-meta">Espacio reservado</span>
+        <strong>Directorio institucional</strong>
+        <small>Tarjeta preparada para incorporar una futura consulta de contactos, sedes o dependencias.</small>
+        <span class="menu-card-badge future">Próximamente</span>
+        <span class="tool-arrow">Módulo futuro</span>
+      </article>
+
+      <article class="tool-card disabled" aria-disabled="true">
+        <span class="tool-icon">▦</span>
+        <span class="tool-meta">Espacio reservado</span>
+        <strong>Agenda y novedades</strong>
+        <small>Acceso futuro para fechas institucionales, comunicaciones o eventos internos.</small>
+        <span class="menu-card-badge future">Próximamente</span>
+        <span class="tool-arrow">Módulo futuro</span>
+      </article>
+
+      <article class="tool-card disabled" aria-disabled="true">
+        <span class="tool-icon">▤</span>
+        <span class="tool-meta">Espacio reservado</span>
+        <strong>Documentación de RR.HH.</strong>
+        <small>Área prevista para instructivos, formularios y materiales de consulta frecuente.</small>
+        <span class="menu-card-badge future">Próximamente</span>
+        <span class="tool-arrow">Módulo futuro</span>
+      </article>
+    </div>
+
+    <div class="portal-notice">
+      <span aria-hidden="true">ⓘ</span>
+      <div>
+        <strong>Sitio completamente estático</strong>
+        Los cálculos de fechas y filtros se realizan en el navegador. No utiliza FastAPI, base de datos, Render ni servicios externos.
+      </div>
+    </div>
+  </main>
+
+  <footer class="menu-footer">
+    ERSeP · Portal RR.HH. · <span id="current_year"></span>
+    <span class="portal-version">v1.0</span>
+  </footer>
+</section>
+
+<script src="assets/js/theme.js" defer></script>
+<script src="assets/js/menu.js" defer></script>
+</body>
+</html>

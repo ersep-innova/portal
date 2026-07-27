@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Panel de cumpleaños de la nómina del ERSeP, filtrable por Gerencia o Área.">
+  <title>Cumpleaños RR.HH. · ERSeP</title>
+  <link rel="stylesheet" href="../../assets/css/style.css">
+  <link rel="stylesheet" href="../../assets/css/portal-pages.css">
+  <link rel="stylesheet" href="../../assets/css/standalone.css">
+  <link rel="stylesheet" href="../../assets/css/birthday.css">
+  <link rel="icon" href="../../assets/img/favicon.ico">
+</head>
+<body class="tool-page">
+<div class="wrap">
+  <header class="header">
+    <div class="header-left">
+      <h1>Cumpleaños RR.HH. ERSeP</h1>
+      <span class="header-badge">Agenda institucional · versión independiente</span>
+    </div>
+    <div class="header-right">
+      <span id="status">Preparando agenda...</span>
+      <a class="nav-chip" href="../../"><span>⌂</span> Menú</a>
+      <button class="theme-toggle" data-theme-toggle type="button" aria-label="Cambiar tema">🌙</button>
+    </div>
+  </header>
+
+  <section class="tool-hero birthday-hero">
+    <div class="birthday-hero-copy">
+      <div class="tool-kicker">Agenda institucional</div>
+      <h2>Los cumpleaños de todo ERSeP</h2>
+      <p>Consultá quién cumple próximamente en todo el Ente. Usá los botones para filtrar por Gerencia o Área sin perder la vista general.</p>
+    </div>
+    <div class="birthday-hero-icon" aria-hidden="true">🎂</div>
+  </section>
+
+  <section class="card birthday-filter-card" aria-label="Filtro por Gerencia o Área">
+    <div class="card-body">
+      <div class="birthday-filter-head">
+        <div>
+          <h3>Filtrar por Gerencia o Área</h3>
+          <p>La opción “Todas” reúne la nómina completa del Ente.</p>
+        </div>
+        <span class="birthday-filter-count" id="area_filter_count">Preparando filtros...</span>
+      </div>
+      <div class="birthday-filter-bar" id="area_filters" role="group" aria-label="Gerencias y áreas"></div>
+    </div>
+  </section>
+
+  <section class="birthday-summary-grid" aria-label="Resumen de cumpleaños">
+    <article class="card birthday-summary-card">
+      <div class="card-body">
+        <div class="birthday-summary-label">🎁 Próximo cumpleaños</div>
+        <strong class="birthday-summary-value" id="next_birthday_name">—</strong>
+        <p class="birthday-summary-detail" id="next_birthday_date">Calculando fecha...</p>
+      </div>
+    </article>
+
+    <article class="card birthday-summary-card birthday-countdown-card" id="countdown_card">
+      <div class="card-body">
+        <div class="birthday-summary-label">
+          <span class="birthday-dot safe" id="countdown_dot"></span>
+          Cuenta regresiva
+        </div>
+        <strong class="birthday-summary-value" id="next_birthday_countdown">—</strong>
+        <p class="birthday-summary-detail" id="next_birthday_message">Buscando el cumpleaños más cercano...</p>
+      </div>
+    </article>
+
+    <article class="card birthday-summary-card">
+      <div class="card-body">
+        <div class="birthday-summary-label">📅 Este mes</div>
+        <strong class="birthday-summary-value" id="birthdays_this_month">—</strong>
+        <p class="birthday-summary-detail" id="birthdays_this_month_detail">Cumpleaños registrados</p>
+      </div>
+    </article>
+  </section>
+
+  <section class="card">
+    <div class="card-body">
+      <div class="birthday-section-head">
+        <div>
+          <h3>Próximos cumpleaños</h3>
+          <p id="birthday_list_subtitle">Ordenados desde el más cercano al más lejano.</p>
+        </div>
+        <div class="birthday-legend" aria-label="Referencias del semáforo">
+          <span class="birthday-legend-item"><span class="birthday-dot danger"></span>0 a 7 días</span>
+          <span class="birthday-legend-item"><span class="birthday-dot warning"></span>8 a 30 días</span>
+          <span class="birthday-legend-item"><span class="birthday-dot safe"></span>Más de 30 días</span>
+        </div>
+      </div>
+      <div class="birthday-list" id="birthday_list" aria-live="polite"></div>
+      <p class="page-note" id="birthday_updated_at"></p>
+      <div class="birthday-data-note">
+        La nómina se encuentra en <strong>assets/data/cumpleanos.js</strong>. Para incorporar o corregir un registro, editá únicamente ese archivo respetando la estructura existente.
+      </div>
+    </div>
+  </section>
+</div>
+
+<script src="../../assets/data/cumpleanos.js"></script>
+<script src="../../assets/js/theme.js" defer></script>
+<script src="../../assets/js/birthday.js" defer></script>
+</body>
+</html>
