@@ -1,13 +1,309 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Buscador de Boletín Oficial · Portal Observatorio ERSeP."><title>Buscador de Boletín Oficial · Portal Observatorio ERSeP</title><link rel="stylesheet" href="../../assets/css/style.css"><link rel="stylesheet" href="../../assets/css/portal-pages.css"><link rel="stylesheet" href="../../assets/css/standalone.css"><link rel="stylesheet" href="../../assets/css/auth.css"><link rel="icon" href="../../assets/img/favicon.ico"></head>
-<body class="tool-page" data-login-path="../../"><div class="wrap" data-protected hidden>
-<header class="header"><div class="header-left"><h1>Buscador de Boletín Oficial</h1><span class="header-badge">Portal Observatorio · Normativa</span></div><div class="header-right"><a class="nav-chip" href="../../"><span>⌂</span> Menú</a><button class="theme-toggle" data-theme-toggle type="button">🌙</button><button class="logout-button" data-logout type="button">Cerrar sesión</button></div></header>
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Buscador del Boletín Oficial · Portal Observatorio ERSeP.">
+  <title>Boletín Oficial · Portal Observatorio ERSeP</title>
+  <link rel="stylesheet" href="../../assets/css/style.css">
+  <link rel="stylesheet" href="../../assets/css/portal-pages.css">
+  <link rel="stylesheet" href="../../assets/css/boletin.css?v=20260728">
+  <link rel="stylesheet" href="../../assets/css/auth.css">
+  <link rel="icon" href="../../assets/img/favicon.ico">
+</head>
+<body class="tool-page boletin-page" data-login-path="../../">
+<div class="wrap" id="boletin_app" data-protected hidden>
+  <header class="header">
+    <div class="header-left">
+      <h1>Boletín Oficial</h1>
+      <span class="header-badge">Monitoreo regulatorio · Costos y Tarifas</span>
+    </div>
+    <div class="header-right">
+      <span id="server_status" class="server-status starting"><span class="server-status-dot"></span><span id="status">Preparando servidor…</span></span>
+      <button class="nav-chip tutorial-chip" id="btn_tutorial" type="button"><span>?</span> Tutorial de Uso</button>
+      <a class="nav-chip" id="btn_home" href="../../"><span>⌂</span> Menú</a>
+      <button class="theme-toggle" id="btn_theme" title="Cambiar tema">🌙</button>
+      <button class="logout-button" id="btn_logout" type="button" title="Cerrar sesión">Cerrar sesión</button>
+    </div>
+  </header>
 
-<section class="tool-hero"><div><div class="tool-kicker">Normativa</div><h2>Buscador de Boletín Oficial</h2><p>Espacio previsto para consultar y buscar publicaciones del Boletín Oficial.</p></div><div class="hero-symbol">📰</div></section>
+  <section class="tool-hero boletin-hero">
+    <div>
+      <div class="tool-kicker">Vigilancia documental ERSeP</div>
+      <h2>Detectá nuevas resoluciones tarifarias</h2>
+      <p>Recorre el archivo anual del Boletín Oficial, identifica resoluciones ERSeP, compara el contenido detectado y destaca lo nuevo o modificado. La interfaz permanece disponible mientras Render inicia el servidor.</p>
+    </div>
+    <div class="hero-symbol">⌕</div>
+  </section>
 
-<section class="card"><div class="card-body" style="text-align:center;padding:48px 24px;">
-<div style="font-size:52px;line-height:1;margin-bottom:16px;">🔎</div>
-<h3 style="margin:0 0 8px;font-size:22px;">Prueba buscador</h3>
-<p style="margin:0;color:var(--text-muted);max-width:520px;margin-inline:auto;">Sección en construcción. Aquí funcionará el buscador del Boletín Oficial.</p>
-</div></section>
+  <nav class="boletin-tabs" aria-label="Secciones del módulo">
+    <button class="boletin-tab active" data-tab="monitor">Monitoreo</button>
+    <button class="boletin-tab" data-tab="alerts">Alertas</button>
+    <button class="boletin-tab" data-tab="history">Historial</button>
+  </nav>
 
-</div><script src="../../assets/js/auth-config.js"></script><script src="../../assets/js/auth.js"></script><script src="../../assets/js/theme.js" defer></script></body></html>
+  <div id="global_alert" class="tool-alert" style="display:none"></div>
+
+  <section class="boletin-view active" id="view_monitor">
+    <div class="card">
+      <div class="card-body">
+        <div class="monitor-form-grid">
+          <label class="tool-field compact-field">
+            <span>Año a revisar</span>
+            <select id="monitor_year"></select>
+          </label>
+          <label class="tool-field terms-field">
+            <span>Términos regulatorios, separados por coma</span>
+            <textarea id="monitor_terms" rows="2">tarifaria, cuadro tarifario, incremento, aumento, cargo tarifario, audiencia pública</textarea>
+          </label>
+          <div class="monitor-options">
+            <label class="check-row"><input type="checkbox" id="monitor_revalidate"><span>Revalidar PDFs procesados</span></label>
+            <label class="check-row"><input type="checkbox" id="monitor_all"><span>Incluir todas las resoluciones ERSeP</span></label>
+            <label class="check-row"><input type="checkbox" id="monitor_unchanged"><span>Mostrar también registros sin cambios</span></label>
+          </div>
+        </div>
+        <div class="monitor-actions">
+          <button class="action primary" id="btn_start_monitor" type="button">▶ Iniciar monitoreo de alertas</button>
+          <button class="action danger-action" id="btn_stop_monitor" type="button" disabled>■ Detener</button>
+          <span class="action-separator"></span>
+          <button class="action" id="btn_save_txt" type="button" disabled>Guardar TXT para IA</button>
+          <button class="action" id="btn_copy_txt" type="button" disabled>Copiar TXT completo</button>
+        </div>
+      </div>
+    </div>
+
+    <section class="monitor-progress card">
+      <div class="card-body">
+        <div class="progress-heading">
+          <div>
+            <span class="progress-kicker" id="progress_state">Sin ejecución activa</span>
+            <strong id="progress_message">Configurá el año y presioná Iniciar monitoreo.</strong>
+          </div>
+          <span class="progress-number" id="progress_percent">0%</span>
+        </div>
+        <div class="progress-track" aria-label="Progreso del monitoreo"><span id="progress_bar"></span></div>
+        <div class="kpi-grid">
+          <article class="kpi-card"><span>Meses procesados</span><strong id="kpi_months">0 / 12</strong></article>
+          <article class="kpi-card"><span>PDFs analizados</span><strong id="kpi_pdfs">0</strong></article>
+          <article class="kpi-card"><span>Resoluciones ERSeP</span><strong id="kpi_resolutions">0</strong></article>
+          <article class="kpi-card accent"><span>Novedades</span><strong id="kpi_news">0</strong></article>
+          <article class="kpi-card danger"><span>Errores</span><strong id="kpi_errors">0</strong></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="results-section">
+      <div class="section-heading">
+        <div>
+          <span class="tool-kicker">Resultado de la ejecución</span>
+          <h3>Hallazgos</h3>
+        </div>
+        <div class="results-heading-actions">
+          <span class="result-counter" id="result_counter">0 publicaciones</span>
+          <button class="action compact-action" id="btn_clear_findings" type="button" disabled>Limpiar hallazgos</button>
+        </div>
+      </div>
+      <div id="monitor_results" class="monitor-results">
+        <div class="empty-state">
+          <div class="empty-icon">⌕</div>
+          <strong>Todavía no hay hallazgos</strong>
+          <p>Las resoluciones nuevas o modificadas aparecerán aquí durante el monitoreo.</p>
+        </div>
+      </div>
+    </section>
+  </section>
+
+  <section class="boletin-view" id="view_alerts">
+    <div class="section-heading">
+      <div>
+        <span class="tool-kicker">Prestadoras bajo seguimiento</span>
+        <h3>Alertas de cooperativas</h3>
+      </div>
+      <button class="action primary" id="btn_new_alert" type="button">+ Nueva alerta</button>
+    </div>
+    <div class="card">
+      <div class="card-body no-pad-mobile">
+        <div class="table-wrap">
+          <table class="boletin-table">
+            <thead><tr><th>Nombre</th><th>Aliases o palabras clave</th><th>Estado</th><th>Actualización</th><th>Acciones</th></tr></thead>
+            <tbody id="alerts_table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="boletin-view" id="view_history">
+    <div class="section-heading history-heading">
+      <div>
+        <span class="tool-kicker">Historial de la instancia activa</span>
+        <h3>Historial de publicaciones</h3><p class="history-storage-note">En el plan gratuito, Render puede reiniciar el servicio y borrar el historial local. Exportá los resultados importantes.</p>
+      </div>
+      <div class="history-export-actions">
+        <button class="action" id="btn_export_json" type="button">Exportar JSON</button>
+        <button class="action primary" id="btn_export_excel" type="button">Exportar Excel</button>
+      </div>
+    </div>
+
+    <div class="card history-filter-card">
+      <div class="card-body">
+        <div class="history-filters">
+          <label class="tool-field wide-filter"><span>Buscar texto</span><input id="history_text" type="search" placeholder="Resolución, prestadora, expediente o contenido..."></label>
+          <label class="tool-field"><span>Año</span><select id="history_year"><option value="">Todos</option></select></label>
+          <label class="tool-field"><span>Estado</span><select id="history_state"><option value="">Todos</option></select></label>
+          <label class="tool-field"><span>Prestadora</span><input id="history_provider" type="text" placeholder="Nombre parcial"></label>
+          <label class="tool-field"><span>Alerta</span><select id="history_alert"><option value="">Todas</option></select></label>
+          <label class="check-row history-check"><input type="checkbox" id="history_news_only"><span>Solo novedades recientes</span></label>
+          <button class="action primary filter-button" id="btn_history_filter" type="button">Aplicar filtros</button>
+          <button class="action filter-button" id="btn_history_clear" type="button">Limpiar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body no-pad-mobile">
+        <div class="table-wrap">
+          <table class="boletin-table history-table">
+            <thead><tr><th>Publicación</th><th>Resolución</th><th>Prestadora</th><th>Estado</th><th>Alertas</th><th>Primera detección</th><th>Última verificación</th><th>Verif.</th><th>Cambio</th><th></th></tr></thead>
+            <tbody id="history_table"></tbody>
+          </table>
+        </div>
+        <div class="pagination">
+          <button class="action" id="history_prev" type="button">← Anterior</button>
+          <span id="history_page_label">Página 1 de 1</span>
+          <button class="action" id="history_next" type="button">Siguiente →</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="modal-shell" id="detail_modal" aria-hidden="true">
+  <div class="modal-backdrop" data-close="detail"></div>
+  <section class="modal-card detail-modal-card" role="dialog" aria-modal="true" aria-labelledby="detail_title">
+    <header class="modal-header">
+      <div>
+        <span class="modal-kicker" id="detail_badge">Publicación ERSeP</span>
+        <h3 id="detail_title">Detalle de resolución</h3>
+      </div>
+      <button class="modal-close" data-close="detail" type="button">×</button>
+    </header>
+    <div class="detail-meta" id="detail_meta"></div>
+    <div id="detail_warning" class="tool-alert" style="display:none"></div>
+    <div class="detail-actions">
+      <button class="action primary" id="detail_open_pdf" type="button">Abrir PDF oficial</button>
+      <button class="action" id="detail_download_pdf" type="button">Descargar PDF</button>
+      <button class="action" id="detail_copy_full" type="button">Copiar resolución</button>
+      <button class="action" id="detail_copy_resuelve" type="button">Copiar RESUELVE</button>
+    </div>
+    <div class="detail-grid">
+      <section class="detail-text-card">
+        <div class="detail-text-title">Bloque RESUELVE</div>
+        <pre id="detail_resuelve"></pre>
+      </section>
+      <section class="detail-text-card full-text">
+        <div class="detail-text-title">Resolución completa extraída</div>
+        <pre id="detail_full"></pre>
+      </section>
+    </div>
+  </section>
+</div>
+
+<div class="modal-shell" id="alert_modal" aria-hidden="true">
+  <div class="modal-backdrop" data-close="alert"></div>
+  <section class="modal-card alert-modal-card" role="dialog" aria-modal="true" aria-labelledby="alert_modal_title">
+    <header class="modal-header">
+      <div><span class="modal-kicker">Configuración</span><h3 id="alert_modal_title">Nueva alerta</h3></div>
+      <button class="modal-close" data-close="alert" type="button">×</button>
+    </header>
+    <form id="alert_form">
+      <input type="hidden" id="alert_id">
+      <label class="tool-field"><span>Nombre visible</span><input id="alert_name" maxlength="180" required placeholder="Ej.: Aguas de Capilla del Monte"></label>
+      <label class="tool-field"><span>Aliases o frases exactas</span><textarea id="alert_aliases" rows="5" maxlength="1500" placeholder="Separá alternativas con coma o punto y coma"></textarea></label>
+      <label class="check-row modal-check"><input type="checkbox" id="alert_active" checked><span>Alerta activa</span></label>
+      <div class="modal-form-actions">
+        <button class="action" data-close="alert" type="button">Cancelar</button>
+        <button class="action primary" type="submit">Guardar alerta</button>
+      </div>
+    </form>
+  </section>
+</div>
+
+<div class="modal-shell" id="tutorial_modal" aria-hidden="true">
+  <div class="modal-backdrop" data-close="tutorial"></div>
+  <section class="modal-card tutorial-modal-card" role="dialog" aria-modal="true" aria-labelledby="tutorial_title">
+    <header class="modal-header">
+      <div>
+        <span class="modal-kicker">Guía paso a paso</span>
+        <h3 id="tutorial_title">Tutorial de Uso</h3>
+      </div>
+      <button class="modal-close" data-close="tutorial" type="button" aria-label="Cerrar tutorial">×</button>
+    </header>
+
+    <div class="tutorial-intro">
+      <strong>La forma más sencilla de usar esta herramienta</strong>
+      <p>Primero configurá las prestadoras que te interesan, después iniciá el monitoreo y finalmente revisá o exportá lo encontrado. No necesitás saber programación.</p>
+    </div>
+
+    <ol class="tutorial-steps">
+      <li>
+        <span class="tutorial-number">1</span>
+        <div><h4>Entrá en “Alertas”</h4><p>Presioná <b>Nueva alerta</b>. En “Nombre visible” escribí el nombre corto de la prestadora. En “Aliases” agregá otras formas en que puede aparecer, separadas por coma o punto y coma.</p><div class="tutorial-example"><b>Ejemplo:</b> Capilla del Monte; Cooperativa Aguas de Capilla; Aguas de Capilla del Monte</div></div>
+      </li>
+      <li>
+        <span class="tutorial-number">2</span>
+        <div><h4>Volvé a “Monitoreo” y elegí el año</h4><p>Elegí el año que querés revisar. Los términos regulatorios ya vienen preparados. Podés dejarlos como están para el uso normal.</p></div>
+      </li>
+      <li>
+        <span class="tutorial-number">3</span>
+        <div><h4>Presioná “Iniciar monitoreo de alertas”</h4><p>La aplicación recorrerá los doce meses, abrirá los boletines y buscará resoluciones ERSeP. Mientras trabaja, mantené abierta esta pestaña. La barra mostrará el avance y las consultas periódicas mantendrán activo el servidor de Render.</p></div>
+      </li>
+      <li>
+        <span class="tutorial-number">4</span>
+        <div><h4>Revisá los hallazgos</h4><p><b>NUEVO</b> significa que nunca se había guardado esa resolución. <b>MODIFICADO</b> significa que ya existía, pero cambió su contenido. Presioná <b>Ver detalle</b> para leer el RESUELVE, abrir el PDF o copiar el texto.</p></div>
+      </li>
+      <li>
+        <span class="tutorial-number">5</span>
+        <div><h4>Usá “Limpiar hallazgos” cuando termines</h4><p>Ese botón vacía únicamente las tarjetas visibles de la pantalla. <b>No elimina el historial de la instancia activa</b>, las alertas ni las resoluciones guardadas durante esa ejecución del servicio.</p></div>
+      </li>
+      <li>
+        <span class="tutorial-number">6</span>
+        <div><h4>Consultá y exportá desde “Historial”</h4><p>El historial conserva las publicaciones detectadas mientras exista la base local de esta instancia de Render. Podés filtrar por año, estado, prestadora, alerta o texto. <b>Exportar JSON</b> y <b>Exportar Excel</b> descargan exactamente los registros que coinciden con los filtros aplicados.</p></div>
+      </li>
+    </ol>
+
+    <section class="tutorial-options">
+      <h4>¿Qué significan las tres opciones?</h4>
+      <p><b>Revalidar PDFs procesados:</b> vuelve a descargar documentos ya revisados. Es más lento y sirve para comprobar posibles cambios.</p>
+      <p><b>Incluir todas las resoluciones ERSeP:</b> muestra resoluciones aunque no coincidan con una alerta o término específico.</p>
+      <p><b>Mostrar también registros sin cambios:</b> enseña documentos que ya estaban guardados y no presentan novedades.</p>
+    </section>
+
+    <div class="tutorial-note">
+      <b>Importante:</b> que no aparezcan hallazgos no significa necesariamente que exista un error. En Render gratuito, no cierres esta pestaña durante un monitoreo prolongado. Puede significar que durante ese año no hubo publicaciones nuevas relacionadas con las alertas configuradas.
+    </div>
+
+    <div class="modal-form-actions tutorial-close-actions">
+      <button class="action primary" data-close="tutorial" type="button">Entendido, comenzar</button>
+    </div>
+  </section>
+</div>
+
+<section class="server-gate" id="server_gate" aria-live="polite" aria-busy="true">
+  <div class="server-panel">
+    <div class="server-spinner" aria-hidden="true"></div>
+    <span class="server-kicker">Backend del Boletín Oficial</span>
+    <h2 id="server_gate_title">Estamos iniciando el servidor</h2>
+    <p id="server_gate_message">Render puede tardar cerca de un minuto en despertar después de un período sin uso. No recargues la página: el buscador se habilitará automáticamente.</p>
+    <div class="server-progress"><span></span></div>
+    <div class="server-elapsed" id="server_elapsed">Conectando…</div>
+    <button class="action" id="server_retry" type="button">Reintentar ahora</button>
+    <a class="server-back-link" href="../../">Volver al menú</a>
+  </div>
+</section>
+<script src="../../assets/js/auth-config.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script src="../../assets/js/boletin-config.js"></script>
+<script src="../../assets/js/boletin.js?v=20260728" defer></script>
+</body>
+</html>

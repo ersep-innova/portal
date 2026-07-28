@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: portal-observatorio-ersep-boletin
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: APP_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_ORIGINS
+        value: https://ersepobservatorio-cyt.github.io
+      - key: JWT_EXPIRE_HOURS
+        value: 12
+      - key: SCRAPER_HTTP_TIMEOUT
+        value: 45
