@@ -5,12 +5,12 @@ import io
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 
 import requests
 
 import pandas as pd
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from openpyxl.utils import get_column_letter
 
@@ -65,7 +65,6 @@ def _download_response(content: bytes, filename: str, media_type: str) -> Stream
 
 
 def create_boletin_router(
-    require_auth: Callable[..., Any],
     base_dir: Path,
     http_timeout: int = 45,
 ) -> APIRouter:
@@ -77,7 +76,6 @@ def create_boletin_router(
     router = APIRouter(
         prefix="/api/boletin",
         tags=["Boletín Oficial"],
-        dependencies=[Depends(require_auth)],
     )
 
     @router.get("/health")
@@ -108,9 +106,12 @@ def create_boletin_router(
 
     @router.put("/alertas/{alerta_id}")
     def update_alert(alerta_id: int, body: AlertaUpdate):
-        item = repository.update_alert(
-            alerta_id, body.nombre, body.aliases, body.active
-        )
+        try:
+            item = repository.update_alert(
+                alerta_id, body.nombre, body.aliases, body.active
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
         if not item:
             raise HTTPException(status_code=404, detail="Alerta no encontrada.")
         return item

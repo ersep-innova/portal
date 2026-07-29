@@ -1,8 +1,12 @@
-const TOKEN_KEY = "ersep-boletin-api-token";
 const THEME_KEY = "cyt-theme";
 const CONFIG = window.ERSEP_BOLETIN_CONFIG || {};
 const API_BASE_URL = String(CONFIG.API_BASE_URL || "").replace(/\/+$/, "");
 const TERMINAL_STATES = new Set(["COMPLETED", "STOPPED", "ERROR", "INTERRUPTED"]);
+const AGUAS_CORDOBESAS_ALERT = {
+  nombre: "Aguas Cordobesas",
+  aliases: "Aguas Cordobesas; Aguas Cordobesas S.A.; Aguas Cordobesas SA; Aguas Cordobesas S.A; ACSA; AACC; aguas cordobesas; Aguas Cordobesas Sociedad Anónima; Aguas Cordobesas Sociedad Anonima",
+  active: true,
+};
 
 let currentRunId = null;
 let pollingTimer = null;
@@ -14,30 +18,13 @@ let selectedPublication = null;
 let lastResultSignature = "";
 let backendReady = false;
 let initialized = false;
-let wakeStartedAt = 0;
-let elapsedTimer = null;
+let wakeInProgress = false;
+let loadingMessageTimer = null;
+let retryRevealTimer = null;
 
 function apiUrl(path){
-  if (!API_BASE_URL) throw new Error("Falta configurar API_BASE_URL en boletin-config.js.");
+  if (!API_BASE_URL) throw new Error("No se pudo ubicar el servicio del buscador.");
   return `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
-}
-function getToken(){ return sessionStorage.getItem(TOKEN_KEY) || ""; }
-function clearToken(){ sessionStorage.removeItem(TOKEN_KEY); }
-function decodeJwtPayload(token){
-  try {
-    const value = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-    const padded = value.padEnd(Math.ceil(value.length / 4) * 4, "=");
-    return JSON.parse(atob(padded));
-  } catch { return {}; }
-}
-function tokenValid(){
-  const body = decodeJwtPayload(getToken());
-  return Number(body.exp || 0) * 1000 > Date.now() + 15000;
-}
-function goLogin(){
-  clearToken();
-  if (window.ERSEP_AUTH?.logout) window.ERSEP_AUTH.logout();
-  else location.href = "../../";
 }
 function applyTheme(theme){
   document.documentElement.setAttribute("data-theme", theme);
@@ -51,6 +38,9 @@ function initTheme(){
 }
 function escapeHtml(value){
   return String(value ?? "").replace(/[&<>'"]/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[char]));
+}
+function normalizeText(value){
+  return String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es").trim();
 }
 function formatDate(value){
   if (!value) return "—";
@@ -68,61 +58,25 @@ function showAlert(message, type=""){
 }
 function hideAlert(){ document.getElementById("global_alert").style.display = "none"; }
 
-async function authenticateBackend(){
-  const password = window.ERSEP_AUTH?.getPassword?.();
-  if (!password) throw new Error("La sesión del portal no está disponible. Volvé a ingresar.");
-  const response = await fetch(apiUrl(CONFIG.LOGIN_PATH || "/api/login"), {
-    method: "POST",
-    cache: "no-store",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({password})
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error("La contraseña configurada en Render no coincide con la contraseña del portal.");
-    }
-    throw new Error(payload.detail || `No se pudo iniciar sesión en el backend (HTTP ${response.status}).`);
-  }
-  sessionStorage.setItem(TOKEN_KEY, payload.token);
-  return payload.token;
-}
-
-async function api(path, options={}, retryAuth=true){
-  if (!tokenValid()) await authenticateBackend();
+async function api(path, options={}){
   const response = await fetch(apiUrl(path), {
     ...options,
     cache: options.cache || "no-store",
     headers: {
       "Content-Type":"application/json",
-      Authorization:`Bearer ${getToken()}`,
       ...(options.headers || {}),
     },
   });
-  if (response.status === 401 && retryAuth){
-    clearToken();
-    await authenticateBackend();
-    return api(path, options, false);
-  }
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload.detail || `Error HTTP ${response.status}`);
+  if (!response.ok) throw new Error(payload.detail || `La solicitud no pudo completarse (HTTP ${response.status}).`);
   return payload;
 }
 
-async function fetchDownload(path, fallbackName, retryAuth=true){
-  if (!tokenValid()) await authenticateBackend();
-  const response = await fetch(apiUrl(path), {
-    cache:"no-store",
-    headers:{Authorization:`Bearer ${getToken()}`}
-  });
-  if (response.status === 401 && retryAuth){
-    clearToken();
-    await authenticateBackend();
-    return fetchDownload(path, fallbackName, false);
-  }
+async function fetchDownload(path, fallbackName){
+  const response = await fetch(apiUrl(path), {cache:"no-store"});
   if (!response.ok){
     const payload = await response.json().catch(() => ({}));
-    throw new Error(payload.detail || `Error HTTP ${response.status}`);
+    throw new Error(payload.detail || `La descarga no pudo completarse (HTTP ${response.status}).`);
   }
   const blob = await response.blob();
   const disposition = response.headers.get("content-disposition") || "";
@@ -160,8 +114,8 @@ async function loadHealth(){
   const health = await api("/api/boletin/health");
   const status = document.getElementById("status");
   if (!health.pymupdf_available){
-    status.textContent = "PyMuPDF no disponible";
-    showAlert("El backend inició, pero PyMuPDF no está disponible. Revisá el registro de despliegue de Render.", "error");
+    status.textContent = "Funciones de lectura limitadas";
+    showAlert("El componente de lectura de PDF no está disponible. Algunas búsquedas pueden no funcionar correctamente.", "error");
   } else {
     status.textContent = `${health.publicaciones} publicaciones · ${health.alertas_activas} alertas activas`;
   }
@@ -338,10 +292,8 @@ async function saveRunTxt(){
 async function copyRunTxt(){
   if (!currentRunId) return;
   try {
-    if (!tokenValid()) await authenticateBackend();
-    const response = await fetch(apiUrl(`/api/boletin/exportar?scope=run&run_id=${currentRunId}&formato=txt`), {cache:"no-store", headers:{Authorization:`Bearer ${getToken()}`}});
-    if (response.status === 401){ goLogin(); return; }
-    if (!response.ok){ const payload = await response.json().catch(() => ({})); throw new Error(payload.detail || `Error HTTP ${response.status}`); }
+    const response = await fetch(apiUrl(`/api/boletin/exportar?scope=run&run_id=${currentRunId}&formato=txt`), {cache:"no-store"});
+    if (!response.ok){ const payload = await response.json().catch(() => ({})); throw new Error(payload.detail || `La solicitud no pudo completarse (HTTP ${response.status}).`); }
     await navigator.clipboard.writeText(await response.text());
     showAlert("TXT completo copiado al portapapeles.", "success");
   } catch(error){ showAlert(error.message, "error"); }
@@ -391,6 +343,25 @@ async function loadAlerts(){
   alerts = payload.items || [];
   renderAlerts();
   renderAlertFilter();
+}
+async function addAguasCordobesasAlert(){
+  const exists = alerts.some(item => normalizeText(item.nombre) === normalizeText(AGUAS_CORDOBESAS_ALERT.nombre));
+  if (exists){
+    showAlert("La alerta de Aguas Cordobesas ya está configurada.", "error");
+    return;
+  }
+  const button = document.getElementById("btn_add_aguas_alert");
+  if (button){ button.disabled = true; button.textContent = "Agregando…"; }
+  try {
+    await api("/api/boletin/alertas", {method:"POST", body:JSON.stringify(AGUAS_CORDOBESAS_ALERT)});
+    await loadAlerts();
+    await loadHealth();
+    showAlert("Alerta de Aguas Cordobesas agregada correctamente.", "success");
+  } catch(error){
+    showAlert(error.message, "error");
+  } finally {
+    if (button){ button.disabled = false; button.textContent = "+ Agregar alerta de Aguas Cordobesas"; }
+  }
 }
 function renderAlerts(){
   const body = document.getElementById("alerts_table");
@@ -576,6 +547,7 @@ function bindEvents(){
   document.getElementById("btn_clear_findings").onclick = clearMonitorFindings;
   document.getElementById("btn_tutorial").onclick = () => openModal("tutorial_modal");
   document.getElementById("btn_new_alert").onclick = () => openAlertModal();
+  document.getElementById("btn_add_aguas_alert").onclick = addAguasCordobesasAlert;
   document.getElementById("alert_form").addEventListener("submit", saveAlert);
   document.getElementById("btn_history_filter").onclick = () => loadHistory(1).catch(error => showAlert(error.message, "error"));
   document.getElementById("btn_history_clear").onclick = clearHistoryFilters;
@@ -616,7 +588,6 @@ function bindEvents(){
   document.getElementById("detail_copy_full").onclick = () => copySelected("text_full", "Resolución completa");
   document.getElementById("detail_copy_resuelve").onclick = () => copySelected("text_resuelve", "Bloque RESUELVE");
   document.getElementById("btn_theme").onclick = () => applyTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark");
-  document.getElementById("btn_logout").onclick = goLogin;
   document.addEventListener("keydown", event => {
     if (event.key === "Escape"){
       closeModal("detail_modal");
@@ -635,7 +606,7 @@ function updateServerGate(title, message, mode="starting"){
   if (messageElement) messageElement.textContent = message;
   if (status) status.className = `server-status ${mode}`;
   const statusText = document.getElementById("status");
-  if (statusText) statusText.textContent = mode === "online" ? "Servidor disponible" : mode === "error" ? "Revisar configuración" : "Iniciando servidor…";
+  if (statusText) statusText.textContent = mode === "online" ? "Buscador listo" : mode === "error" ? "No se pudo iniciar" : "Cargando buscador…";
   if (gate) gate.dataset.mode = mode;
 }
 
@@ -650,29 +621,31 @@ function setBackendReady(ready){
   }
 }
 
-function startElapsedClock(){
-  wakeStartedAt = Date.now();
-  clearInterval(elapsedTimer);
-  elapsedTimer = setInterval(() => {
-    const elapsed = Math.max(0, Math.round((Date.now() - wakeStartedAt) / 1000));
-    const element = document.getElementById("server_elapsed");
-    if (!element) return;
-    if (elapsed < 15) element.textContent = `Conectando… ${elapsed} s`;
-    else if (elapsed < 55) element.textContent = `Render está despertando… ${elapsed} s`;
-    else element.textContent = `Está tardando más de lo habitual… ${elapsed} s`;
-  }, 1000);
+function startLoadingMessages(){
+  const messages = [
+    "Conectando con el buscador…",
+    "Preparando la información…",
+    "Verificando que todo esté listo…",
+    "El buscador estará disponible en breve.",
+  ];
+  let index = 0;
+  const stage = document.getElementById("server_stage");
+  if (stage) stage.textContent = messages[0];
+  clearInterval(loadingMessageTimer);
+  loadingMessageTimer = setInterval(() => {
+    index = (index + 1) % messages.length;
+    if (stage) stage.textContent = messages[index];
+  }, 4200);
+  clearTimeout(retryRevealTimer);
+  retryRevealTimer = setTimeout(() => {
+    const retry = document.getElementById("server_retry");
+    if (retry && !backendReady) retry.hidden = false;
+  }, 45000);
 }
 
-async function waitForPortalPassword(){
-  const existing = window.ERSEP_AUTH?.getPassword?.();
-  if (existing) return existing;
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error("No se pudo recuperar la sesión del portal.")), 12000);
-    document.addEventListener("ersep-authenticated", () => {
-      clearTimeout(timeout);
-      resolve(window.ERSEP_AUTH?.getPassword?.() || "");
-    }, {once:true});
-  });
+function stopLoadingMessages(){
+  clearInterval(loadingMessageTimer);
+  clearTimeout(retryRevealTimer);
 }
 
 async function healthRequest(){
@@ -680,14 +653,11 @@ async function healthRequest(){
   const timeout = setTimeout(() => controller.abort(), Number(CONFIG.HEALTH_TIMEOUT_MS || 75000));
   try {
     const response = await fetch(apiUrl(CONFIG.HEALTH_PATH || "/api/health"), {
-      method:"GET",
-      mode:"cors",
-      cache:"no-store",
-      signal:controller.signal
+      method:"GET", mode:"cors", cache:"no-store", signal:controller.signal
     });
-    if (!response.ok) throw new Error(`El servidor respondió HTTP ${response.status}.`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const payload = await response.json().catch(() => ({}));
-    if (!payload.ok) throw new Error("El servidor respondió, pero no informó estado disponible.");
+    if (!payload.ok) throw new Error("Respuesta no disponible");
     return payload;
   } finally {
     clearTimeout(timeout);
@@ -695,39 +665,33 @@ async function healthRequest(){
 }
 
 async function wakeBackend(){
+  if (wakeInProgress) return;
+  wakeInProgress = true;
   setBackendReady(false);
-  startElapsedClock();
+  startLoadingMessages();
   updateServerGate(
-    "Estamos iniciando el servidor",
-    "Render puede tardar cerca de un minuto en despertar después de un período sin uso. No recargues la página: el buscador se habilitará automáticamente.",
+    "Estamos preparando el buscador",
+    "La aplicación se está cargando. Este proceso puede demorar unos segundos la primera vez que ingresás.",
     "starting"
   );
-  let attempt = 0;
-  while (!backendReady){
-    attempt += 1;
-    try {
-      await healthRequest();
-      updateServerGate("Servidor disponible", "Validando el acceso institucional…", "starting");
-      await authenticateBackend();
-      setBackendReady(true);
-      clearInterval(elapsedTimer);
-      updateServerGate("Servidor disponible", "El buscador ya está listo para usarse.", "online");
-      return;
-    } catch(error){
-      const message = String(error?.message || error);
-      const configurationError = message.includes("configurar API_BASE_URL") || message.includes("no coincide");
-      if (configurationError){
-        clearInterval(elapsedTimer);
-        updateServerGate("Revisá la configuración", message, "error");
-        throw error;
+  const retry = document.getElementById("server_retry");
+  if (retry) retry.hidden = true;
+
+  try {
+    while (!backendReady){
+      try {
+        await healthRequest();
+        setBackendReady(true);
+        stopLoadingMessages();
+        updateServerGate("Buscador listo", "La aplicación ya está disponible.", "online");
+        return;
+      } catch(error){
+        console.warn("El buscador todavía no está disponible", error);
+        await new Promise(resolve => setTimeout(resolve, Number(CONFIG.RETRY_DELAY_MS || 5000)));
       }
-      updateServerGate(
-        attempt > 1 ? "El servidor sigue iniciándose" : "Estamos iniciando el servidor",
-        "No hace falta recargar. Seguiremos intentando conectarnos automáticamente.",
-        "starting"
-      );
-      await new Promise(resolve => setTimeout(resolve, Number(CONFIG.RETRY_DELAY_MS || 5000)));
     }
+  } finally {
+    wakeInProgress = false;
   }
 }
 
@@ -737,15 +701,26 @@ async function initialize(){
   initTheme();
   initializeYears();
   bindEvents();
-  document.getElementById("server_retry").onclick = () => location.reload();
+  document.getElementById("server_retry").onclick = async () => {
+    const retry = document.getElementById("server_retry");
+    retry.hidden = true;
+    wakeInProgress = false;
+    await wakeBackend();
+    if (backendReady){
+      await Promise.all([loadHealth(), loadAlerts(), loadHistoryFilterOptions(), loadHistory(1)]);
+      setTimeout(() => document.getElementById("server_gate")?.classList.add("hidden"), 350);
+    }
+  };
   try {
-    await waitForPortalPassword();
     await wakeBackend();
     await Promise.all([loadHealth(), loadAlerts(), loadHistoryFilterOptions(), loadHistory(1)]);
-    setTimeout(() => document.getElementById("server_gate")?.classList.add("hidden"), 450);
+    setTimeout(() => document.getElementById("server_gate")?.classList.add("hidden"), 350);
   } catch(error){
-    document.getElementById("status").textContent = "Error de conexión";
-    showAlert(error.message, "error");
+    stopLoadingMessages();
+    updateServerGate("No pudimos iniciar el buscador", "Reintentá la conexión. Si el problema continúa, volvé al menú e ingresá más tarde.", "error");
+    const retry = document.getElementById("server_retry");
+    if (retry) retry.hidden = false;
+    showAlert("No fue posible iniciar el buscador.", "error");
   }
 }
 

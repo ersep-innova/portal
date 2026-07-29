@@ -1,9 +1,149 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Panel institucional de cumpleaños del ERSeP."><title>Cumpleaños · Portal Observatorio ERSeP</title><link rel="stylesheet" href="../../assets/css/style.css"><link rel="stylesheet" href="../../assets/css/portal-pages.css"><link rel="stylesheet" href="../../assets/css/standalone.css"><link rel="stylesheet" href="../../assets/css/birthday.css"><link rel="stylesheet" href="../../assets/css/auth.css"><link rel="icon" href="../../assets/img/favicon.ico"></head>
-<body class="tool-page" data-login-path="../../"><div class="wrap" data-protected hidden>
-<header class="header"><div class="header-left"><h1>Cumpleaños ERSeP</h1><span class="header-badge">Portal Observatorio · Recursos Humanos</span></div><div class="header-right"><span id="status">Descifrando agenda...</span><a class="nav-chip" href="../../"><span>⌂</span> Menú</a><button class="theme-toggle" data-theme-toggle type="button">🌙</button><button class="logout-button" data-logout type="button">Cerrar sesión</button></div></header>
-<section class="tool-hero birthday-hero"><div class="birthday-hero-copy"><div class="tool-kicker">Agenda institucional</div><h2>Los cumpleaños de todo ERSeP</h2><p>Consultá próximos cumpleaños, filtrá por Gerencia o Área y revisá indicadores básicos de distribución.</p></div><div class="birthday-hero-icon">🎂</div></section>
-<section class="card birthday-filter-card"><div class="card-body"><div class="birthday-filter-head"><div><h3>Filtrar por Gerencia o Área</h3><p>La opción “Todas” reúne la nómina completa.</p></div><span class="birthday-filter-count" id="area_filter_count">Preparando filtros...</span></div><div class="birthday-filter-bar" id="area_filters"></div></div></section>
-<section class="birthday-summary-grid"><article class="card birthday-summary-card"><div class="card-body"><div class="birthday-summary-label">🎁 Próximo cumpleaños</div><strong class="birthday-summary-value" id="next_birthday_name">—</strong><p class="birthday-summary-detail" id="next_birthday_date">Calculando...</p></div></article><article class="card birthday-summary-card birthday-countdown-card" id="countdown_card"><div class="card-body"><div class="birthday-summary-label"><span class="birthday-dot safe" id="countdown_dot"></span>Cuenta regresiva</div><strong class="birthday-summary-value" id="next_birthday_countdown">—</strong><p class="birthday-summary-detail" id="next_birthday_message">Buscando...</p></div></article><article class="card birthday-summary-card"><div class="card-body"><div class="birthday-summary-label">📅 Este mes</div><strong class="birthday-summary-value" id="birthdays_this_month">—</strong><p class="birthday-summary-detail" id="birthdays_this_month_detail">Cumpleaños registrados</p></div></article></section>
-<section class="card birthday-analytics"><div class="card-body"><div class="birthday-section-head"><div><h3>Indicadores de cumpleaños</h3><p>Resumen elaborado con la nómina actualmente cargada.</p></div></div><div class="analytics-kpis"><div><span>Personas registradas</span><strong id="stat_total">—</strong></div><div><span>Mes con más cumpleaños</span><strong id="stat_peak_month">—</strong></div><div><span>Próximos 30 días</span><strong id="stat_next_30">—</strong></div><div><span>Sedes registradas</span><strong id="stat_locations">—</strong></div></div><div class="chart-grid"><article class="mini-chart"><h4>Cumpleaños por mes</h4><div id="chart_months" class="bar-chart"></div></article><article class="mini-chart"><h4>Principales Gerencias/Áreas</h4><div id="chart_areas" class="bar-chart"></div></article></div><p class="birthday-data-note"><strong>Sobre edades:</strong> la base disponible contiene día y mes, pero no año de nacimiento. Por eso el panel no calcula edades ni rangos etarios, evitando inferencias incorrectas.</p></div></section>
-<section class="card"><div class="card-body"><div class="birthday-section-head"><div><h3>Próximos cumpleaños</h3><p id="birthday_list_subtitle">Ordenados por cercanía.</p></div><div class="birthday-legend"><span class="birthday-legend-item"><span class="birthday-dot danger"></span>0 a 7 días</span><span class="birthday-legend-item"><span class="birthday-dot warning"></span>8 a 30 días</span><span class="birthday-legend-item"><span class="birthday-dot safe"></span>Más de 30 días</span></div></div><div class="birthday-list" id="birthday_list"></div><p class="page-note" id="birthday_updated_at"></p><div class="birthday-data-note">Los datos se encuentran cifrados en <strong>assets/data/cumpleanos.enc.json</strong>. Para actualizar la nómina debe regenerarse ese archivo con la contraseña institucional.</div></div></section>
-</div><script src="../../assets/js/auth-config.js"></script><script src="../../assets/js/auth.js"></script><script src="../../assets/js/theme.js" defer></script><script src="../../assets/js/birthday.js" defer></script></body></html>
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Agenda institucional de cumpleaños del ERSeP.">
+  <title>Cumpleaños · Portal de Innovación y Análisis de Datos</title>
+  <link rel="stylesheet" href="../../assets/css/style.css">
+  <link rel="stylesheet" href="../../assets/css/portal-pages.css">
+  <link rel="stylesheet" href="../../assets/css/standalone.css">
+  <link rel="stylesheet" href="../../assets/css/birthday.css">
+  <link rel="stylesheet" href="../../assets/css/auth.css">
+  <link rel="icon" href="../../assets/img/favicon.ico">
+</head>
+<body class="tool-page" data-auth-required="birthdays">
+  <section class="auth-gate" id="auth_gate" hidden>
+    <form class="auth-panel" id="auth_form" autocomplete="off">
+      <div class="auth-brand">
+        <div class="ersep-mark compact"><span>ER</span><span>SeP</span></div>
+        <div><strong>Portal de Innovación y Análisis de Datos</strong><span>Información interna de personal</span></div>
+      </div>
+      <h1>Acceso a cumpleaños</h1>
+      <p>Esta sección contiene datos personales. Ingresá la contraseña institucional para consultar la agenda.</p>
+      <div class="auth-field">
+        <label for="auth_password">Contraseña</label>
+        <input id="auth_password" type="password" required autocomplete="current-password">
+      </div>
+      <button class="auth-submit" type="submit">Ingresar a cumpleaños</button>
+      <p class="auth-error" id="auth_error" role="alert"></p>
+      <div class="auth-security-note">La contraseña se utiliza únicamente en esta página y no queda guardada en el navegador. La nómina publicada permanece cifrada.</div>
+      <a class="auth-back" href="../../">← Volver al menú principal</a>
+    </form>
+  </section>
+
+  <div class="wrap" data-protected hidden>
+    <header class="header">
+      <div class="header-left">
+        <h1>Cumpleaños ERSeP</h1>
+        <span class="header-badge">Portal de Innovación y Análisis de Datos · Recursos Humanos</span>
+      </div>
+      <div class="header-right">
+        <span id="status">Preparando agenda…</span>
+        <a class="nav-chip" href="../../"><span>⌂</span> Menú</a>
+        <button class="theme-toggle" data-theme-toggle type="button" aria-label="Cambiar tema">🌙</button>
+        <button class="logout-button" data-lock type="button">Cerrar cumpleaños</button>
+      </div>
+    </header>
+
+    <section class="tool-hero birthday-hero">
+      <div class="birthday-hero-copy">
+        <div class="tool-kicker">Agenda institucional protegida</div>
+        <h2>Los cumpleaños de todo ERSeP</h2>
+        <p>Buscá personas, combiná filtros por dependencia y sede, consultá el calendario y revisá la distribución mensual.</p>
+      </div>
+      <div class="birthday-hero-icon" aria-hidden="true">🎂</div>
+    </section>
+
+    <section class="card birthday-filter-card">
+      <div class="card-body">
+        <div class="birthday-filter-head">
+          <div><h3>Buscar y filtrar</h3><p>Todos los controles se aplican al calendario, los gráficos y el listado.</p></div>
+          <span class="birthday-filter-count" id="filter_count">Preparando filtros…</span>
+        </div>
+        <div class="birthday-filter-grid">
+          <label class="birthday-control birthday-search-control">
+            <span>Nombre o apellido</span>
+            <input id="birthday_search" type="search" placeholder="Ej.: Ramallo, Camila, Miguel…" autocomplete="off">
+          </label>
+          <label class="birthday-control">
+            <span>Dependencia</span>
+            <select id="area_filter"><option value="">Todas las dependencias</option></select>
+          </label>
+          <label class="birthday-control">
+            <span>Sede o ubicación</span>
+            <select id="location_filter"><option value="">Todas las sedes</option></select>
+          </label>
+          <button class="birthday-reset" id="reset_filters" type="button">Limpiar filtros</button>
+        </div>
+        <p class="birthday-no-results" id="filter_message" hidden>No se encontraron personas con los filtros seleccionados.</p>
+      </div>
+    </section>
+
+    <section class="birthday-summary-grid">
+      <article class="card birthday-summary-card"><div class="card-body"><div class="birthday-summary-label">🎁 Próximo cumpleaños</div><strong class="birthday-summary-value" id="next_birthday_name">—</strong><p class="birthday-summary-detail" id="next_birthday_date">Calculando…</p></div></article>
+      <article class="card birthday-summary-card birthday-countdown-card" id="countdown_card"><div class="card-body"><div class="birthday-summary-label"><span class="birthday-dot safe" id="countdown_dot"></span>Cuenta regresiva</div><strong class="birthday-summary-value" id="next_birthday_countdown">—</strong><p class="birthday-summary-detail" id="next_birthday_message">Buscando…</p></div></article>
+      <article class="card birthday-summary-card"><div class="card-body"><div class="birthday-summary-label">📅 Este mes</div><strong class="birthday-summary-value" id="birthdays_this_month">—</strong><p class="birthday-summary-detail" id="birthdays_this_month_detail">Cumpleaños registrados</p></div></article>
+    </section>
+
+    <section class="birthday-main-grid">
+      <article class="card birthday-calendar-card">
+        <div class="card-body">
+          <div class="birthday-section-head calendar-heading">
+            <div><h3>Calendario de cumpleaños</h3><p>Los días destacados contienen uno o más cumpleaños.</p></div>
+            <div class="calendar-controls">
+              <button type="button" id="calendar_prev" aria-label="Mes anterior">←</button>
+              <strong id="calendar_title">—</strong>
+              <button type="button" id="calendar_next" aria-label="Mes siguiente">→</button>
+              <button type="button" id="calendar_today">Hoy</button>
+            </div>
+          </div>
+          <div class="birthday-calendar-weekdays" aria-hidden="true"><span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span></div>
+          <div class="birthday-calendar" id="calendar_grid" role="grid" aria-label="Calendario de cumpleaños"></div>
+          <p class="calendar-help">Pasá el cursor o tocá un día destacado para ver quiénes cumplen.</p>
+        </div>
+      </article>
+
+      <article class="card birthday-month-card">
+        <div class="card-body">
+          <div class="birthday-section-head"><div><h3>Cumpleaños por mes</h3><p>Seleccioná una barra para ver el detalle.</p></div></div>
+          <div class="birthday-month-chart" id="chart_months" aria-label="Cantidad de cumpleaños por mes"></div>
+          <div class="birthday-month-detail" id="month_detail"></div>
+        </div>
+      </article>
+    </section>
+
+    <section class="card birthday-analytics">
+      <div class="card-body">
+        <div class="birthday-section-head"><div><h3>Indicadores de la selección</h3><p>El resumen responde a la búsqueda y los filtros activos.</p></div></div>
+        <div class="analytics-kpis">
+          <div><span>Personas visibles</span><strong id="stat_total">—</strong></div>
+          <div><span>Mes con más cumpleaños</span><strong id="stat_peak_month">—</strong></div>
+          <div><span>Próximos 30 días</span><strong id="stat_next_30">—</strong></div>
+          <div><span>Sedes visibles</span><strong id="stat_locations">—</strong></div>
+        </div>
+        <div class="chart-grid single-chart-grid">
+          <article class="mini-chart"><h4>Dependencias con más personas</h4><div id="chart_areas" class="bar-chart"></div></article>
+        </div>
+        <p class="birthday-data-note"><strong>Sobre edades:</strong> la base contiene día y mes, pero no año de nacimiento. Por eso no se calculan edades ni rangos etarios.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-body">
+        <div class="birthday-section-head">
+          <div><h3>Próximos cumpleaños</h3><p id="birthday_list_subtitle">Ordenados por cercanía.</p></div>
+          <div class="birthday-legend"><span class="birthday-legend-item"><span class="birthday-dot danger"></span>0 a 7 días</span><span class="birthday-legend-item"><span class="birthday-dot warning"></span>8 a 30 días</span><span class="birthday-legend-item"><span class="birthday-dot safe"></span>Más de 30 días</span></div>
+        </div>
+        <div class="birthday-list" id="birthday_list"></div>
+        <p class="page-note" id="birthday_updated_at"></p>
+      </div>
+    </section>
+  </div>
+
+  <script src="../../assets/js/auth-config.js"></script>
+  <script src="../../assets/js/auth.js"></script>
+  <script src="../../assets/js/theme.js" defer></script>
+  <script src="../../assets/js/birthday.js" defer></script>
+</body>
+</html>

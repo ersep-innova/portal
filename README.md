@@ -1,28 +1,70 @@
-# Portal Observatorio ERSeP
+# Portal de Innovación y Análisis de Datos · ERSeP
 
-Repositorio único para:
+Proyecto integrado por:
 
-- **GitHub Pages:** portal estático en la raíz.
-- **Render:** backend FastAPI del Boletín Oficial dentro de `backend/`.
+- **Portal web estático:** ubicado en la raíz y preparado para GitHub Pages.
+- **Buscador del Boletín Oficial:** frontend dentro de `modulos/boletin-oficial/` y servicio FastAPI dentro de `backend/`.
+- **Cumpleaños ERSeP:** módulo protegido de manera independiente, con nómina cifrada en `assets/data/cumpleanos.enc.json`.
 
-## URLs previstas
+## URLs actuales
 
 - Portal: `https://ersepobservatorio-cyt.github.io/portal-observatorio-ersep/`
-- Backend: `https://portal-observatorio-ersep-boletin.onrender.com`
-- Salud del backend: `https://portal-observatorio-ersep-boletin.onrender.com/api/health`
+- Servicio del Boletín: `https://portal-observatorio-ersep-boletin.onrender.com`
+- Estado del servicio: `https://portal-observatorio-ersep-boletin.onrender.com/api/health`
+
+Los identificadores técnicos y las URLs anteriores se conservaron para no romper la publicación existente, aunque el nombre visible del portal cambió.
 
 ## Publicación rápida
 
-1. Subir el contenido de este proyecto a la rama `main` del repositorio `portal-observatorio-ersep`.
-2. En GitHub: **Settings → Pages → Deploy from a branch → main → /(root) → Save**.
-3. En Render, iniciar sesión con la cuenta deseada y crear un **Blueprint** apuntando a este repositorio. Render leerá `render.yaml`.
-4. Durante la creación, cargar `APP_PASSWORD` con la misma contraseña institucional del portal.
-5. Verificar la URL asignada por Render. Si no es exactamente `portal-observatorio-ersep-boletin.onrender.com`, editar `assets/js/boletin-config.js` y reemplazar `API_BASE_URL`.
+1. Subir todo el contenido del proyecto a la rama `main` del repositorio `portal-observatorio-ersep`.
+2. En GitHub, abrir **Settings → Pages**.
+3. Seleccionar **Deploy from a branch → main → /(root)**.
+4. Crear o actualizar en Render el Blueprint definido por `render.yaml`.
+5. Verificar la URL asignada al servicio. Si fuera distinta, editar únicamente `API_BASE_URL` en `assets/js/boletin-config.js`.
 
-## Seguridad
+## Acceso y privacidad
 
-No subas `.env`, contraseñas ni secretos al repositorio. `APP_PASSWORD` y `JWT_SECRET` se administran en Render.
+- El portal general y el Boletín Oficial no solicitan contraseña.
+- Cumpleaños solicita la clave institucional únicamente dentro de ese módulo.
+- La contraseña no se guarda en `localStorage` ni en `sessionStorage`.
+- La nómina legible no forma parte del repositorio; se publica únicamente el archivo cifrado.
 
-## Persistencia en el plan gratuito
+### Limitación importante
 
-La base SQLite vive en el disco local de la instancia. Render gratuito puede reiniciar o volver a desplegar el servicio, por lo que el historial puede borrarse. Exportá los resultados importantes. Si más adelante se contrata un disco persistente, montarlo y definir `DATA_ROOT=/var/data`.
+GitHub Pages es un alojamiento estático. Por ello, cualquier archivo publicado puede descargarse, incluido el archivo cifrado. La solución evita exponer la nómina en texto legible, pero una contraseña compartida validada en el navegador no equivale a un control de acceso de servidor. Para una protección fuerte, la nómina debería alojarse fuera del repositorio y entregarse desde un servicio autenticado con usuarios individuales.
+
+## Configuración del Boletín
+
+Las variables definidas en `render.yaml` son:
+
+- `FRONTEND_ORIGINS`: origen autorizado para las solicitudes del navegador.
+- `SCRAPER_HTTP_TIMEOUT`: tiempo máximo de espera para las consultas documentales.
+
+El servicio no utiliza `APP_PASSWORD`, JWT ni secretos de acceso del portal.
+
+## Persistencia
+
+La base SQLite se guarda por defecto en el disco local del servicio. En un plan sin almacenamiento persistente, un nuevo despliegue o reinicio puede eliminar alertas e historial. Para conservarlos, configurar un disco persistente y definir `DATA_ROOT` apuntando al punto de montaje.
+
+## Prueba local
+
+Portal estático:
+
+```bash
+python -m http.server 8000
+```
+
+Luego abrir `http://localhost:8000/`.
+
+Backend:
+
+```bash
+cd backend
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+# Linux/macOS: source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8001
+```
+
+Para conectar el frontend local al backend local, cambiar temporalmente `API_BASE_URL` en `assets/js/boletin-config.js` a `http://localhost:8001` y añadir `http://localhost:8000` a `FRONTEND_ORIGINS`.

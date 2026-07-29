@@ -81,3 +81,8 @@
   .it-footer-actions { align-items:stretch; flex-direction:column; }
   .it-footer-actions .action { width:100%; }
 }
+
+/* Identidad institucional común */
+.tool-hero { background:linear-gradient(120deg,#540000 0%,#930000 60%,#ce0202 100%); box-shadow:0 16px 38px rgba(92,0,0,.20); }
+.tool-kicker { color:#ffd0d0; }
+.tool-hero p { color:#f5dddd; }

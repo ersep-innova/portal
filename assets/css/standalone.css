@@ -1,4 +1,4 @@
-/* Ajustes exclusivos de la versión estática para GitHub Pages */
+/* Ajustes del portal institucional */
 html { scroll-behavior: smooth; }
 body { min-height: 100vh; }
 a { color: inherit; }
@@ -97,3 +97,6 @@ a { color: inherit; }
   .static-status { display: none; }
   .menu-hero { padding: 30px 25px; min-height: auto; }
 }
+
+.menu-card-badge.private { background:var(--accent-soft); color:var(--accent-mid); }
+.private-card { border-color:color-mix(in srgb,var(--accent-mid) 20%,var(--border)); }

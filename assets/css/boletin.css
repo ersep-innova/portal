@@ -1,5 +1,5 @@
 .boletin-page .wrap { max-width: 1440px; }
-.boletin-hero { background: linear-gradient(125deg, #06162e 0%, #133d72 55%, #0f766e 100%); }
+.boletin-hero { background: linear-gradient(120deg, #540000 0%, #930000 58%, #ce0202 100%); }
 .boletin-tabs {
   display: flex;
   gap: 8px;
@@ -211,7 +211,7 @@
 }
 
 
-/* Integración GitHub Pages + Render */
+/* Disponibilidad del buscador */
 .server-status { display:inline-flex; align-items:center; gap:7px; padding:7px 10px; border:1px solid var(--border); border-radius:999px; font-size:.75rem; font-weight:800; background:var(--card); white-space:nowrap; }
 .server-status-dot { width:8px; height:8px; border-radius:50%; background:#d68a19; box-shadow:0 0 0 4px rgba(214,138,25,.14); }
 .server-status.online .server-status-dot { background:#16936f; box-shadow:0 0 0 4px rgba(22,147,111,.14); }
@@ -241,4 +241,21 @@
 @media (max-width:760px){
   .server-panel { padding:28px 20px; }
   .server-status { order:10; width:100%; justify-content:center; }
+}
+
+/* Experiencia de carga y acciones predefinidas */
+.alert-heading-actions { display:flex; align-items:center; justify-content:flex-end; gap:9px; flex-wrap:wrap; }
+.predefined-alert { border-color:color-mix(in srgb, var(--accent-mid) 34%, var(--border)); background:var(--accent-soft); color:var(--accent-mid); }
+.predefined-alert:hover { border-color:var(--accent-mid); background:color-mix(in srgb, var(--accent-mid) 13%, var(--card)); }
+.server-panel { border-color:rgba(255,255,255,.18); background:linear-gradient(155deg,#4d0707,#850b0b 56%,#a90d0d); }
+.server-spinner { border-top-color:#fff; }
+.server-kicker { color:#ffd7d7; }
+.server-progress span { background:linear-gradient(90deg,#fff,#ffc6c6,#fff); }
+.server-panel .action { border-color:rgba(255,255,255,.28); background:#fff; color:#8f0a0a; }
+.server-panel .action:hover { background:#fff1f1; color:#690000; }
+.server-panel .action[hidden] { display:none; }
+.server-gate[data-mode="error"] .server-progress span { background:#ffb1b1; }
+@media (max-width:780px) {
+  .alert-heading-actions { width:100%; justify-content:stretch; }
+  .alert-heading-actions .action { flex:1 1 230px; }
 }

@@ -1,24 +1,36 @@
-
 html:not(.authenticated) [data-protected] { display: none !important; }
 .auth-gate {
-  position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center;
-  padding: 24px; background:
-    radial-gradient(circle at 15% 20%, rgba(31, 103, 181, .26), transparent 34%),
-    radial-gradient(circle at 85% 80%, rgba(20, 145, 117, .20), transparent 38%),
-    #07111f;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    linear-gradient(135deg, rgba(206,2,2,.94), rgba(112,0,0,.96)),
+    #8f0000;
 }
-.auth-gate[hidden] { display: none; }
-.auth-panel { width: min(100%, 450px); padding: 34px; border: 1px solid rgba(255,255,255,.14); border-radius: 26px; background: rgba(13, 27, 46, .92); box-shadow: 0 30px 80px rgba(0,0,0,.42); color: #fff; backdrop-filter: blur(18px); }
+.auth-gate[hidden] { display: none !important; }
+.auth-panel {
+  width: min(100%, 470px);
+  padding: 36px;
+  border: 1px solid rgba(255,255,255,.28);
+  border-radius: 22px;
+  background: rgba(255,255,255,.97);
+  box-shadow: 0 28px 80px rgba(45,0,0,.34);
+  color: #191919;
+}
 .auth-brand { display:flex; align-items:center; gap:14px; margin-bottom:28px; }
-.auth-brand strong { display:block; font-size:1.05rem; }
-.auth-brand span { display:block; margin-top:3px; color:rgba(255,255,255,.62); font-size:.78rem; }
+.auth-brand strong { display:block; color:#181818; font-size:1.03rem; }
+.auth-brand span { display:block; margin-top:3px; color:#6b7280; font-size:.78rem; }
 .auth-panel h1 { margin:0 0 8px; font-size:clamp(1.8rem,5vw,2.45rem); }
-.auth-panel p { margin:0 0 24px; color:rgba(255,255,255,.68); line-height:1.55; }
-.auth-field label { display:block; margin-bottom:8px; font-size:.78rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; }
-.auth-field input { box-sizing:border-box; width:100%; padding:14px 15px; border:1px solid rgba(255,255,255,.18); border-radius:13px; background:rgba(255,255,255,.07); color:#fff; font:inherit; outline:none; }
-.auth-field input:focus { border-color:#65a8ff; box-shadow:0 0 0 4px rgba(101,168,255,.14); }
-.auth-submit { width:100%; margin-top:14px; padding:14px; border:0; border-radius:13px; background:linear-gradient(135deg,#2f7ed8,#1c9b7a); color:#fff; font:inherit; font-weight:850; cursor:pointer; }
+.auth-panel > p { margin:0 0 24px; color:#5f6368; line-height:1.55; }
+.auth-field label { display:block; margin-bottom:8px; color:#353535; font-size:.78rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; }
+.auth-field input { box-sizing:border-box; width:100%; padding:14px 15px; border:1px solid #d4d4d4; border-radius:10px; background:#fff; color:#181818; font:inherit; outline:none; }
+.auth-field input:focus { border-color:#ce0202; box-shadow:0 0 0 4px rgba(206,2,2,.12); }
+.auth-submit { width:100%; margin-top:14px; padding:14px; border:0; border-radius:10px; background:#ce0202; color:#fff; font:inherit; font-weight:850; cursor:pointer; }
+.auth-submit:hover { background:#a90000; }
 .auth-submit:disabled { opacity:.65; cursor:wait; }
-.auth-error { min-height:20px; margin-top:10px !important; color:#ff9d9d !important; font-size:.82rem; }
-.auth-security-note { margin-top:20px; padding-top:16px; border-top:1px solid rgba(255,255,255,.10); font-size:.72rem; color:rgba(255,255,255,.52); line-height:1.5; }
-.logout-button { appearance:none; border:1px solid var(--border); border-radius:999px; padding:8px 11px; background:var(--card); color:inherit; font:inherit; font-size:.76rem; font-weight:800; cursor:pointer; }
+.auth-error { min-height:20px; margin:10px 0 0 !important; color:#b91c1c !important; font-size:.82rem; }
+.auth-security-note { margin-top:20px; padding-top:16px; border-top:1px solid #e5e7eb; color:#6b7280; font-size:.75rem; line-height:1.5; }
+.auth-back { display:inline-flex; margin-top:18px; color:#7f1d1d; font-size:.82rem; font-weight:800; text-decoration:none; }
+.logout-button { appearance:none; border:1px solid rgba(255,255,255,.3); border-radius:999px; padding:8px 12px; background:rgba(255,255,255,.08); color:var(--header-text); font:inherit; font-size:.76rem; font-weight:800; cursor:pointer; }
+.logout-button:hover { background:rgba(255,255,255,.16); }

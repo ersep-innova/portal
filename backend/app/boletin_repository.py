@@ -2,20 +2,18 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import unicodedata
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
 
-DEFAULT_ALERTS = [
-    ("Aguas Cordobesas S.A.", "Aguas Cordobesas; Aguas Cordobesas S.A."),
-    ("COOPI", "COOPI; Cooperativa Integral Regional; Cooperativa Integral"),
-    (
-        "Cooperativa de Trabajo Sudeste Ltda.",
-        "Cooperativa de Trabajo Sudeste; Sudeste Ltda.; Cooperativa Sudeste",
-    ),
-]
+LEGACY_DEFAULT_ALERTS = (
+    "Aguas Cordobesas S.A.",
+    "COOPI",
+    "Cooperativa de Trabajo Sudeste Ltda.",
+)
 
 
 def now_iso() -> str:
@@ -30,9 +28,8 @@ class BoletinRepositorio:
     de ejecución en memoria.
     """
 
-    def __init__(self, db_path: Path | str, seed_default_alerts: bool = True):
+    def __init__(self, db_path: Path | str):
         self.db_path = Path(db_path).resolve()
-        self.seed_default_alerts = bool(seed_default_alerts)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._initialize()
 
@@ -63,6 +60,11 @@ class BoletinRepositorio:
                     active INTEGER NOT NULL DEFAULT 1,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS app_meta (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
                 );
 
                 CREATE TABLE IF NOT EXISTS runs (
@@ -175,13 +177,22 @@ class BoletinRepositorio:
                 """
             )
             self._migrate_columns(con)
-            count = int(con.execute("SELECT COUNT(*) FROM alerts").fetchone()[0])
-            if self.seed_default_alerts and count == 0:
-                current = now_iso()
-                con.executemany(
-                    "INSERT INTO alerts(nombre, keywords, active, created_at, updated_at) VALUES (?, ?, 1, ?, ?)",
-                    [(name, aliases, current, current) for name, aliases in DEFAULT_ALERTS],
-                )
+            self._remove_legacy_default_alerts(con)
+
+    @staticmethod
+    def _normalize_name(value: str) -> str:
+        normalized = unicodedata.normalize("NFD", str(value or "").strip().lower())
+        return "".join(character for character in normalized if unicodedata.category(character) != "Mn")
+
+    @staticmethod
+    def _remove_legacy_default_alerts(con: sqlite3.Connection) -> None:
+        migration_key = "legacy_default_alerts_removed_v1"
+        migrated = con.execute("SELECT 1 FROM app_meta WHERE key=?", (migration_key,)).fetchone()
+        if migrated:
+            return
+        placeholders = ",".join("?" for _ in LEGACY_DEFAULT_ALERTS)
+        con.execute(f"DELETE FROM alerts WHERE nombre IN ({placeholders})", LEGACY_DEFAULT_ALERTS)
+        con.execute("INSERT INTO app_meta(key, value) VALUES (?, ?)", (migration_key, now_iso()))
 
     @staticmethod
     def _migrate_columns(con: sqlite3.Connection) -> None:
@@ -239,8 +250,12 @@ class BoletinRepositorio:
         aliases = str(aliases or "").strip() or nombre
         if not nombre:
             raise ValueError("El nombre de la alerta es obligatorio.")
+        normalized_name = self._normalize_name(nombre)
         current = now_iso()
         with self.connect() as con:
+            existing = con.execute("SELECT id, nombre FROM alerts").fetchall()
+            if any(self._normalize_name(row["nombre"]) == normalized_name for row in existing):
+                raise ValueError("Ya existe una alerta con ese nombre.")
             cursor = con.execute(
                 "INSERT INTO alerts(nombre, keywords, active, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
                 (nombre, aliases, int(active), current, current),
@@ -251,7 +266,13 @@ class BoletinRepositorio:
     def update_alert(self, alert_id: int, nombre: str, aliases: str, active: bool) -> Optional[dict[str, Any]]:
         nombre = str(nombre or "").strip()
         aliases = str(aliases or "").strip() or nombre
+        if not nombre:
+            raise ValueError("El nombre de la alerta es obligatorio.")
+        normalized_name = self._normalize_name(nombre)
         with self.connect() as con:
+            existing = con.execute("SELECT id, nombre FROM alerts WHERE id<>?", (int(alert_id),)).fetchall()
+            if any(self._normalize_name(row["nombre"]) == normalized_name for row in existing):
+                raise ValueError("Ya existe una alerta con ese nombre.")
             cursor = con.execute(
                 "UPDATE alerts SET nombre=?, keywords=?, active=?, updated_at=? WHERE id=?",
                 (nombre, aliases, int(active), now_iso(), int(alert_id)),
@@ -339,7 +360,7 @@ class BoletinRepositorio:
         with self.connect() as con:
             con.execute(
                 "UPDATE runs SET status='INTERRUPTED', finished_at=?, "
-                "current_message='Ejecución interrumpida por reinicio del servidor.' "
+                "current_message='Ejecución interrumpida por reinicio de la aplicación.' "
                 "WHERE status IN ('PENDING','RUNNING','STOPPING')",
                 (now_iso(),),
             )

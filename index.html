@@ -1,38 +1,48 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Portal Observatorio de Datos del ERSeP.">
-  <title>Portal Observatorio ERSeP</title>
-  <link rel="stylesheet" href="assets/css/style.css"><link rel="stylesheet" href="assets/css/standalone.css"><link rel="stylesheet" href="assets/css/auth.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Portal de Innovación y Análisis de Datos del ERSeP.">
+  <title>Portal de Innovación y Análisis de Datos · ERSeP</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/standalone.css">
   <link rel="icon" href="assets/img/favicon.ico">
 </head>
-<body data-login-path="./">
-<section class="auth-gate" id="auth_gate" hidden>
-  <form class="auth-panel" id="auth_form" autocomplete="off">
-    <div class="auth-brand"><div class="ersep-mark compact"><span>ER</span><span>SeP</span></div><div><strong>Portal Observatorio ERSeP</strong><span>Acceso de uso interno</span></div></div>
-    <h1>Bienvenido</h1><p>Ingresá la contraseña institucional para acceder al portal y sus módulos.</p>
-    <div class="auth-field"><label for="auth_password">Contraseña</label><input id="auth_password" type="password" required autocomplete="current-password"></div>
-    <button class="auth-submit" type="submit">Ingresar</button><p class="auth-error" id="auth_error" role="alert"></p>
-    <div class="auth-security-note">La nómina de cumpleaños se almacena cifrada. El acceso se mantiene únicamente durante esta sesión del navegador.</div>
-  </form>
-</section>
-<section class="portal-screen menu-screen" data-protected hidden>
-  <div class="menu-topbar"><div class="menu-brand"><div class="ersep-mark compact"><span>ER</span><span>SeP</span></div><div><strong>Portal Observatorio ERSeP</strong><span>Centro institucional de datos y consultas</span></div></div><div class="menu-actions"><span class="static-status">Portal estático seguro</span><button class="theme-toggle" data-theme-toggle type="button">🌙</button><button class="logout-button" data-logout type="button">Cerrar sesión</button></div></div>
-  <main class="menu-main">
-    <header class="menu-hero"><div><div class="menu-kicker">ERSeP · Observatorio de Datos</div><h1>PORTAL OBSERVATORIO ERSeP</h1><p>Un punto de acceso común para consultar indicadores, herramientas internas y módulos de análisis institucional.</p></div><div class="tariff-visual" aria-hidden="true"><div class="tariff-ring"></div><div class="tariff-wave w1"></div><div class="tariff-wave w2"></div><div class="tariff-value">OBS</div></div></header>
-    <div class="tool-grid">
-      <a class="tool-card" href="modulos/quienes-somos/"><span class="tool-icon">🏛️</span><span class="tool-meta">Institucional</span><strong>Quiénes somos</strong><small>Observatorio de Datos de la Subdirección de Costos y Tarifas del ERSeP.</small><span class="menu-card-badge">Disponible</span><span class="tool-arrow">Abrir →</span></a>
-      <a class="tool-card" href="https://naninimarcos.github.io/mapa-cba.html" target="_blank" rel="noopener"><span class="tool-icon">🗺️</span><span class="tool-meta">Energía Eléctrica</span><strong>Mapa cooperativo eléctrico</strong><small>Mapa de cooperativas eléctricas de la Provincia de Córdoba.</small><span class="menu-card-badge">Disponible</span><span class="tool-arrow">Abrir mapa ↗</span></a>
-      <a class="tool-card" href="modulos/movilis/"><span class="tool-icon">📑</span><span class="tool-meta">Propuesta institucional</span><strong>Movilis</strong><small>Presentación de la propuesta de gestión de actas como mecanismo de transición operativa.</small><span class="menu-card-badge">Disponible</span><span class="tool-arrow">Ver presentación →</span></a>
-      <a class="tool-card featured" href="modulos/cumpleanos/"><span class="tool-icon">🎂</span><span class="tool-meta">Recursos Humanos</span><strong>Cumpleaños ERSeP</strong><small>Agenda completa, filtros por Gerencia o Área y estadísticas institucionales.</small><span class="menu-card-badge">Disponible</span><span class="tool-arrow">Abrir panel →</span></a>
-      <a class="tool-card" href="modulos/inspectores/"><span class="tool-icon">🛠️</span><span class="tool-meta">Fiscalización</span><strong>App inspectores</strong><small>Aplicación para la gestión del trabajo de inspectores en campo.</small><span class="menu-card-badge future">Próximamente</span><span class="tool-arrow">Abrir →</span></a>
-      <a class="tool-card" href="modulos/boletin-oficial/"><span class="tool-icon">📰</span><span class="tool-meta">Normativa</span><strong>Buscador de Boletín Oficial</strong><small>Consulta y búsqueda de publicaciones del Boletín Oficial.</small><span class="menu-card-badge">Disponible</span><span class="tool-arrow">Abrir buscador →</span></a>
-      <a class="tool-card" href="modulos/estadisticas/"><span class="tool-icon">📊</span><span class="tool-meta">Datos</span><strong>Estadísticas</strong><small>Tableros e indicadores estadísticos del Observatorio.</small><span class="menu-card-badge future">Próximamente</span><span class="tool-arrow">Abrir →</span></a>
+<body>
+  <section class="portal-screen menu-screen">
+    <div class="menu-topbar">
+      <div class="menu-brand">
+        <div class="ersep-mark compact"><span>ER</span><span>SeP</span></div>
+        <div><strong>Portal de Innovación y Análisis de Datos</strong><span>Ente Regulador de los Servicios Públicos</span></div>
+      </div>
+      <div class="menu-actions"><button class="theme-toggle" data-theme-toggle type="button" aria-label="Cambiar tema">🌙</button></div>
     </div>
-    <div class="portal-notice"><span>ⓘ</span><div><strong>Arquitectura liviana y extensible</strong>El portal permanece disponible en GitHub Pages. El módulo del Boletín Oficial inicia su backend independiente en Render únicamente cuando un usuario lo abre.</div></div>
-  </main>
-  <footer class="menu-footer">ERSeP · Portal Observatorio · <span id="current_year"></span><span class="portal-version">v2.1</span></footer>
-</section>
-<script src="assets/js/auth-config.js"></script><script src="assets/js/auth.js"></script><script src="assets/js/theme.js" defer></script><script src="assets/js/menu.js" defer></script>
-</body></html>
+
+    <main class="menu-main">
+      <header class="menu-hero">
+        <div>
+          <div class="menu-kicker">ERSeP · Innovación y Análisis de Datos</div>
+          <h1>PORTAL DE INNOVACIÓN<br>Y ANÁLISIS DE DATOS</h1>
+          <p>Herramientas institucionales para consultar información, acompañar la gestión y fortalecer el análisis regulatorio.</p>
+        </div>
+        <div class="tariff-visual" aria-hidden="true"><div class="tariff-ring"></div><div class="tariff-wave w1"></div><div class="tariff-wave w2"></div><div class="tariff-value">IAD</div></div>
+      </header>
+
+      <div class="tool-grid">
+        <a class="tool-card" href="modulos/quienes-somos/"><span class="tool-icon">🏛️</span><span class="tool-meta">Institucional</span><strong>Quiénes somos</strong><small>Innovación y Análisis de Datos de la Subdirección de J. de Costos y Tarifas del ERSeP.</small><span class="menu-card-badge">Disponible</span><span class="tool-arrow">Abrir →</span></a>
+        <a class="tool-card" href="https://naninimarcos.github.io/mapa-cba.html" target="_blank" rel="noopener"><span class="tool-icon">🗺️</span><span class="tool-meta">Energía Eléctrica</span><strong>Mapa cooperativo eléctrico</strong><small>Mapa de cooperativas eléctricas de la Provincia de Córdoba.</small><span class="menu-card-badge">Disponible</span><span class="tool-arrow">Abrir mapa ↗</span></a>
+        <a class="tool-card private-card" href="modulos/cumpleanos/"><span class="tool-icon">🎂</span><span class="tool-meta">Recursos Humanos · Acceso protegido</span><strong>Cumpleaños ERSeP</strong><small>Agenda, buscador, calendario y estadísticas de cumpleaños por dependencia y sede.</small><span class="menu-card-badge private">Contraseña requerida</span><span class="tool-arrow">Abrir panel →</span></a>
+        <a class="tool-card" href="modulos/movilis/"><span class="tool-icon">📑</span><span class="tool-meta">Propuesta institucional</span><strong>Movilis</strong><small>Presentación de la propuesta de gestión de actas como mecanismo de transición operativa.</small><span class="menu-card-badge">Disponible</span><span class="tool-arrow">Ver presentación →</span></a>
+        <a class="tool-card" href="modulos/inspectores/"><span class="tool-icon">🛠️</span><span class="tool-meta">Fiscalización</span><strong>App inspectores</strong><small>Aplicación para la gestión del trabajo de inspectores en campo.</small><span class="menu-card-badge future">Próximamente</span><span class="tool-arrow">Abrir →</span></a>
+        <a class="tool-card" href="modulos/boletin-oficial/"><span class="tool-icon">📰</span><span class="tool-meta">Normativa</span><strong>Buscador de Boletín Oficial</strong><small>Consulta, monitoreo y búsqueda de publicaciones del Boletín Oficial.</small><span class="menu-card-badge">Disponible</span><span class="tool-arrow">Abrir buscador →</span></a>
+        <a class="tool-card" href="modulos/estadisticas/"><span class="tool-icon">📊</span><span class="tool-meta">Datos</span><strong>Estadísticas</strong><small>Tableros e indicadores estadísticos para el análisis institucional.</small><span class="menu-card-badge future">Próximamente</span><span class="tool-arrow">Abrir →</span></a>
+      </div>
+    </main>
+
+    <footer class="menu-footer">ERSeP · Portal de Innovación y Análisis de Datos · <span id="current_year"></span><span class="portal-version">v3.0</span></footer>
+  </section>
+  <script src="assets/js/theme.js" defer></script>
+  <script src="assets/js/menu.js" defer></script>
+</body>
+</html>

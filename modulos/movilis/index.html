@@ -1,4 +1,5 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Movilis · Propuesta institucional ERSeP."><title>Movilis · Portal Observatorio ERSeP</title><link rel="stylesheet" href="../../assets/css/style.css"><link rel="stylesheet" href="../../assets/css/portal-pages.css"><link rel="stylesheet" href="../../assets/css/standalone.css"><link rel="stylesheet" href="../../assets/css/auth.css"><link rel="icon" href="../../assets/img/favicon.ico">
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="Movilis · Propuesta institucional ERSeP." name="description"/><title>Movilis · Portal de Innovación y Análisis de Datos</title><link href="../../assets/css/style.css" rel="stylesheet"/><link href="../../assets/css/portal-pages.css" rel="stylesheet"/><link href="../../assets/css/standalone.css" rel="stylesheet"/><link href="../../assets/img/favicon.ico" rel="icon"/>
 <style>
 .movilis-stage{position:relative;background:#0b1220;border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:var(--shadow-sm);}
 .movilis-stage img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:contain;background:#0b1220;}
@@ -18,16 +19,14 @@
 .movilis-stage.fs{position:fixed;inset:0;z-index:9999;border-radius:0;border:0;display:grid;place-items:center;}
 .movilis-stage.fs img{max-height:100vh;width:auto;max-width:100vw;aspect-ratio:auto;}
 </style></head>
-<body class="tool-page" data-login-path="../../"><div class="wrap" data-protected hidden>
-<header class="header"><div class="header-left"><h1>Movilis</h1><span class="header-badge">Portal Observatorio · Propuesta institucional</span></div><div class="header-right"><a class="nav-chip" href="../../"><span>⌂</span> Menú</a><button class="theme-toggle" data-theme-toggle type="button">🌙</button><button class="logout-button" data-logout type="button">Cerrar sesión</button></div></header>
-
+<body class="tool-page"><div class="wrap">
+<header class="header"><div class="header-left"><h1>Movilis</h1><span class="header-badge">Portal de Innovación y Análisis de Datos · Propuesta institucional</span></div><div class="header-right"><a class="nav-chip" href="../../"><span>⌂</span> Menú</a><button class="theme-toggle" data-theme-toggle="" type="button">🌙</button></div></header>
 <section class="tool-hero"><div><div class="tool-kicker">Propuesta institucional</div><h2>ERSeP · Movilis</h2><p>Aplicación de gestión de actas como mecanismo de transición operativa. Recorré la presentación con las flechas o el teclado.</p></div><div class="hero-symbol">📑</div></section>
-
 <section class="card"><div class="card-body">
 <div class="movilis-stage" id="stage">
-<button class="movilis-nav prev" id="prev" aria-label="Anterior">‹</button>
-<img id="slide" src="slides/slide-01.jpg" alt="Diapositiva 1">
-<button class="movilis-nav next" id="next" aria-label="Siguiente">›</button>
+<button aria-label="Anterior" class="movilis-nav prev" id="prev">‹</button>
+<img alt="Diapositiva 1" id="slide" src="slides/slide-01.jpg"/>
+<button aria-label="Siguiente" class="movilis-nav next" id="next">›</button>
 </div>
 <div class="movilis-toolbar">
 <span class="movilis-counter" id="counter">1 / 28</span>
@@ -37,9 +36,8 @@
 </div>
 <div class="movilis-thumbs" id="thumbs"></div>
 </div></section>
-
 </div>
-<script src="../../assets/js/auth-config.js"></script><script src="../../assets/js/auth.js"></script><script src="../../assets/js/theme.js" defer></script>
+<script defer="" src="../../assets/js/theme.js"></script>
 <script>
 (function(){
   var TOTAL=28,i=0;

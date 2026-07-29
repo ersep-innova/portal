@@ -1,19 +1,16 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="es">
-
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Quiénes somos · Observatorio de Datos del ERSeP.">
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<meta content="Quiénes somos · Innovación y Análisis de Datos del ERSeP." name="description"/>
+<title>Quiénes somos · Portal de Innovación y Análisis de Datos</title>
+<link href="../../assets/css/style.css" rel="stylesheet"/>
+<link href="../../assets/css/portal-pages.css" rel="stylesheet"/>
+<link href="../../assets/css/standalone.css" rel="stylesheet"/>
 
-<title>Quiénes somos · Portal Observatorio ERSeP</title>
-
-<link rel="stylesheet" href="../../assets/css/style.css">
-<link rel="stylesheet" href="../../assets/css/portal-pages.css">
-<link rel="stylesheet" href="../../assets/css/standalone.css">
-<link rel="stylesheet" href="../../assets/css/auth.css">
-<link rel="icon" href="../../assets/img/favicon.ico">
-
+<link href="../../assets/img/favicon.ico" rel="icon"/>
 <style>
 
 /* ---------------- ORGANIGRAMA ---------------- */
@@ -25,7 +22,7 @@
 }
 
 .organigrama-card{
-    background:var(--surface,#fff);
+    background:var(--card,#fff);
     border-radius:18px;
     box-shadow:0 10px 28px rgba(0,0,0,.08);
     padding:45px;
@@ -34,7 +31,7 @@
 .organigrama-card h2{
     text-align:center;
     margin:0 0 40px;
-    color:#123b73;
+    color:var(--accent-mid);
     font-size:2rem;
     font-weight:700;
 }
@@ -49,16 +46,16 @@
     display:inline-block;
     padding:20px 28px;
     border-radius:14px;
-    border:2px solid #1d5ca8;
-    background:#ffffff;
-    color:#123b73;
+    border:2px solid var(--accent-mid);
+    background:var(--card);
+    color:var(--accent-mid);
     box-shadow:0 10px 24px rgba(0,0,0,.10);
 }
 
 .org-box.blue{
     color:#fff;
     border:none;
-    background:linear-gradient(135deg,#1f4f95,#2b79c2);
+    background:linear-gradient(135deg,#760000,#ce0202);
 }
 
 .org-title{
@@ -71,7 +68,7 @@
     margin-top:8px;
     font-size:16px;
     line-height:1.45;
-    color:#555;
+    color:var(--text-muted);
 }
 
 .org-box.blue .org-subtitle{
@@ -81,7 +78,7 @@
 .org-line{
     width:3px;
     height:34px;
-    background:#1d5ca8;
+    background:var(--accent-mid);
 }
 
 .org-employees{
@@ -102,13 +99,13 @@
     left:16%;
     width:68%;
     height:3px;
-    background:#1d5ca8;
+    background:var(--accent-mid);
 }
 
 .employee{
     position:relative;
-    background:#fff;
-    border:2px solid #1d5ca8;
+    background:var(--card);
+    border:2px solid var(--accent-mid);
     border-radius:16px;
     padding:24px;
     text-align:center;
@@ -120,7 +117,7 @@
     position:absolute;
     width:3px;
     height:28px;
-    background:#1d5ca8;
+    background:var(--accent-mid);
     top:-28px;
     left:50%;
     transform:translateX(-50%);
@@ -128,7 +125,7 @@
 
 .employee h4{
     margin:0 0 18px;
-    color:#123b73;
+    color:var(--accent-mid);
     font-size:22px;
     font-weight:700;
     line-height:1.35;
@@ -136,19 +133,19 @@
 
 .employee hr{
     border:none;
-    border-top:1px solid #d7dce2;
+    border-top:1px solid var(--border);
     margin:15px 0;
 }
 
 .employee .puesto{
     font-size:18px;
     font-weight:700;
-    color:#333;
+    color:var(--text);
 }
 
 .employee .area{
     font-size:16px;
-    color:#666;
+    color:var(--text-muted);
 }
 
 @media(max-width:1200px){
@@ -182,9 +179,11 @@
 }
 
 .org-box .org-title{
-    color:#123b73;
+    color:var(--accent-mid);
     font-weight:700;
 }
+
+.org-box.blue .org-title{ color:#fff; }
 
 .employee h4{
     font-size:20px;
@@ -193,151 +192,105 @@
 }
 
 </style>
-
 </head>
-
-<body class="tool-page" data-login-path="../../">
-
-<div class="wrap" data-protected hidden>
-
+<body class="tool-page">
+<div class="wrap">
 <header class="header">
-
 <div class="header-left">
 <h1>Quiénes somos</h1>
-<span class="header-badge">Portal Observatorio · Institucional</span>
+<span class="header-badge">Portal de Innovación y Análisis de Datos · Institucional</span>
 </div>
-
 <div class="header-right">
 <a class="nav-chip" href="../../">
 <span>⌂</span> Menú
 </a>
-
-<button class="theme-toggle" data-theme-toggle type="button">🌙</button>
-<button class="logout-button" data-logout type="button">Cerrar sesión</button>
+<button class="theme-toggle" data-theme-toggle="" type="button">🌙</button>
 
 </div>
-
 </header>
-
 <section class="tool-hero">
-
 <div>
 <div class="tool-kicker">Institucional</div>
-
-<h2>Observatorio de Datos</h2>
-
+<h2>Innovación y Análisis de Datos</h2>
 <p>
-Subdirección de Costos y Tarifas ·
-Ente Regulador de Servicios Públicos de la Provincia de Córdoba.
+Subdirección de J. de Costos y Tarifas ·
+Ente Regulador de los Servicios Públicos de la Provincia de Córdoba.
 </p>
-
 </div>
-
 <div class="hero-symbol">🏛️</div>
-
 </section>
-
 <section class="card">
-
 <div class="card-body">
-
 <p style="font-size:16px;line-height:1.7;color:var(--text);margin:0 0 14px;">
-El <strong>Observatorio de Datos de la Subdirección de Costos y Tarifas</strong> del
-<strong>Ente Regulador de Servicios Públicos de la Provincia de Córdoba</strong>
-es el espacio de trabajo interno destinado a consolidar información,
+El equipo de <strong>Innovación y Análisis de Datos</strong>, vinculado a la <strong>Subdirección de J. de Costos y Tarifas</strong> del
+<strong>Ente Regulador de los Servicios Públicos de la Provincia de Córdoba</strong>
+constituye el espacio de trabajo interno destinado a consolidar información,
 herramientas y análisis para el seguimiento de costos, tarifas e
 indicadores de los servicios públicos regulados.
 </p>
-
 <p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0;">
 Desde este portal se centralizan los distintos módulos de consulta y
 análisis que apoyan la tarea técnica de la Subdirección, integrando
-datos de las diferentes áreas reguladas en un único punto de acceso
+datos de los diferentes servicios regulados en un único punto de acceso
 institucional.
 </p>
-
 </div>
-
 </section>
-
 </div>
-
 <!-- ORGANIGRAMA A ANCHO COMPLETO -->
-
 <section class="organigrama-full">
-
 <div class="organigrama-card">
-
 <h2>Organigrama Institucional</h2>
-
 <div class="org-chart">
-
 <div class="org-box blue">
 <div class="org-title">
-Subdirección de Jurisdicción de Costos y Tarifas del ERSeP
+Subdirección de J. de Costos y Tarifas del ERSeP
 </div>
 </div>
-
 <div class="org-line"></div>
-
 <div class="org-box">
 <div class="org-title">
 Contador Lucas S. González Etienot
 </div>
-
 <div class="org-subtitle">
-Subdirector de Jurisdicción<br>
-de Costos y Tarifas del ERSeP
+Subdirector de J. de Costos y Tarifas del ERSeP
 </div>
 </div>
-
 <div class="org-line"></div>
-
 <div class="org-box blue">
 <div class="org-title">
-Observatorio de Datos
+Innovación y Análisis de Datos
 </div>
 </div>
-
 <div class="org-line"></div>
-
 <div class="org-employees">
-
 <div class="employee">
 <h4>Lic. Marcos Nanini</h4>
-<hr>
+<hr/>
 <div class="puesto">Coordinador</div>
-<hr>
-<div class="area">Costos y Tarifas</div>
+<hr/>
+<div class="area">Subdirección de J. de Costos y Tarifas</div>
 </div>
-
 <div class="employee">
 <h4>Rodrigo San Martín Bustos</h4>
-<hr>
+<hr/>
 <div class="puesto">Analista</div>
-<hr>
-<div class="area">Costos y Tarifas</div>
+<hr/>
+<div class="area">Subdirección de J. de Costos y Tarifas</div>
 </div>
-
 <div class="employee">
-<h4>Leandro Ramallo</h4>
-<hr>
+<h4>Leandro Gabriel Ramallo</h4>
+<hr/>
 <div class="puesto">Analista</div>
-<hr>
-<div class="area">Gerencia de Transporte Interurbano</div>
+<hr/>
+<div class="area">Gerencia de Transporte · Innovación y Análisis de Datos</div>
 </div>
-
 </div>
-
 </div>
-
 </div>
-
 </section>
 
-<script src="../../assets/js/auth-config.js"></script>
-<script src="../../assets/js/auth.js"></script>
-<script src="../../assets/js/theme.js" defer></script>
 
+<script defer="" src="../../assets/js/theme.js"></script>
 </body>
 </html>

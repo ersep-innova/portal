@@ -3,27 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Buscador del Boletín Oficial · Portal Observatorio ERSeP.">
-  <title>Boletín Oficial · Portal Observatorio ERSeP</title>
+  <meta name="description" content="Buscador del Boletín Oficial · Portal de Innovación y Análisis de Datos.">
+  <title>Boletín Oficial · Portal de Innovación y Análisis de Datos</title>
   <link rel="stylesheet" href="../../assets/css/style.css">
   <link rel="stylesheet" href="../../assets/css/portal-pages.css">
   <link rel="stylesheet" href="../../assets/css/boletin.css?v=20260728">
-  <link rel="stylesheet" href="../../assets/css/auth.css">
   <link rel="icon" href="../../assets/img/favicon.ico">
 </head>
-<body class="tool-page boletin-page" data-login-path="../../">
-<div class="wrap" id="boletin_app" data-protected hidden>
+<body class="tool-page boletin-page">
+<div class="wrap" id="boletin_app">
   <header class="header">
     <div class="header-left">
       <h1>Boletín Oficial</h1>
-      <span class="header-badge">Monitoreo regulatorio · Costos y Tarifas</span>
+      <span class="header-badge">Monitoreo regulatorio · Subdirección de J. de Costos y Tarifas</span>
     </div>
     <div class="header-right">
-      <span id="server_status" class="server-status starting"><span class="server-status-dot"></span><span id="status">Preparando servidor…</span></span>
+      <span id="server_status" class="server-status starting"><span class="server-status-dot"></span><span id="status">Cargando buscador…</span></span>
       <button class="nav-chip tutorial-chip" id="btn_tutorial" type="button"><span>?</span> Tutorial de Uso</button>
       <a class="nav-chip" id="btn_home" href="../../"><span>⌂</span> Menú</a>
       <button class="theme-toggle" id="btn_theme" title="Cambiar tema">🌙</button>
-      <button class="logout-button" id="btn_logout" type="button" title="Cerrar sesión">Cerrar sesión</button>
     </div>
   </header>
 
@@ -31,7 +29,7 @@
     <div>
       <div class="tool-kicker">Vigilancia documental ERSeP</div>
       <h2>Detectá nuevas resoluciones tarifarias</h2>
-      <p>Recorre el archivo anual del Boletín Oficial, identifica resoluciones ERSeP, compara el contenido detectado y destaca lo nuevo o modificado. La interfaz permanece disponible mientras Render inicia el servidor.</p>
+      <p>Recorre el archivo anual del Boletín Oficial, identifica resoluciones ERSeP, compara el contenido detectado y destaca lo nuevo o modificado.</p>
     </div>
     <div class="hero-symbol">⌕</div>
   </section>
@@ -117,9 +115,12 @@
     <div class="section-heading">
       <div>
         <span class="tool-kicker">Prestadoras bajo seguimiento</span>
-        <h3>Alertas de cooperativas</h3>
+        <h3>Alertas de prestadoras</h3>
       </div>
-      <button class="action primary" id="btn_new_alert" type="button">+ Nueva alerta</button>
+      <div class="alert-heading-actions">
+        <button class="action predefined-alert" id="btn_add_aguas_alert" type="button">+ Agregar alerta de Aguas Cordobesas</button>
+        <button class="action primary" id="btn_new_alert" type="button">+ Nueva alerta</button>
+      </div>
     </div>
     <div class="card">
       <div class="card-body no-pad-mobile">
@@ -137,7 +138,7 @@
     <div class="section-heading history-heading">
       <div>
         <span class="tool-kicker">Historial de la instancia activa</span>
-        <h3>Historial de publicaciones</h3><p class="history-storage-note">En el plan gratuito, Render puede reiniciar el servicio y borrar el historial local. Exportá los resultados importantes.</p>
+        <h3>Historial de publicaciones</h3><p class="history-storage-note">Exportá los resultados importantes para conservar una copia fuera de la aplicación.</p>
       </div>
       <div class="history-export-actions">
         <button class="action" id="btn_export_json" type="button">Exportar JSON</button>
@@ -256,7 +257,7 @@
       </li>
       <li>
         <span class="tutorial-number">3</span>
-        <div><h4>Presioná “Iniciar monitoreo de alertas”</h4><p>La aplicación recorrerá los doce meses, abrirá los boletines y buscará resoluciones ERSeP. Mientras trabaja, mantené abierta esta pestaña. La barra mostrará el avance y las consultas periódicas mantendrán activo el servidor de Render.</p></div>
+        <div><h4>Presioná “Iniciar monitoreo de alertas”</h4><p>La aplicación recorrerá los doce meses, abrirá los boletines y buscará resoluciones ERSeP. Mientras trabaja, mantené abierta esta pestaña. La barra mostrará el avance del proceso.</p></div>
       </li>
       <li>
         <span class="tutorial-number">4</span>
@@ -264,11 +265,11 @@
       </li>
       <li>
         <span class="tutorial-number">5</span>
-        <div><h4>Usá “Limpiar hallazgos” cuando termines</h4><p>Ese botón vacía únicamente las tarjetas visibles de la pantalla. <b>No elimina el historial de la instancia activa</b>, las alertas ni las resoluciones guardadas durante esa ejecución del servicio.</p></div>
+        <div><h4>Usá “Limpiar hallazgos” cuando termines</h4><p>Ese botón vacía únicamente las tarjetas visibles de la pantalla. <b>No elimina el historial</b>, las alertas ni las resoluciones ya registradas.</p></div>
       </li>
       <li>
         <span class="tutorial-number">6</span>
-        <div><h4>Consultá y exportá desde “Historial”</h4><p>El historial conserva las publicaciones detectadas mientras exista la base local de esta instancia de Render. Podés filtrar por año, estado, prestadora, alerta o texto. <b>Exportar JSON</b> y <b>Exportar Excel</b> descargan exactamente los registros que coinciden con los filtros aplicados.</p></div>
+        <div><h4>Consultá y exportá desde “Historial”</h4><p>El historial reúne las publicaciones detectadas. Podés filtrar por año, estado, prestadora, alerta o texto. <b>Exportar JSON</b> y <b>Exportar Excel</b> descargan exactamente los registros que coinciden con los filtros aplicados.</p></div>
       </li>
     </ol>
 
@@ -280,7 +281,7 @@
     </section>
 
     <div class="tutorial-note">
-      <b>Importante:</b> que no aparezcan hallazgos no significa necesariamente que exista un error. En Render gratuito, no cierres esta pestaña durante un monitoreo prolongado. Puede significar que durante ese año no hubo publicaciones nuevas relacionadas con las alertas configuradas.
+      <b>Importante:</b> que no aparezcan hallazgos no significa necesariamente que exista un error. Durante un monitoreo prolongado, mantené abierta esta pestaña. También puede significar que durante ese año no hubo publicaciones nuevas relacionadas con las alertas configuradas.
     </div>
 
     <div class="modal-form-actions tutorial-close-actions">
@@ -292,17 +293,15 @@
 <section class="server-gate" id="server_gate" aria-live="polite" aria-busy="true">
   <div class="server-panel">
     <div class="server-spinner" aria-hidden="true"></div>
-    <span class="server-kicker">Backend del Boletín Oficial</span>
-    <h2 id="server_gate_title">Estamos iniciando el servidor</h2>
-    <p id="server_gate_message">Render puede tardar cerca de un minuto en despertar después de un período sin uso. No recargues la página: el buscador se habilitará automáticamente.</p>
+    <span class="server-kicker">Buscador del Boletín Oficial</span>
+    <h2 id="server_gate_title">Estamos preparando el buscador</h2>
+    <p id="server_gate_message">La aplicación se está cargando. Este proceso puede demorar unos segundos la primera vez que ingresás.</p>
     <div class="server-progress"><span></span></div>
-    <div class="server-elapsed" id="server_elapsed">Conectando…</div>
-    <button class="action" id="server_retry" type="button">Reintentar ahora</button>
+    <div class="server-elapsed" id="server_stage">Conectando con el buscador…</div>
+    <button class="action" id="server_retry" type="button" hidden>Reintentar</button>
     <a class="server-back-link" href="../../">Volver al menú</a>
   </div>
 </section>
-<script src="../../assets/js/auth-config.js"></script>
-<script src="../../assets/js/auth.js"></script>
 <script src="../../assets/js/boletin-config.js"></script>
 <script src="../../assets/js/boletin.js?v=20260728" defer></script>
 </body>
