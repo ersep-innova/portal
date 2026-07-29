@@ -60,3 +60,11 @@ La versión fue validada antes de empaquetarse. Se completaron **124 verificacio
 - El cifrado en GitHub Pages evita publicar la nómina en texto legible, pero no reemplaza una autenticación de servidor.
 - CORS limita qué páginas pueden llamar a la API desde un navegador, pero no es una autenticación fuerte de API.
 - Las alertas y el historial requieren almacenamiento persistente para sobrevivir a todos los despliegues o reinicios del servicio.
+
+
+## Identidad institucional ERSeP · v3.1
+
+- Se verificaron todos los enlaces locales `href` y `src` de los HTML: **0 referencias faltantes**.
+- Se verificó sintaxis JavaScript con `node --check` para `menu.js`, `theme.js`, `auth.js`, `birthday.js` y `boletin.js`.
+- Se realizó prueba HTTP local con respuesta **200** para la portada, la nueva hoja de estilo, el logotipo y los seis módulos internos.
+- Se preservaron los enlaces externos, la lógica de autenticación, el cifrado de cumpleaños y la configuración del backend.
