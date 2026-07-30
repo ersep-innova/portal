@@ -238,7 +238,7 @@
 }
 .service-logo-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0,1fr));
+  grid-template-columns: repeat(7, minmax(0,1fr));
   gap: 12px;
 }
 .service-logo-card {
@@ -251,18 +251,105 @@
   border-top: 4px solid var(--service-color);
   background: var(--card);
   box-shadow: var(--shadow-sm);
-  transition: transform .22s ease, box-shadow .22s ease;
+  transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease, background .22s ease;
+  appearance: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
 }
 .service-logo-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 14px 30px rgba(31,38,43,.12);
 }
+.service-logo-card:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--service-color) 38%, transparent);
+  outline-offset: 3px;
+}
+.service-logo-card[aria-pressed="true"] {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--service-color) 72%, var(--border));
+  border-top-color: var(--service-color);
+  background: color-mix(in srgb, var(--service-color) 8%, var(--card));
+  box-shadow: 0 15px 32px color-mix(in srgb, var(--service-color) 20%, transparent);
+}
+.service-logo-card[aria-pressed="true"]::after {
+  content: "Filtro activo";
+  align-self: end;
+  margin-top: 4px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--service-color);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .45px;
+  text-transform: uppercase;
+}
+.service-logo-card.service-logo-ersep img {
+  width: min(100%, 154px);
+}
+.service-filter-state {
+  min-height: 35px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 12px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.clear-service-filter {
+  min-height: 32px;
+  padding: 0 13px;
+  border: 1px solid color-mix(in srgb, var(--ersep-red) 35%, var(--border));
+  border-radius: 999px;
+  background: var(--ersep-red-soft);
+  color: var(--ersep-red-dark);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.clear-service-filter:hover {
+  border-color: var(--ersep-red);
+  background: color-mix(in srgb, var(--ersep-red) 13%, #fff);
+}
+.tool-card[hidden],
+.filter-empty-state[hidden],
+.clear-service-filter[hidden] {
+  display: none !important;
+}
+.filter-empty-state {
+  min-height: 150px;
+  margin-top: 14px;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--card) 93%, var(--bg));
+  color: var(--text-muted);
+}
+.filter-empty-state strong {
+  color: var(--text);
+  font-size: 16px;
+}
+.filter-empty-state span {
+  max-width: 520px;
+  font-size: 12px;
+}
+
 .service-logo-card img {
   width: min(100%, 130px);
   height: auto;
   display: block;
   filter: drop-shadow(0 8px 10px rgba(31,38,43,.10));
 }
+.service-ersep { --service-color: var(--ersep-red); }
 .service-water { --service-color: var(--ersep-water); }
 .service-energy { --service-color: var(--ersep-energy); }
 .service-transport { --service-color: var(--ersep-transport); }
@@ -553,12 +640,13 @@
   background: #fff;
 }
 [data-theme="dark"] .service-logo-card { background: #242729; }
+[data-theme="dark"] .service-logo-card[aria-pressed="true"] { background: color-mix(in srgb, var(--service-color) 16%, #242729); }
 [data-theme="dark"] .tool-card .institutional-card-icon { background: #fff; }
 [data-theme="dark"] .menu-footer { background: #202224; }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 1040px) {
-  .service-logo-grid { grid-template-columns: repeat(3, minmax(0,1fr)); }
+  .service-logo-grid { grid-template-columns: repeat(4, minmax(0,1fr)); }
   .menu-hero { grid-template-columns: minmax(0,1fr) 270px; }
   .tool-page .header { flex-wrap: wrap; }
   .tool-page .header-right { width: 100%; margin-left: 0; justify-content: flex-end; }
@@ -578,6 +666,7 @@
   .section-heading { align-items: flex-start; flex-direction: column; gap: 5px; }
   .section-heading p { text-align: left; }
   .service-logo-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .service-filter-state { justify-content: flex-start; flex-wrap: wrap; }
   .service-logo-card { min-height: 145px; }
   .tool-page .header { margin-inline: -12px; padding: 13px 16px 17px; gap: 10px; }
   .page-brand { width: 145px; min-width: 145px; }
@@ -595,4 +684,16 @@
   .menu-footer { flex-direction: column; gap: 6px; padding-top: 15px; }
   .tool-page .header-right { justify-content: flex-start; }
   .page-brand { width: 128px; min-width: 128px; }
+}
+
+/* Módulos anunciados: visibles, pero todavía sin navegación. */
+.tool-card.area-road { --area-color: var(--ersep-road); --area-color-dark: #535f66; --area-soft: #f0f3f4; }
+.tool-card.future-module-card {
+  cursor: default;
+}
+.tool-card.future-module-card:hover {
+  transform: none;
+  border-color: var(--border);
+  border-top-color: var(--area-color);
+  box-shadow: 0 7px 20px rgba(31,38,43,.07);
 }

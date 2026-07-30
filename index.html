@@ -1,117 +1,387 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Portal de Innovación y Análisis de Datos del ERSeP.">
-  <title>Portal de Innovación y Análisis de Datos · ERSeP</title>
-  <link rel="stylesheet" href="assets/css/style.css">
-  <link rel="stylesheet" href="assets/css/standalone.css">
-  <link rel="stylesheet" href="assets/css/institutional-theme.css">
-  <link rel="icon" href="assets/img/favicon.ico">
-</head>
-<body>
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width,initial-scale=1" name="viewport"/>
+  <meta content="Portal de Innovaci&oacute;n y An&aacute;lisis de Datos del ERSeP." name="description"/>
+  <title>
+   Portal de Innovaci&oacute;n y An&aacute;lisis de Datos &middot; ERSeP
+  </title>
+  <link href="assets/css/style.css" rel="stylesheet"/>
+  <link href="assets/css/standalone.css" rel="stylesheet"/>
+  <link href="assets/css/institutional-theme.css" rel="stylesheet"/>
+  <link href="assets/img/favicon.ico" rel="icon"/>
+ </head>
+ <body>
   <section class="portal-screen menu-screen">
-    <header class="menu-topbar">
-      <a class="menu-brand" href="./" aria-label="Inicio del Portal de Innovación y Análisis de Datos">
-        <span class="menu-brand-logo-wrap"><img class="menu-brand-logo" src="assets/img/institucional/logo-ersep.png" alt="ERSeP · Ente Regulador de los Servicios Públicos"></span>
-        <span class="menu-brand-copy"><strong>Portal de Innovación y Análisis de Datos</strong><span>Ente Regulador de los Servicios Públicos</span></span>
-      </a>
-      <div class="menu-actions">
-        <span class="portal-scope">Herramientas institucionales</span>
-        <button class="theme-toggle" data-theme-toggle type="button" aria-label="Cambiar tema">🌙</button>
+   <header class="menu-topbar">
+    <a aria-label="Inicio del Portal de Innovaci&oacute;n y An&aacute;lisis de Datos" class="menu-brand" href="./">
+     <span class="menu-brand-logo-wrap">
+      <img alt="ERSeP &middot; Ente Regulador de los Servicios P&uacute;blicos" class="menu-brand-logo" src="assets/img/institucional/logo-ersep.png"/>
+     </span>
+     <span class="menu-brand-copy">
+      <strong>
+       Portal de Innovaci&oacute;n y An&aacute;lisis de Datos
+      </strong>
+      <span>
+       Ente Regulador de los Servicios P&uacute;blicos
+      </span>
+     </span>
+    </a>
+    <div class="menu-actions">
+     <span class="portal-scope">
+      Herramientas institucionales
+     </span>
+     <button aria-label="Cambiar tema" class="theme-toggle" data-theme-toggle="" type="button">
+      🌙
+     </button>
+    </div>
+   </header>
+   <div aria-hidden="true" class="service-color-bar">
+    <span>
+    </span>
+    <span>
+    </span>
+    <span>
+    </span>
+    <span>
+    </span>
+    <span>
+    </span>
+    <span>
+    </span>
+   </div>
+   <main class="menu-main">
+    <header class="menu-hero">
+     <div class="menu-hero-copy">
+      <div class="menu-kicker">
+       ERSeP &middot; Observatorio institucional
       </div>
+      <h1>
+       PORTAL DE INNOVACI&Oacute;N
+       <br/>
+       Y AN&Aacute;LISIS DE DATOS
+      </h1>
+      <p>
+       Herramientas institucionales para consultar informaci&oacute;n, acompa&ntilde;ar la gesti&oacute;n y fortalecer el an&aacute;lisis regulatorio de los servicios p&uacute;blicos.
+      </p>
+      <div aria-label="Caracter&iacute;sticas del portal" class="hero-tags">
+       <span>
+        Datos
+       </span>
+       <span>
+        Regulaci&oacute;n
+       </span>
+       <span>
+        Innovaci&oacute;n
+       </span>
+      </div>
+     </div>
+     <div aria-hidden="true" class="hero-brand-panel">
+      <img alt="" src="assets/img/institucional/logo-ersep.png"/>
+      <div class="hero-brand-lines">
+       <span>
+       </span>
+       <span>
+       </span>
+       <span>
+       </span>
+       <span>
+       </span>
+       <span>
+       </span>
+       <span>
+       </span>
+      </div>
+      <strong>
+       OBSERVATORIO ERSeP
+      </strong>
+     </div>
     </header>
-    <div class="service-color-bar" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
-
-    <main class="menu-main">
-      <header class="menu-hero">
-        <div class="menu-hero-copy">
-          <div class="menu-kicker">ERSeP · Observatorio institucional</div>
-          <h1>PORTAL DE INNOVACIÓN<br>Y ANÁLISIS DE DATOS</h1>
-          <p>Herramientas institucionales para consultar información, acompañar la gestión y fortalecer el análisis regulatorio de los servicios públicos.</p>
-          <div class="hero-tags" aria-label="Características del portal"><span>Datos</span><span>Regulación</span><span>Innovación</span></div>
-        </div>
-        <div class="hero-brand-panel" aria-hidden="true">
-          <img src="assets/img/institucional/logo-ersep.png" alt="">
-          <div class="hero-brand-lines"><span></span><span></span><span></span><span></span><span></span><span></span></div>
-          <strong>OBSERVATORIO ERSeP</strong>
-        </div>
-      </header>
-
-      <section class="service-directory" aria-labelledby="service_directory_title">
-        <div class="section-heading">
-          <div><span class="section-kicker">Identidad institucional</span><h2 id="service_directory_title">Gerencias y servicios regulados</h2></div>
-          <p>La paleta y la iconografía oficial identifican cada área del organismo.</p>
-        </div>
-        <div class="service-logo-grid">
-          <div class="service-logo-card service-water"><img src="assets/img/institucional/gerencia-agua-saneamiento.png" alt="Agua y Saneamiento"></div>
-          <div class="service-logo-card service-energy"><img src="assets/img/institucional/gerencia-energia-electrica.png" alt="Energía Eléctrica"></div>
-          <div class="service-logo-card service-transport"><img src="assets/img/institucional/gerencia-transporte-interurbano.png" alt="Transporte Interurbano"></div>
-          <div class="service-logo-card service-safety"><img src="assets/img/institucional/gerencia-seguridad-electrica.png" alt="Seguridad Eléctrica"></div>
-          <div class="service-logo-card service-road"><img src="assets/img/institucional/gerencia-vial-edilicia.png" alt="Vial y Edilicia"></div>
-          <div class="service-logo-card service-antennas"><img src="assets/img/institucional/gerencia-antenas-celular.png" alt="Antenas Celular"></div>
-        </div>
-      </section>
-
-      <section class="tools-section" aria-labelledby="tools_title">
-        <div class="section-heading tools-heading">
-          <div><span class="section-kicker">Accesos</span><h2 id="tools_title">Herramientas del portal</h2></div>
-          <p>Ingresá al módulo que necesitás.</p>
-        </div>
-        <div class="tool-grid">
-          <a class="tool-card area-institutional" href="modulos/quienes-somos/">
-            <span class="tool-icon institutional-card-icon"><img src="assets/img/institucional/logo-ersep.png" alt=""></span>
-            <span class="tool-meta">Institucional</span><strong>Quiénes somos</strong>
-            <small>Innovación y Análisis de Datos de la Subdirección de Jurisdicción de Costos y Tarifas del ERSeP.</small>
-            <span class="menu-card-badge">Disponible</span><span class="tool-arrow">Abrir →</span>
-          </a>
-          <a class="tool-card area-energy" href="https://naninimarcos.github.io/mapa-cba.html" target="_blank" rel="noopener">
-            <span class="tool-icon gerencia-card-icon"><img src="assets/img/institucional/gerencia-energia-electrica.png" alt=""></span>
-            <span class="tool-meta">Energía Eléctrica</span><strong>Mapa cooperativo eléctrico</strong>
-            <small>Mapa de cooperativas eléctricas de la Provincia de Córdoba.</small>
-            <span class="menu-card-badge">Disponible</span><span class="tool-arrow">Abrir mapa ↗</span>
-          </a>
-          <a class="tool-card private-card area-institutional" href="modulos/cumpleanos/">
-            <span class="tool-icon institutional-card-icon"><img src="assets/img/institucional/logo-ersep.png" alt=""></span>
-            <span class="tool-meta">Recursos Humanos · Acceso protegido</span><strong>Cumpleaños ERSeP</strong>
-            <small>Agenda, buscador, calendario y estadísticas de cumpleaños por dependencia y sede.</small>
-            <span class="menu-card-badge private">Contraseña requerida</span><span class="tool-arrow">Abrir panel →</span>
-          </a>
-          <a class="tool-card area-transport" href="modulos/movilis/">
-            <span class="tool-icon gerencia-card-icon"><img src="assets/img/institucional/gerencia-transporte-interurbano.png" alt=""></span>
-            <span class="tool-meta">Transporte Interurbano</span><strong>Movilis</strong>
-            <small>Presentación de la propuesta de gestión de actas como mecanismo de transición operativa.</small>
-            <span class="menu-card-badge">Disponible</span><span class="tool-arrow">Ver presentación →</span>
-          </a>
-          <a class="tool-card area-transport" href="modulos/inspectores/">
-            <span class="tool-icon gerencia-card-icon"><img src="assets/img/institucional/gerencia-transporte-interurbano.png" alt=""></span>
-            <span class="tool-meta">Transporte Interurbano · Fiscalización</span><strong>App inspectores</strong>
-            <small>Aplicación para la gestión del trabajo de inspectores en campo.</small>
-            <span class="menu-card-badge future">Próximamente</span><span class="tool-arrow">Abrir →</span>
-          </a>
-          <a class="tool-card area-regulation" href="modulos/boletin-oficial/">
-            <span class="tool-icon institutional-card-icon"><img src="assets/img/institucional/logo-ersep.png" alt=""></span>
-            <span class="tool-meta">Normativa</span><strong>Buscador de Boletín Oficial</strong>
-            <small>Consulta, monitoreo y búsqueda de publicaciones del Boletín Oficial.</small>
-            <span class="menu-card-badge">Disponible</span><span class="tool-arrow">Abrir buscador →</span>
-          </a>
-          <a class="tool-card area-water" href="modulos/estadisticas/">
-            <span class="tool-icon gerencia-card-icon"><img src="assets/img/institucional/gerencia-agua-saneamiento.png" alt=""></span>
-            <span class="tool-meta">Agua y Saneamiento · Datos</span><strong>Estadísticas</strong>
-            <small>Tableros e indicadores estadísticos para el análisis institucional.</small>
-            <span class="menu-card-badge future">Próximamente</span><span class="tool-arrow">Abrir →</span>
-          </a>
-        </div>
-      </section>
-    </main>
-
-    <footer class="menu-footer">
-      <img src="assets/img/institucional/logo-ersep.png" alt="ERSeP">
-      <span>Portal de Innovación y Análisis de Datos · <span id="current_year"></span><span class="portal-version">v3.1 institucional</span></span>
-    </footer>
+    <section aria-labelledby="service_directory_title" class="service-directory">
+     <div class="section-heading">
+      <div>
+       <span class="section-kicker">
+        Identidad institucional
+       </span>
+       <h2 id="service_directory_title">
+        Gerencias y servicios regulados
+       </h2>
+      </div>
+     </div>
+     <div class="service-logo-grid">
+      <button aria-controls="portal_tool_grid" aria-label="Filtrar herramientas de ERSeP" aria-pressed="false" class="service-logo-card service-ersep service-logo-ersep" data-service-filter="ersep" data-service-label="ERSeP" title="Ver m&oacute;dulos de ERSeP" type="button">
+       <img alt="ERSeP" src="assets/img/institucional/logo-ersep.png"/>
+      </button>
+      <button aria-controls="portal_tool_grid" aria-label="Filtrar herramientas de Agua y Saneamiento" aria-pressed="false" class="service-logo-card service-water" data-service-filter="water" data-service-label="Agua y Saneamiento" title="Ver m&oacute;dulos de Agua y Saneamiento" type="button">
+       <img alt="Agua y Saneamiento" src="assets/img/institucional/gerencia-agua-saneamiento.png"/>
+      </button>
+      <button aria-controls="portal_tool_grid" aria-label="Filtrar herramientas de Energ&iacute;a El&eacute;ctrica" aria-pressed="false" class="service-logo-card service-energy" data-service-filter="energy" data-service-label="Energ&iacute;a El&eacute;ctrica" title="Ver m&oacute;dulos de Energ&iacute;a El&eacute;ctrica" type="button">
+       <img alt="Energ&iacute;a El&eacute;ctrica" src="assets/img/institucional/gerencia-energia-electrica.png"/>
+      </button>
+      <button aria-controls="portal_tool_grid" aria-label="Filtrar herramientas de Transporte Interurbano" aria-pressed="false" class="service-logo-card service-transport" data-service-filter="transport" data-service-label="Transporte Interurbano" title="Ver m&oacute;dulos de Transporte Interurbano" type="button">
+       <img alt="Transporte Interurbano" src="assets/img/institucional/gerencia-transporte-interurbano.png"/>
+      </button>
+      <button aria-controls="portal_tool_grid" aria-label="Filtrar herramientas de Seguridad El&eacute;ctrica" aria-pressed="false" class="service-logo-card service-safety" data-service-filter="safety" data-service-label="Seguridad El&eacute;ctrica" title="Ver m&oacute;dulos de Seguridad El&eacute;ctrica" type="button">
+       <img alt="Seguridad El&eacute;ctrica" src="assets/img/institucional/gerencia-seguridad-electrica.png"/>
+      </button>
+      <button aria-controls="portal_tool_grid" aria-label="Filtrar herramientas de Vial y Edilicia" aria-pressed="false" class="service-logo-card service-road" data-service-filter="road" data-service-label="Vial y Edilicia" title="Ver m&oacute;dulos de Vial y Edilicia" type="button">
+       <img alt="Vial y Edilicia" src="assets/img/institucional/gerencia-vial-edilicia.png"/>
+      </button>
+      <button aria-controls="portal_tool_grid" aria-label="Filtrar herramientas de Antenas Celular" aria-pressed="false" class="service-logo-card service-antennas" data-service-filter="antennas" data-service-label="Antenas Celular" title="Ver m&oacute;dulos de Antenas Celular" type="button">
+       <img alt="Antenas Celular" src="assets/img/institucional/gerencia-antenas-celular.png"/>
+      </button>
+     </div>
+     <div class="service-filter-state">
+      <span aria-live="polite" id="service_filter_status">
+       Se muestran todas las herramientas.
+      </span>
+      <button class="clear-service-filter" hidden="" id="clear_service_filter" type="button">
+       Mostrar todas
+      </button>
+     </div>
+    </section>
+    <section aria-labelledby="tools_title" class="tools-section">
+     <div class="section-heading tools-heading">
+      <div>
+       <span class="section-kicker">
+        Accesos
+       </span>
+       <h2 id="tools_title">
+        Herramientas del portal
+       </h2>
+      </div>
+      <p>
+       Ingres&aacute; al m&oacute;dulo que necesit&aacute;s.
+      </p>
+     </div>
+     <div class="tool-grid" id="portal_tool_grid">
+      <a class="tool-card area-institutional" data-area="ersep" href="modulos/quienes-somos/">
+       <span class="tool-icon institutional-card-icon">
+        <img alt="" src="assets/img/institucional/logo-ersep.png"/>
+       </span>
+       <span class="tool-meta">
+        Institucional
+       </span>
+       <strong>
+        Qui&eacute;nes somos
+       </strong>
+       <small>
+        Innovaci&oacute;n y An&aacute;lisis de Datos de la Subdirecci&oacute;n de Jurisdicci&oacute;n de Costos y Tarifas del ERSeP.
+       </small>
+       <span class="menu-card-badge">
+        Disponible
+       </span>
+       <span class="tool-arrow">
+        Abrir &rarr;
+       </span>
+      </a>
+      <a class="tool-card area-energy" data-area="energy" href="https://naninimarcos.github.io/mapa-cba.html" rel="noopener" target="_blank">
+       <span class="tool-icon gerencia-card-icon">
+        <img alt="" src="assets/img/institucional/gerencia-energia-electrica.png"/>
+       </span>
+       <span class="tool-meta">
+        Energ&iacute;a El&eacute;ctrica
+       </span>
+       <strong>
+        Mapa cooperativo el&eacute;ctrico
+       </strong>
+       <small>
+        Mapa de cooperativas el&eacute;ctricas de la Provincia de C&oacute;rdoba.
+       </small>
+       <span class="menu-card-badge">
+        Disponible
+       </span>
+       <span class="tool-arrow">
+        Abrir mapa &nearrow;
+       </span>
+      </a>
+      <a class="tool-card private-card area-institutional" data-area="ersep" href="modulos/cumpleanos/">
+       <span class="tool-icon institutional-card-icon">
+        <img alt="" src="assets/img/institucional/logo-ersep.png"/>
+       </span>
+       <span class="tool-meta">
+        Recursos Humanos &middot; Acceso protegido
+       </span>
+       <strong>
+        Cumplea&ntilde;os ERSeP
+       </strong>
+       <small>
+        Agenda, buscador, calendario y estad&iacute;sticas de cumplea&ntilde;os por dependencia y sede.
+       </small>
+       <span class="menu-card-badge private">
+        Contrase&ntilde;a requerida
+       </span>
+       <span class="tool-arrow">
+        Abrir panel &rarr;
+       </span>
+      </a>
+      <a class="tool-card area-transport" data-area="transport" href="modulos/movilis/">
+       <span class="tool-icon gerencia-card-icon">
+        <img alt="" src="assets/img/institucional/gerencia-transporte-interurbano.png"/>
+       </span>
+       <span class="tool-meta">
+        Transporte Interurbano
+       </span>
+       <strong>
+        Movilis
+       </strong>
+       <small>
+        Presentaci&oacute;n de la propuesta de gesti&oacute;n de actas como mecanismo de transici&oacute;n operativa.
+       </small>
+       <span class="menu-card-badge">
+        Disponible
+       </span>
+       <span class="tool-arrow">
+        Ver presentaci&oacute;n &rarr;
+       </span>
+      </a>
+      <a class="tool-card area-transport" data-area="transport" href="modulos/inspectores/">
+       <span class="tool-icon gerencia-card-icon">
+        <img alt="" src="assets/img/institucional/gerencia-transporte-interurbano.png"/>
+       </span>
+       <span class="tool-meta">
+        Transporte Interurbano &middot; Fiscalizaci&oacute;n
+       </span>
+       <strong>
+        App inspectores
+       </strong>
+       <small>
+        Aplicaci&oacute;n para la gesti&oacute;n del trabajo de inspectores en campo.
+       </small>
+       <span class="menu-card-badge future">
+        Pr&oacute;ximamente
+       </span>
+       <span class="tool-arrow">
+        Abrir &rarr;
+       </span>
+      </a>
+      <a class="tool-card area-regulation" data-area="ersep" href="modulos/boletin-oficial/">
+       <span class="tool-icon institutional-card-icon">
+        <img alt="" src="assets/img/institucional/logo-ersep.png"/>
+       </span>
+       <span class="tool-meta">
+        Normativa
+       </span>
+       <strong>
+        Buscador de Bolet&iacute;n Oficial
+       </strong>
+       <small>
+        Consulta, monitoreo y b&uacute;squeda de publicaciones del Bolet&iacute;n Oficial.
+       </small>
+       <span class="menu-card-badge">
+        Disponible
+       </span>
+       <span class="tool-arrow">
+        Abrir buscador &rarr;
+       </span>
+      </a>
+      <div aria-label="Asistencia de reclamos ERSeP, pr&oacute;ximamente" class="tool-card area-institutional future-module-card" data-area="ersep" role="group">
+       <span class="tool-icon institutional-card-icon">
+        <img alt="" src="assets/img/institucional/logo-ersep.png"/>
+       </span>
+       <span class="tool-meta">
+        Atenci&oacute;n a Usuarios
+       </span>
+       <strong>
+        Asistencia de reclamos ERSeP
+       </strong>
+       <small>
+        Espacio previsto para brindar asistencia institucional en la gesti&oacute;n de reclamos ante el ERSeP.
+       </small>
+       <span class="menu-card-badge future">
+        Pr&oacute;ximamente
+       </span>
+       <span class="tool-arrow">
+        En desarrollo
+       </span>
+      </div>
+      <div aria-label="Control de Cargos Tarifarios, pr&oacute;ximamente" class="tool-card area-water future-module-card" data-area="water" role="group">
+       <span class="tool-icon gerencia-card-icon">
+        <img alt="" src="assets/img/institucional/gerencia-agua-saneamiento.png"/>
+       </span>
+       <span class="tool-meta">
+        Agua y Saneamiento
+       </span>
+       <strong>
+        Control de Cargos Tarifarios
+       </strong>
+       <small>
+        Espacio previsto para el control y seguimiento de cargos tarifarios.
+       </small>
+       <span class="menu-card-badge future">
+        Pr&oacute;ximamente
+       </span>
+       <span class="tool-arrow">
+        En desarrollo
+       </span>
+      </div>
+      <div aria-label="Vial y Edilicia, pr&oacute;ximamente" class="tool-card area-road future-module-card" data-area="road" role="group">
+       <span class="tool-icon gerencia-card-icon">
+        <img alt="" src="assets/img/institucional/gerencia-vial-edilicia.png"/>
+       </span>
+       <span class="tool-meta">
+        Gerencia de Vial y Edilicia
+       </span>
+       <strong>
+        Vial y Edilicia
+       </strong>
+       <small>
+        Relevamiento VIAL.
+       </small>
+       <span class="menu-card-badge future">
+        Pr&oacute;ximamente
+       </span>
+       <span class="tool-arrow">
+        En desarrollo
+       </span>
+      </div>
+      <a class="tool-card area-institutional" data-area="ersep" href="modulos/estadisticas/">
+       <span class="tool-icon institutional-card-icon">
+        <img alt="" src="assets/img/institucional/logo-ersep.png"/>
+       </span>
+       <span class="tool-meta">
+        Datos Estad&iacute;sticos
+       </span>
+       <strong>
+        Estad&iacute;sticas
+       </strong>
+       <small>
+        Tableros e indicadores estad&iacute;sticos para el an&aacute;lisis institucional.
+       </small>
+       <span class="menu-card-badge future">
+        Pr&oacute;ximamente
+       </span>
+       <span class="tool-arrow">
+        Abrir &rarr;
+       </span>
+      </a>
+     </div>
+     <div class="filter-empty-state" hidden="" id="filter_empty_state" role="status">
+      <strong>
+       Todav&iacute;a no hay m&oacute;dulos publicados para esta &aacute;rea.
+      </strong>
+      <span>
+       Pod&eacute;s seleccionar otra gerencia o volver a mostrar todas las herramientas.
+      </span>
+     </div>
+    </section>
+   </main>
+   <footer class="menu-footer">
+    <img alt="ERSeP" src="assets/img/institucional/logo-ersep.png"/>
+    <span>
+     Portal de Innovaci&oacute;n y An&aacute;lisis de Datos &middot;
+     <span id="current_year">
+     </span>
+     <span class="portal-version">
+      v3.3 institucional
+     </span>
+    </span>
+   </footer>
   </section>
-  <script src="assets/js/theme.js" defer></script>
-  <script src="assets/js/menu.js" defer></script>
-</body>
+  <script defer="" src="assets/js/theme.js">
+  </script>
+  <script defer="" src="assets/js/menu.js">
+  </script>
+ </body>
 </html>

@@ -68,3 +68,13 @@ La versión fue validada antes de empaquetarse. Se completaron **124 verificacio
 - Se verificó sintaxis JavaScript con `node --check` para `menu.js`, `theme.js`, `auth.js`, `birthday.js` y `boletin.js`.
 - Se realizó prueba HTTP local con respuesta **200** para la portada, la nueva hoja de estilo, el logotipo y los seis módulos internos.
 - Se preservaron los enlaces externos, la lógica de autenticación, el cifrado de cumpleaños y la configuración del backend.
+
+## Actualización v3.2 · Herramientas anunciadas
+
+- Se verificó que la portada contenga **10 tarjetas** y los nuevos módulos anunciados.
+- Se verificó la presencia de **Asistencia de reclamos ERSeP**, **Control de Cargos Tarifarios** y **Vial y Edilicia**.
+- Se verificó que los tres nuevos módulos tengan estado **Próximamente** y no naveguen a páginas inexistentes.
+- Se verificó que **Estadísticas** utilice el logotipo institucional del ERSeP y la categoría **Datos Estadísticos**.
+- Se comprobaron 102 referencias locales `href` y `src`: **0 referencias faltantes**.
+- Se verificó sintaxis JavaScript con `node --check` para todos los archivos de `assets/js`.
+- Se realizó prueba HTTP local con respuesta **200** para la portada, la hoja de estilo institucional y los logotipos utilizados.
