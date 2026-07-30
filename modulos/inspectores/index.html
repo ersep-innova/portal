@@ -1,12 +1,367 @@
 <!DOCTYPE html>
-<html lang="es"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="App inspectores · Portal de Innovación y Análisis de Datos." name="description"/><title>App inspectores · Portal de Innovación y Análisis de Datos</title><link href="../../assets/css/style.css" rel="stylesheet"/><link href="../../assets/css/portal-pages.css" rel="stylesheet"/><link href="../../assets/css/standalone.css" rel="stylesheet"/><link href="../../assets/img/favicon.ico" rel="icon"/><link href="../../assets/css/institutional-theme.css" rel="stylesheet"/>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width,initial-scale=1" name="viewport"/>
+  <meta content="App Inspectores · Portal de Innovación y Análisis de Datos." name="description"/>
+  <title>App Inspectores · Portal de Innovación y Análisis de Datos</title>
+
+  <link href="../../assets/css/style.css" rel="stylesheet"/>
+  <link href="../../assets/css/portal-pages.css" rel="stylesheet"/>
+  <link href="../../assets/css/standalone.css" rel="stylesheet"/>
+  <link href="../../assets/css/institutional-theme.css" rel="stylesheet"/>
+  <link href="../../assets/img/favicon.ico" rel="icon"/>
+
+  <style>
+    .inspectores-intro {
+      display: grid;
+      gap: 20px;
+    }
+
+    .inspectores-lead {
+      margin: 0;
+      max-width: 920px;
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      line-height: 1.75;
+    }
+
+    .process-grid,
+    .impact-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 22px;
+    }
+
+    .process-item,
+    .impact-item,
+    .comparison-panel {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--surface);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .process-item,
+    .impact-item {
+      padding: 20px;
+    }
+
+    .process-number {
+      display: inline-grid;
+      width: 34px;
+      height: 34px;
+      margin-bottom: 14px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 800;
+    }
+
+    .process-item h4,
+    .impact-item h4,
+    .comparison-panel h4 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .process-item p,
+    .impact-item p,
+    .comparison-panel p {
+      margin: 0;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .impact-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .impact-icon {
+      display: block;
+      margin-bottom: 10px;
+      font-size: 1.8rem;
+      line-height: 1;
+    }
+
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 20px;
+    }
+
+    .comparison-panel {
+      position: relative;
+      overflow: hidden;
+      padding: 24px;
+    }
+
+    .comparison-panel::before {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 5px;
+      background: var(--primary);
+      content: "";
+    }
+
+    .comparison-panel.movilis::before {
+      background: var(--accent, #d08a00);
+    }
+
+    .comparison-label {
+      display: inline-block;
+      margin-bottom: 12px;
+      color: var(--primary);
+      font-size: .78rem;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .comparison-panel.movilis .comparison-label {
+      color: var(--accent, #a56c00);
+    }
+
+    .data-destinations {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .data-destinations span {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface-muted);
+      font-size: .9rem;
+      font-weight: 700;
+    }
+
+    .module-note {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      padding: 18px 20px;
+      border-left: 4px solid var(--primary);
+      border-radius: 14px;
+      background: var(--surface-muted);
+    }
+
+    .module-note strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .module-note p {
+      margin: 0;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    @media (max-width: 900px) {
+      .process-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .impact-grid,
+      .comparison-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .process-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .process-item,
+      .impact-item,
+      .comparison-panel {
+        padding: 18px;
+      }
+    }
+  </style>
 </head>
-<body class="tool-page area-transport"><div class="wrap">
-<header class="header"><a class="page-brand" href="../../" aria-label="Volver al portal"><img src="../../assets/img/institucional/logo-ersep.png" alt="ERSeP"></a><div class="header-left"><h1>App inspectores</h1><span class="header-badge">Portal de Innovación y Análisis de Datos · Fiscalización</span></div><div class="header-right"><a class="nav-chip" href="../../"><span>⌂</span> Menú</a><button class="theme-toggle" data-theme-toggle="" type="button">🌙</button></div></header>
-<section class="tool-hero"><div><div class="tool-kicker">Fiscalización</div><h2>App inspectores</h2><p>Herramienta prevista para la gestión y el seguimiento del trabajo de los inspectores en campo.</p></div><div class="hero-symbol official-hero-logo gerencia" aria-hidden="true"><img src="../../assets/img/institucional/gerencia-transporte-interurbano.png" alt=""></div></section>
-<section class="card"><div class="card-body" style="text-align:center;padding:48px 24px;">
-<div style="font-size:52px;line-height:1;margin-bottom:16px;">🚧</div>
-<h3 style="margin:0 0 8px;font-size:22px;">Próximamente inspectores</h3>
-<p style="margin:0;color:var(--text-muted);max-width:520px;margin-inline:auto;">Esta sección se encuentra en desarrollo. Aquí se integrará la aplicación de inspectores.</p>
-</div></section>
-</div><script defer="" src="../../assets/js/theme.js"></script></body></html>
+
+<body class="tool-page area-transport">
+  <div class="wrap">
+    <header class="header">
+      <a class="page-brand" href="../../" aria-label="Volver al portal">
+        <img src="../../assets/img/institucional/logo-ersep.png" alt="ERSeP"/>
+      </a>
+
+      <div class="header-left">
+        <h1>App Inspectores</h1>
+        <span class="header-badge">
+          Portal de Innovación y Análisis de Datos · Fiscalización
+        </span>
+      </div>
+
+      <div class="header-right">
+        <a class="nav-chip" href="../../">
+          <span>⌂</span> Menú
+        </a>
+        <button class="theme-toggle" data-theme-toggle="" type="button" aria-label="Cambiar tema">
+          🌙
+        </button>
+      </div>
+    </header>
+
+    <section class="tool-hero">
+      <div>
+        <div class="tool-kicker">Fiscalización en campo</div>
+        <h2>App Inspectores</h2>
+        <p>
+          Aplicación utilizada por los inspectores de Transporte Interurbano para registrar
+          controles, actas e infracciones directamente durante las tareas de fiscalización.
+        </p>
+      </div>
+
+      <div class="hero-symbol official-hero-logo gerencia" aria-hidden="true">
+        <img src="../../assets/img/institucional/gerencia-transporte-interurbano.png" alt=""/>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-body inspectores-intro">
+        <div>
+          <div class="tool-kicker">Contexto del proyecto</div>
+          <h3>Del control en ruta al registro digital</h3>
+        </div>
+
+        <p class="inspectores-lead">
+          La App Inspectores fue desarrollada para acompañar el trabajo de los agentes que
+          controlan unidades de transporte interurbano. Durante cada inspección, el agente
+          verifica las condiciones del servicio y registra en la aplicación la información
+          correspondiente al acta, las observaciones detectadas y, cuando corresponda, las
+          infracciones asociadas.
+        </p>
+
+        <div class="process-grid" aria-label="Proceso de trabajo de la App Inspectores">
+          <article class="process-item">
+            <span class="process-number">1</span>
+            <h4>Control en campo</h4>
+            <p>
+              El inspector aborda la unidad y realiza las verificaciones previstas para el
+              servicio de transporte interurbano.
+            </p>
+          </article>
+
+          <article class="process-item">
+            <span class="process-number">2</span>
+            <h4>Registro del acta</h4>
+            <p>
+              Los datos del procedimiento se cargan directamente en la aplicación desde el
+              lugar donde se efectúa el control.
+            </p>
+          </article>
+
+          <article class="process-item">
+            <span class="process-number">3</span>
+            <h4>Carga de infracciones</h4>
+            <p>
+              Las irregularidades detectadas se vinculan con el acta correspondiente,
+              evitando transcripciones posteriores y registros dispersos.
+            </p>
+          </article>
+
+          <article class="process-item">
+            <span class="process-number">4</span>
+            <h4>Disponibilidad inmediata</h4>
+            <p>
+              La información queda preparada para su consulta y posterior procesamiento por
+              las áreas administrativas de la Gerencia.
+            </p>
+          </article>
+        </div>
+
+        <div class="module-note">
+          <span aria-hidden="true">🗂️</span>
+          <div>
+            <strong>Destino de la información</strong>
+            <p>
+              La aplicación organiza la carga en dos listas de Microsoft vinculadas entre sí:
+              una para los datos principales del acta y otra para las infracciones registradas.
+            </p>
+            <div class="data-destinations">
+              <span>Acta de Transporte</span>
+              <span>Acta de Transporte · Infracciones</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-body">
+        <div class="tool-kicker">Resultados operativos</div>
+        <h3>Qué mejora la aplicación</h3>
+
+        <div class="impact-grid">
+          <article class="impact-item">
+            <span class="impact-icon" aria-hidden="true">📱</span>
+            <h4>Carga desde el lugar del control</h4>
+            <p>
+              Reduce la necesidad de trasladar formularios y volver a ingresar manualmente
+              la información en una instancia posterior.
+            </p>
+          </article>
+
+          <article class="impact-item">
+            <span class="impact-icon" aria-hidden="true">⏱️</span>
+            <h4>Menor tiempo administrativo</h4>
+            <p>
+              Disminuye tareas repetitivas de transcripción y permite que los datos estén
+              disponibles con mayor rapidez.
+            </p>
+          </article>
+
+          <article class="impact-item">
+            <span class="impact-icon" aria-hidden="true">✓</span>
+            <h4>Mayor trazabilidad</h4>
+            <p>
+              Mantiene vinculadas las actas con sus infracciones y mejora el seguimiento de
+              la información generada durante la fiscalización.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-body">
+        <div class="tool-kicker">Diferenciación funcional</div>
+        <h3>App Inspectores y Movilis no cumplen la misma función</h3>
+
+        <div class="comparison-grid">
+          <article class="comparison-panel">
+            <span class="comparison-label">Captura en campo</span>
+            <h4>App Inspectores</h4>
+            <p>
+              Se utiliza durante la fiscalización. Permite que el inspector registre el acta,
+              el control realizado y las infracciones detectadas directamente desde la
+              operación en ruta.
+            </p>
+          </article>
+
+          <article class="comparison-panel movilis">
+            <span class="comparison-label">Gestión administrativa</span>
+            <h4>Movilis</h4>
+            <p>
+              Interviene después de la inspección. Está orientado al tratamiento administrativo
+              de las actas, su vinculación con expedientes y la generación de dictámenes,
+              resoluciones y documentación asociada.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script defer="" src="../../assets/js/theme.js"></script>
+</body>
+</html>
