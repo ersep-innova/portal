@@ -1,0 +1,916 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="description" content="Aplicación web para la gestión de inspectores en campo del ERSeP.">
+  <title>InspeccApp · ERSeP</title>
+  <!-- Tailwind CSS para utilidades rápidas e íconos -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tipografía Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --primary: #e30613;       /* Rojo ERSeP */
+      --primary-dark: #b91c1c;  
+      --secondary: #334155;     /* Gris Azulado Oscuro */
+      --text-light: #64748b;    
+      --bg: #f1f5f9;            /* Fondo suave */
+      --card: #ffffff;          
+      --border: #cbd5e1;        
+      --accent: #fbbf24;        /* Amarillo */
+      --success: #10b981;       
+      --error: #ef4444;         
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg);
+      color: var(--secondary);
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #login_screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .login-card {
+      background: var(--card);
+      padding: 40px 30px;
+      border-radius: 20px;
+      width: 100%;
+      max-width: 380px;
+      text-align: center;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    }
+
+    .login-logo {
+      width: 120px;
+      height: auto;
+      margin: 0 auto 20px auto;
+      display: block;
+    }
+
+    .login-title {
+      font-size: 1.5rem;
+      font-weight: 900;
+      color: var(--primary);
+      margin: 0 0 5px 0;
+      letter-spacing: -0.5px;
+    }
+
+    .login-subtitle {
+      font-size: 0.9rem;
+      color: var(--text-light);
+      margin: 0 0 30px 0;
+    }
+
+    .pin-label {
+      display: block;
+      font-size: 1.5rem;
+      font-weight: 900;
+      color: #888;
+      letter-spacing: 5px;
+      margin-bottom: 20px;
+    }
+
+    .pin-input {
+      background: var(--card);
+      font-size: 2rem;
+      letter-spacing: 15px;
+      padding: 10px;
+      text-align: center;
+      width: 100%;
+      border: none;
+      border-bottom: 2px solid var(--border);
+      color: var(--secondary);
+      font-weight: 900;
+      margin-bottom: 30px;
+      outline: none;
+      transition: border-color 0.3s ease;
+    }
+    .pin-input:focus { border-bottom-color: var(--primary); }
+
+    .btn-login {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 16px;
+      width: 100%;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    .btn-login:active { transform: scale(0.98); }
+
+    #main_app { display: none; flex-direction: column; height: 100vh; overflow: hidden; }
+
+    .app-header {
+      background-color: var(--primary);
+      color: white;
+      padding: 16px 20px;
+      padding-top: max(16px, env(safe-area-inset-top));
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      z-index: 50;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .app-header h1 { margin: 0; font-size: 1.5rem; font-weight: 900; letter-spacing: 0.5px; line-height: 1.2;}
+    .app-header span { font-size: 0.65rem; font-weight: 600; opacity: 0.9; text-transform: uppercase; letter-spacing: 1px;}
+    
+    .tab-content {
+      display: none;
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      padding-bottom: 100px;
+    }
+    .tab-content.active { display: block; }
+
+    .bottom-nav {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--card);
+      display: flex;
+      border-top: 1px solid #e2e8f0;
+      padding-bottom: env(safe-area-inset-bottom);
+      z-index: 100;
+    }
+    .nav-item {
+      flex: 1;
+      padding: 12px 0;
+      background: none;
+      border: none;
+      border-top: 3px solid transparent;
+      color: #94a3b8;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .nav-item.active { border-top-color: var(--primary); color: var(--primary); }
+    .nav-icon { font-size: 1.5rem; }
+
+    .tool-section {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    }
+    
+    .big-patente-input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 2rem;
+      font-weight: 900;
+      text-align: center;
+      padding: 16px;
+      letter-spacing: 3px;
+      color: var(--secondary);
+      text-transform: uppercase;
+      margin-bottom: 20px;
+      outline: none;
+    }
+    .big-patente-input:focus { border-color: var(--secondary); }
+
+    .btn-action-dark {
+      display: flex;
+      align-items: center;
+      background-color: #475569;
+      padding: 16px;
+      border-radius: 12px;
+      color: white;
+      border: none;
+      width: 100%;
+      cursor: pointer;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      margin-bottom: 12px;
+      text-align: left;
+    }
+    .btn-action-dark:active { transform: scale(0.98); }
+    .btn-icon-wrapper { width: 40px; display: flex; justify-content: center; font-size: 1.5rem; }
+    .btn-text-wrapper { flex: 1; padding-left: 10px; }
+    .btn-text-wrapper strong { display: block; font-size: 1rem; font-weight: 700; }
+    .btn-text-wrapper small { display: block; font-size: 0.75rem; color: rgba(255,255,255,0.8); margin-top: 2px;}
+
+    .search-input-wrapper {
+      display: flex;
+      align-items: center;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 4px 16px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    .search-input-wrapper input {
+      flex: 1;
+      border: none;
+      padding: 12px 10px;
+      font-size: 1.1rem;
+      outline: none;
+      color: var(--secondary);
+    }
+
+    .cat-block { background: var(--card); border-radius: 12px; margin-bottom: 16px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+    .cat-header {
+      padding: 18px;
+      background: var(--card);
+      color: var(--secondary);
+      font-weight: 800;
+      font-size: 1rem;
+      display: flex;
+      justify-content: space-between;
+      cursor: pointer;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--bg);
+    }
+    .cat-header.active { background: var(--secondary); color: white; }
+    .cat-content { display: none; padding: 10px; background: #f8fafc; }
+    .cat-content.active { display: block; }
+
+    .infraction-card {
+      background: var(--card);
+      border: 1px solid #e2e8f0;
+      border-left: 5px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+    .infraction-card.active { border-left-color: var(--primary); border-color: var(--primary); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+    .infraction-header { padding: 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;}
+    .infraction-title { font-weight: 700; font-size: 1rem; color: var(--secondary); line-height: 1.4; flex: 1; padding-right: 10px;}
+    .infraction-preview { font-size: 0.75rem; color: var(--text-light); margin-top: 4px; display: block;}
+    
+    .infraction-body { display: none; padding: 0 16px 16px; }
+    .infraction-card.active .infraction-body { display: block; }
+    .infraction-card.active .infraction-preview { display: none; }
+
+    .badge-norma { display: inline-block; background: var(--secondary); color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; margin-bottom: 12px; }
+    .text-legal { background: var(--bg); padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 0.95rem; color: #334155; line-height: 1.5; font-style: italic; }
+    
+    .btn-copy { background: var(--success); color: white; border: none; padding: 12px; border-radius: 8px; width: 100%; margin-top: 16px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; }
+
+    .custom-modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6);
+      display: none; justify-content: center; align-items: center;
+      z-index: 1000; padding: 20px;
+    }
+    .custom-modal-overlay.active { display: flex; }
+    .custom-modal {
+      background: white; border-radius: 20px; width: 100%; max-width: 400px;
+      max-height: 85vh; display: flex; flex-direction: column; overflow: hidden;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .modal-header { padding: 20px; text-align: center; border-bottom: 1px solid var(--bg); }
+    .modal-title { font-size: 1.25rem; font-weight: 800; color: var(--secondary); margin: 0; }
+    .modal-subtitle { font-size: 1rem; color: var(--text-light); margin: 5px 0 0; }
+    .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+    .modal-footer { padding: 15px 20px; border-top: 1px solid var(--bg); }
+    .btn-close-modal { background: var(--error); color: white; border: none; padding: 14px; border-radius: 10px; width: 100%; font-weight: bold; font-size: 1rem; cursor: pointer; }
+
+    /* Elementos del historial */
+    .acta-item { background: #f8fafc; padding: 15px; border-radius: 10px; margin-bottom: 12px; border-left: 5px solid var(--success); }
+    .acta-item.bad { border-left-color: var(--error); }
+    .acta-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+    .acta-date { color: var(--text-light); font-weight: bold; font-size: 0.85rem;}
+    .acta-num { color: var(--secondary); font-weight: bold; font-size: 0.85rem;}
+    .acta-loc { color: var(--secondary); font-size: 0.95rem; margin: 4px 0;}
+    .acta-type { color: var(--text-light); font-size: 0.85rem;}
+    .acta-status { font-weight: 900; font-size: 0.85rem; margin-top: 8px; display: block; text-transform: uppercase; color: var(--success); }
+    .acta-item.bad .acta-status { color: var(--error); }
+    .btn-pdf { background: #3b82f6; color: white; border: none; padding: 8px; border-radius: 6px; margin-top: 10px; width: 100%; font-weight: bold; cursor: pointer; }
+
+    /* Loading Spinner */
+    .loader { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 3px solid white; width: 20px; height: 20px; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <section id="login_screen">
+    <div class="login-card">
+      <!-- Fallback implementado: Si la imagen local falla, se muestra el ERSeP desde internet o el alt text formateado -->
+      <img src="../../assets/img/institucional/logo-ersep.png" onerror="this.src='https://placehold.co/300x120/ffffff/e30613?text=ERSeP'" alt="ERSeP Logo" class="login-logo">
+      <h2 class="login-title">InspeccApp</h2>
+      <p class="login-subtitle">Ayudante de Inspección en Campo</p>
+      
+      <form id="login_form" onsubmit="handleLogin(event)">
+        <span class="pin-label">PIN</span>
+        <input type="password" id="pin_input" class="pin-input" maxlength="4" pattern="[0-9]*" inputmode="numeric" required autocomplete="off">
+        <button type="submit" class="btn-login">INGRESAR</button>
+      </form>
+    </div>
+  </section>
+
+  <section id="main_app">
+    <header class="app-header">
+      <div>
+        <span>Asistente de Inspección</span>
+        <h1>Gerencia de Transporte - ERSeP</h1>
+      </div>
+      <button onclick="cerrarSesion()" style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer;" aria-label="Cerrar sesión">⚙️</button>
+    </header>
+
+    <!-- PESTAÑA: INFRACCIONES -->
+    <main id="tab_infracciones" class="tab-content active">
+      <div class="search-input-wrapper">
+        <span style="font-size: 1.2rem; color: var(--text-light);">🔍</span>
+        <input type="text" id="search_input" placeholder="Buscar infracción...">
+      </div>
+      <div id="infracciones_list">
+        <!-- Renderizado vía JS -->
+      </div>
+    </main>
+
+    <!-- PESTAÑA: HERRAMIENTAS -->
+    <main id="tab_herramientas" class="tab-content">
+      <div class="tool-section">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom: 16px;">
+          <span style="font-size: 1.5rem;">🛠️</span>
+          <h2 style="margin:0; font-size: 1.25rem; font-weight: 800; color: var(--secondary);">Centro de Control</h2>
+        </div>
+        
+        <input type="text" id="patente_input" class="big-patente-input" placeholder="AAA123" maxlength="9">
+
+        <button class="btn-action-dark" onclick="verificarAntecedentes()" id="btn_antecedentes">
+          <div class="btn-icon-wrapper">📁</div>
+          <div class="btn-text-wrapper">
+            <strong>VER ANTECEDENTES</strong>
+            <small>Historial de actas e infracciones</small>
+          </div>
+          <div class="loader-container" style="display:none;"><div class="loader"></div></div>
+        </button>
+
+        <button class="btn-action-dark" style="background-color: var(--secondary);" onclick="verificarHabilitacion()" id="btn_habilitacion">
+          <div class="btn-icon-wrapper">✓</div>
+          <div class="btn-text-wrapper">
+            <strong>VERIFICAR HABILITACIÓN</strong>
+            <small>Consulta padrón local</small>
+          </div>
+          <div class="loader-container" style="display:none;"><div class="loader"></div></div>
+        </button>
+
+        <button class="btn-action-dark" style="background-color: #0ea5e9;" onclick="consultarRTO()" id="btn_rto">
+          <div class="btn-icon-wrapper">🚌</div>
+          <div class="btn-text-wrapper">
+            <strong>CONSULTAR RTO</strong>
+            <small>Consulta a CENT UTN</small>
+          </div>
+          <div class="loader-container" style="display:none;"><div class="loader"></div></div>
+        </button>
+      </div>
+
+      <div class="tool-section">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom: 16px;">
+          <span style="font-size: 1.5rem;">📚</span>
+          <h2 style="margin:0; font-size: 1.25rem; font-weight: 800; color: var(--secondary);">Biblioteca Normativa</h2>
+        </div>
+        <a href="https://drive.google.com/drive/folders/1kWVzVJLptvLf8U4B_jPmuaygkDhIz5Fg" target="_blank" rel="noopener" style="display:flex; justify-content:space-between; align-items:center; padding:16px; background:#f8fafc; border:1px solid var(--border); border-radius:12px; text-decoration:none; color:var(--secondary); font-weight:bold;">
+          <span style="display:flex; align-items:center; gap:10px;"><span style="background:white; padding:5px; border-radius:6px;">📖</span> ACCEDER A BIBLIOTECA</span>
+          <span>→</span>
+        </a>
+      </div>
+    </main>
+
+    <!-- PESTAÑA: ASISTENTE IA -->
+    <main id="tab_asistente" class="tab-content">
+      <div class="tool-section">
+        <h2 style="margin-top:0; font-size: 1.25rem; font-weight: 800; color: var(--secondary);">Manual Digital (NotebookLM)</h2>
+        <a href="https://notebooklm.google.com/notebook/834863cd-fdfa-446d-bfc3-4de9e4abd6da" target="_blank" rel="noopener" style="display:block; text-align:center; padding:15px; background:#f8fafc; border:1px solid var(--border); border-radius:12px; text-decoration:none; color:var(--secondary); font-weight:bold; margin-top:10px;">
+          HACER UNA PREGUNTA ↗
+        </a>
+      </div>
+      <div class="tool-section">
+        <h2 style="margin-top:0; font-size: 1.25rem; font-weight: 800; color: var(--secondary);">Redacción de Acta</h2>
+        <p style="color:var(--text-light); font-size:0.9rem; margin-bottom:15px;">La IA (Cohere) redactará el texto formal, impersonal y técnico para la observación del acta.</p>
+        <textarea id="ia_prompt" style="width:100%; height:120px; background:#f8fafc; border:1px solid var(--border); border-radius:12px; padding:15px; font-family:inherit; font-size:1rem; resize:none; outline:none;" placeholder='Ej: "Empresa citibus interno 40 cubierta delantera lisa"'></textarea>
+        <input type="password" id="ia_key" placeholder="API Key de Cohere (Requerida)" style="width:100%; margin-top:10px; padding:10px; border-radius:8px; border:1px solid var(--border); outline:none;">
+        <button onclick="generarActa()" id="btn_ia" style="width:100%; padding:15px; background:var(--primary); color:white; border:none; border-radius:12px; font-weight:bold; margin-top:15px; font-size:1rem;">GENERAR TEXTO</button>
+        
+        <div id="ia_result_box" style="display:none; margin-top:20px;">
+          <strong style="color:var(--primary); font-size:0.85rem;">TEXTO SUGERIDO:</strong>
+          <div style="background:#fff1f2; border-left:4px solid var(--primary); padding:15px; border-radius:8px; margin-top:8px;">
+            <p id="ia_result_text" style="margin:0; font-size:1rem; color:var(--secondary); line-height:1.5;"></p>
+          </div>
+          <button onclick="copiarTextoIA()" class="btn-copy" style="margin-top:10px; padding:10px;">📋 COPIAR AL PORTAPAPELES</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- NAVEGACIÓN BOTTOM -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" onclick="switchTab('infracciones', this)">
+        <span class="nav-icon">📋</span><span>Infracciones</span>
+      </button>
+      <button class="nav-item" onclick="switchTab('herramientas', this)">
+        <span class="nav-icon">🛠️</span><span>Herramientas</span>
+      </button>
+      <button class="nav-item" onclick="switchTab('asistente', this)">
+        <span class="nav-icon">✨</span><span>Asistente IA</span>
+      </button>
+    </nav>
+  </section>
+
+  <div class="custom-modal-overlay" id="generic_modal">
+    <div class="custom-modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal_title">Título</h3>
+        <p class="modal-subtitle" id="modal_subtitle"></p>
+      </div>
+      <div class="modal-body" id="modal_body" style="font-size:1rem; color:var(--secondary); line-height:1.5;">
+        Contenido
+      </div>
+      <div class="modal-footer">
+        <button class="btn-close-modal" onclick="closeModal('generic_modal')">CERRAR</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const ACCESS_PIN = "2025";
+    
+    function handleLogin(e) {
+      e.preventDefault();
+      const pin = document.getElementById('pin_input').value;
+      if (pin === ACCESS_PIN) {
+        document.getElementById('login_screen').style.display = 'none';
+        document.getElementById('main_app').style.display = 'flex';
+        renderizarInfracciones();
+      } else {
+        showAppAlert("Acceso Denegado", "El PIN ingresado es incorrecto.");
+        document.getElementById('pin_input').value = '';
+      }
+    }
+
+    function cerrarSesion() {
+      document.getElementById('login_screen').style.display = 'flex';
+      document.getElementById('main_app').style.display = 'none';
+      document.getElementById('pin_input').value = '';
+    }
+
+    function switchTab(tabId, btnElement) {
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+      document.getElementById(`tab_${tabId}`).classList.add('active');
+      btnElement.classList.add('active');
+    }
+
+    function showAppAlert(title, message, subtitle = "") {
+      document.getElementById('modal_title').innerText = title;
+      document.getElementById('modal_subtitle').innerText = subtitle;
+      document.getElementById('modal_body').innerHTML = message.replace(/\n/g, '<br>');
+      document.getElementById('generic_modal').classList.add('active');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('active');
+    }
+
+    function toggleLoader(btnId, show) {
+      const btn = document.getElementById(btnId);
+      if(!btn) return;
+      btn.disabled = show;
+      btn.querySelector('.loader-container').style.display = show ? 'flex' : 'none';
+      btn.querySelector('.btn-icon-wrapper').style.display = show ? 'none' : 'flex';
+    }
+
+    const CASOS_ESPECIFICOS = {
+      "Elementos falsos o con errores inexcusables en el certificado de RTO": { norma: "Dec 254/03 Anexo C Art. 1 A.5 / C.5", texto: "A.5.- Presentación de datos u otros elementos falsos... C.5.- Carencia o deficiente conservación de la chapa habilitante o Planilla de RTO." },
+      "Certificado RTO vencido": { norma: "Dec 254/03 Anexo C Art. 1 C.3 / Anexo A Art. 41", texto: "C.3.- No realización de la revisión técnica... Anexo A Art. 41.- Revisión técnica obligatoria (RTO) cada 180 días." },
+      "No presenta certificado de RTO": { norma: "Dec 254/03 Anexo C Art. 1 C.5 / Art. 9 d.3", texto: "C.5.- Carencia o deficiente conservación de la chapa habilitante o Planilla de RTO." },
+      "Luneta trasera rota/mal estado (salidas de Emergencias)": { norma: "Dec 254/03 Anexo A Art. 20.7.3 / Anexo C", texto: "20.7.3. Luneta trasera volcable, expulsable o destructible. C.4.- Deficiencias mecánicas o carencia de elementos de seguridad." },
+      "Luneta trasera rota/mal estado": { norma: "Dec 254/03 Anexo A Art. 20.7.3 / Anexo C", texto: "20.7.3. Los vehículos deberán poseer luneta trasera volcable, expulsable o destructible." },
+      "Salidas de emergencias selladas/en mal estado": { norma: "Dec 254/03 Anexo A Art. 20.7 / Anexo C", texto: "20.7.- Salidas de emergencia. Los vehículos deberán poseer como mínimo TRES (3) salidas." },
+      "Ventanillas en mal estado/fisuradas": { norma: "Dec 254/03 Anexo A Art. 20.8.1 / Anexo C", texto: "20.8.1. Las ventanillas deberán abrirse mediante desplazamientos horizontales en un mismo plano." },
+      "Faltan martillos rompe cristales": { norma: "Dec 254/03 Anexo A Art. 20.7.4 / Anexo C", texto: "20.7.4. Deberán utilizarse dispositivos de destrucción o 'martillo de seguridad'." },
+      "Presta servicio en tramo no autorizado": { norma: "Dec 254/03 Anexo C Art. 1 B.6 / Art. 9 A.a.1", texto: "B.6.- Circulación fuera de la ruta autorizada por la Autoridad de Aplicación." },
+      "Realiza ascenso/descenso en parada no autorizada": { norma: "Dec 254/03 Anexo C Art. 1 B.2 / Art. 9 A.b.1", texto: "b.1- Efectuar las paradas destinadas al ascenso y/o descenso de pasajeros en los lugares que determine la autoridad." },
+      "Cobertura de seguro vencida": { norma: "Dec 254/03 Anexo C Art. 1 A.2 / Art. 9 A.d.7", texto: "A.2.- Falta de cobertura de los seguros exigidos por la Ley 8669 y su reglamentación." },
+      "Violacion al régimen tarifario": { norma: "Dec 254/03 Anexo C Art. 1 B.3 / Ley 8669 Art. 28 B", texto: "B.3.- Violación del régimen tarifario autorizado. B.- Respetar el valor y cuadro tarifario." },
+      "No presenta Chapa MOP en lugar reglamentario": { norma: "Dec 254/03 Anexo A Art. 30.2 a) / Anexo C", texto: "a) Número de chapa MOP del vehículo otorgada por la Dirección de Transporte (frontal y posterior)." },
+      "No posee habilitación provincial - Extraña jurisdicción": { norma: "Dec 254/03 Anexo C Art. 6 / Ley 8669 Art. 2", texto: "Artículo 6º.- Prestación de servicios públicos por quien sea titular de concesión Nacional o extraña jurisdicción en violación a Ley 8669." },
+      "Extintor sin carga": { norma: "Dec 254/03 Anexo C C.4 / Anexo A Art. 20.11.7", texto: "C.4.- Deficiencias mecánicas, carencia de elementos de seguridad. Su capacidad extintora no podrá ser inferior a 4 BC." },
+      "Extintor con carga vencida": { norma: "Dec 254/03 Anexo C C.4 / Anexo A Art. 20.11.7", texto: "C.4.- Deficiencias mecánicas, carencia de elementos de seguridad. Capacidad no inferior a 4 BC." },
+      "Cubierta delantera lado izquierdo lisa o en mal estado": { norma: "Dec 254/03 Anexo C C.4 / Anexo A Art. 16", texto: "Queda prohibido el uso de cubiertas que presten un desgaste que no permita la observación nítida de su dibujo." },
+      "Transporta pasajeros de pie (E)": { norma: "Dec 254/03 Anexo C Art. 2 B.1 / Art. 9 D.a.1", texto: "B.1.- Transporte de pasajeros de pie en los servicios en los que la reglamentación lo prohíbe." },
+      "Incumple a la Ley N°9440, Pase Libre, Único y Universal con el titular del Pase de discapacidad": { norma: "Dec 1178/08 Anexo I Art. 6 / Ley 9440 Art. 2", texto: "Incumplimiento a la obligación de transportar gratuitamente a las personas con discapacidad y a un acompañante." }
+    };
+
+    const BIBLIOTECA_GENERAL = {
+      DEFAULT: { norma: "Dec 254/03", texto: "Infracción a las condiciones de habilitación y seguridad vigentes." },
+      MOP: { norma: "Res. 178/2018 / Dec 254/03", texto: "Chapa identificatoria MOP legible y actualizada." },
+      PARABRISAS: { norma: "Dec 254/03 Anexo A", texto: "Parabrisas de seguridad sin fisuras que obstaculicen la visual." },
+      OPTICAS: { norma: "Dec 254/03 Anexo A", texto: "Ópticas y faros en buen estado, sin roturas." },
+      TACOGRAFO: { norma: "Dec 254/03 Anexo A", texto: "Módulo de Registro de Operaciones (Tacógrafo) obligatorio, calibrado y en funcionamiento." },
+      MODALIDAD: { norma: "Dec 254/03 Anexo C", texto: "Prestación de servicios en modalidades no autorizadas." },
+      LIBRETA: { norma: "Ley 8669 / Dec 254/03", texto: "Libreta de trabajo a bordo y al día. Respeto de descanso." },
+      HORARIOS: { norma: "Dec 254/03 Anexo C", texto: "Cumplimiento estricto de horarios. Prohibido adelanto o retraso." },
+      LETREROS: { norma: "Dec 254/03 / Res 178/18", texto: "Identificación obligatoria: Chapa MOP, Razón Social, 0800-ERSEP." },
+      ILUMINACION: { norma: "Dec 254/03 Anexo A", texto: "Sistema de luces reglamentario completo y operativo." },
+      AIRE: { norma: "Dec 254/03 Anexo A", texto: "Sistemas de calefacción y aire acondicionado operativos." },
+      ALCOHOL: { norma: "Ley 10.181", texto: "Prohibición de alcohol en sangre." },
+      ASIENTOS: { norma: "Dec 254/03 - Confort", texto: "Asientos y tapizados en buen estado. Cinturones obligatorios." },
+      BOLETERIA: { norma: "Ley 8669 / Dec 254/03", texto: "Obligación de emitir boleto, respetar tarifas y horarios." },
+      BOTIQUIN: { norma: "Dec 254/03 Anexo A", texto: "Portación obligatoria de botiquín de primeros auxilios." },
+      CARNET: { norma: "Ley 8560 Art. 40", texto: "Conductor debe poseer licencia habilitante vigente." },
+      CARROCERIA: { norma: "Dec 254/03 Anexo A", texto: "Carrocería en perfecto estado. Prohibidos elementos desgarrantes." },
+      CUBIERTAS: { norma: "Dec 254/03 Art. 16", texto: "Neumáticos con profundidad reglamentaria." },
+      MECANICA: { norma: "Dec 254/03 - Chasis", texto: "Condiciones mecánicas de seguridad (dirección, frenos, suspensión)." },
+      DESOBEDIENCIA: { norma: "Ley 8669 / Dec 254/03 Anexo C", texto: "Obligación de acatar órdenes de la autoridad." },
+      DISCAPACIDAD: { norma: "Ley 9440 / Dec 1178/08", texto: "Transporte gratuito obligatorio para PCD y acompañante." },
+      EQUIPAJE: { norma: "Dec 254/03 Art. 39", texto: "Obligación de entrega de guía y resguardo del equipaje." },
+      ESPEJOS: { norma: "Ley 8560 / Dec 254/03", texto: "Sistemas de retrovisión obligatorios en perfecto estado." },
+      EXTINTOR: { norma: "Dec 254/03 / IRAM 3517-2", texto: "Matafuegos con carga vigente, marbete oficial." },
+      HIGIENE: { norma: "Ley 8669 Art. 28 Inc I", texto: "Condiciones de higiene y desinfección obligatorias." },
+      DESINFECCION: { norma: "Ley 8669 Art. 6", texto: "Planilla de inspección mecánico y constancia de desinfección." },
+      RTO: { norma: "Dec 254/03 Anexo C", texto: "Certificación de Revisión Técnica Obligatoria vigente." },
+      RECORRIDO: { norma: "Dec 254/03 Anexo C", texto: "Prestación de servicio en tramos no autorizados." },
+      SEGURO: { norma: "Ley 8669 Art. 28", texto: "Seguro obligatorio de responsabilidad civil vigente." },
+      TARIFA: { norma: "Res. Ersep", texto: "Respeto estricto al cuadro tarifario autorizado." },
+      EMERGENCIA: { norma: "Dec 254/03 Anexo A", texto: "Salidas de emergencia operables y libres." },
+      PASAJEROS: { norma: "Dec 254/03 Art. 9", texto: "Límites en el transporte de pasajeros de pie según modalidad." }
+    };
+
+    const DB_RAW = [
+      { cat: 'MOP', nombre: 'No presenta Chapa MOP en lugar reglamentario' },
+      { cat: 'MOP', nombre: 'Chapa MOP desactualizada' },
+      { cat: 'MOP', nombre: 'Chapa MOP ilegible' },
+      { cat: 'MOP/HABILITACION', nombre: 'No presenta permiso precario' },
+      { cat: 'MOP/HABILITACION', nombre: 'No posee habilitación provincial - Extraña jurisdicción' },
+      { cat: 'PARABRISAS', nombre: 'Parabrisas fisurado obstaculiza la visual del conductor' },
+      { cat: 'OPTICAS', nombre: 'Óptica delantera lado izquierdo sucia, fisurada o en mal estado' },
+      { cat: 'MODULO DE REGISTRO DE OPERACIONES', nombre: 'No presenta módulo registro de operaciones' },
+      { cat: 'MODALIDAD NO AUTORIZADA', nombre: 'Vehículo habilitado para prestar servicio especial, realiza un viaje regular diferencial' },
+      { cat: 'LIBRETA DE TRABAJO', nombre: 'No presenta libreta de trabajo' },
+      { cat: 'LIBRETA DE TRABAJO', nombre: 'No cumple con las horas de descanso' },
+      { cat: 'INCUMPLIMIENTO DE HORARIOS Y FRECUENCIAS', nombre: 'El horario autorizado por la Secretaría de Transporte se prestó con demora mayor a 15 minutos' },
+      { cat: 'LETREROS', nombre: 'No presenta letrero exterior 0800 - número telefónico de cobro revertido' },
+      { cat: 'ILUMINACION', nombre: 'Luces de posicion traseras no funcionan' },
+      { cat: 'AIRE ACONDICIONADO', nombre: 'Aire acondicionado no funciona/mal estado' },
+      { cat: 'ALCOHOLEMIA', nombre: 'El conductor presenta alcohol en sangre (Positivo)' },
+      { cat: 'ASIENTOS', nombre: 'No presenta cinturon de seguridad del conductor o el mismo se encuentra en mal estado' },
+      { cat: 'BOLETERIA / PASAJES', nombre: 'Boleteria cerrada' },
+      { cat: 'BOTIQUIN', nombre: 'No presenta botiquín' },
+      { cat: 'CARNET DE CONDUCTOR', nombre: 'Carnet de conducir vencido' },
+      { cat: 'CARROCERIA', nombre: 'Piso en malas condiciones / Deficiencias en la carrocería piso' },
+      { cat: 'CUBIERTAS', nombre: 'Cubierta delantera lado izquierdo lisa o en mal estado' },
+      { cat: 'DEFICIENCIAS MECANICAS', nombre: 'Problemas con la suspensión / Suspensión en mal estado' },
+      { cat: 'DESOBEDIENCIA A LA AUTORIDAD', nombre: 'Mal trato al inspector' },
+      { cat: 'DISCAPACIDAD', nombre: 'Incumple a la Ley N°9440, Pase Libre, Único y Universal con el titular del Pase de discapacidad' },
+      { cat: 'EQUIPAJE', nombre: 'Perdida de Equipaje (extravío)' },
+      { cat: 'ESPEJOS RETROVISORES', nombre: 'Espejos retrovisores rotos/en mal estado' },
+      { cat: 'EXTINTOR', nombre: 'Extintor con carga vencida' },
+      { cat: 'HIGIENE', nombre: 'Falta de Higiene' },
+      { cat: 'PLANILLA DE DESINFECCION', nombre: 'No presenta planilla de desinfección' },
+      { cat: 'R.T.O.', nombre: 'Certificado RTO vencido' },
+      { cat: 'RECORRIDOS Y PARADAS', nombre: 'Realiza ascenso/descenso en parada no autorizada' },
+      { cat: 'SEGURO', nombre: 'Cobertura de seguro vencida' },
+      { cat: 'TARIFA', nombre: 'Violacion al régimen tarifario' },
+      { cat: 'VENTANILLAS/PUERTAS/SALIDAS DE EMERGENCIA', nombre: 'Faltan martillos rompe cristales' },
+      { cat: 'PASAJEROS PARADOS/EXCESO DE PASAJEROS', nombre: 'Transporta pasajeros de pie (E)' }
+    ];
+
+    const getNormativa = (categoria, nombre) => {
+      const key = nombre.trim();
+      if (CASOS_ESPECIFICOS[key]) return CASOS_ESPECIFICOS[key];
+      
+      const c = categoria.toUpperCase();
+      const n = nombre ? nombre.toLowerCase() : "";
+
+      if (c.includes("AIRE")) return BIBLIOTECA_GENERAL.AIRE;
+      if (c.includes("ALCOHOL")) return BIBLIOTECA_GENERAL.ALCOHOL;
+      if (c.includes("ASIENTOS")) return BIBLIOTECA_GENERAL.ASIENTOS;
+      if (c.includes("BOLETERIA") || c.includes("PASAJE")) return BIBLIOTECA_GENERAL.BOLETERIA;
+      if (c.includes("BOTIQUIN")) return BIBLIOTECA_GENERAL.BOTIQUIN;
+      if (c.includes("CARNET") || c.includes("CONDUCTOR")) return BIBLIOTECA_GENERAL.CARNET;
+      if (c.includes("CARROCERIA")) return BIBLIOTECA_GENERAL.CARROCERIA;
+      if (c.includes("CUBIERTAS")) return BIBLIOTECA_GENERAL.CUBIERTAS;
+      if (c.includes("MECANICA")) return BIBLIOTECA_GENERAL.MECANICA;
+      if (c.includes("DESOBEDIENCIA")) return BIBLIOTECA_GENERAL.DESOBEDIENCIA;
+      if (c.includes("DISCAPACIDAD")) return BIBLIOTECA_GENERAL.DISCAPACIDAD;
+      if (c.includes("EQUIPAJE")) return BIBLIOTECA_GENERAL.EQUIPAJE;
+      if (c.includes("ESPEJO")) return BIBLIOTECA_GENERAL.ESPEJOS;
+      if (c.includes("EXTINTOR")) return BIBLIOTECA_GENERAL.EXTINTOR;
+      if (c.includes("HIGIENE")) return BIBLIOTECA_GENERAL.HIGIENE;
+      if (c.includes("HORARIO") || c.includes("FRECUENCIA")) return BIBLIOTECA_GENERAL.HORARIOS;
+      if (c.includes("ILUMINACION")) return BIBLIOTECA_GENERAL.ILUMINACION;
+      if (c.includes("LETRERO")) return BIBLIOTECA_GENERAL.LETREROS;
+      if (c.includes("LIBRETA")) return BIBLIOTECA_GENERAL.LIBRETA;
+      if (c.includes("LISTA")) return BIBLIOTECA_GENERAL.LISTA;
+      if (c.includes("MODALIDAD")) return BIBLIOTECA_GENERAL.MODALIDAD;
+      if (c.includes("TACOGRAFO") || c.includes("REGISTRO")) return BIBLIOTECA_GENERAL.TACOGRAFO;
+      if (c.includes("MOP")) return BIBLIOTECA_GENERAL.MOP;
+      if (c.includes("OPTICA")) return BIBLIOTECA_GENERAL.OPTICAS;
+      if (c.includes("PARABRISAS")) return BIBLIOTECA_GENERAL.PARABRISAS;
+      if (c.includes("PASAJEROS PARADOS") || c.includes("EXCESO")) return BIBLIOTECA_GENERAL.PASAJEROS;
+      if (c.includes("R.T.O.") || n.includes("rto")) return BIBLIOTECA_GENERAL.RTO;
+      if (c.includes("SEGURO")) return BIBLIOTECA_GENERAL.SEGURO;
+      if (c.includes("DESINFECCION") || n.includes("desinfeccion")) return BIBLIOTECA_GENERAL.DESINFECCION;
+      if (c.includes("RECORRIDO") || c.includes("PARADA")) return BIBLIOTECA_GENERAL.RECORRIDO;
+      if (c.includes("TARIFA")) return BIBLIOTECA_GENERAL.TARIFA;
+      if (c.includes("EMERGENCIA") || c.includes("VENTANILLA") || n.includes("martillo")) return BIBLIOTECA_GENERAL.EMERGENCIA;
+
+      return BIBLIOTECA_GENERAL.DEFAULT;
+    };
+
+    const DB_FINAL = DB_RAW.map(item => ({ ...item, ...getNormativa(item.cat, item.nombre) }));
+
+    function renderizarInfracciones() {
+      const search = document.getElementById('search_input').value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const contenedor = document.getElementById('infracciones_list');
+      contenedor.innerHTML = '';
+      
+      const filtrados = DB_FINAL.filter(i => 
+        i.nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(search) || 
+        i.cat.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(search)
+      );
+
+      if (filtrados.length === 0) {
+        contenedor.innerHTML = `<p style="text-align:center; color:var(--text-light); margin-top:20px; font-weight:600;">No se encontraron resultados.</p>`;
+        return;
+      }
+
+      const categorias = [...new Set(filtrados.map(i => i.cat))].sort();
+
+      categorias.forEach(cat => {
+        const isSearching = search.length > 0;
+        const divCat = document.createElement('div');
+        divCat.className = 'cat-block';
+        
+        const header = document.createElement('div');
+        header.className = `cat-header ${isSearching ? 'active' : ''}`;
+        header.innerHTML = `<span>${cat}</span> <span style="transform: ${isSearching ? 'rotate(180deg)' : 'none'}; transition: transform 0.3s;">▼</span>`;
+        
+        const list = document.createElement('div');
+        list.className = `cat-content ${isSearching ? 'active' : ''}`;
+
+        header.onclick = () => {
+          list.classList.toggle('active');
+          header.classList.toggle('active');
+          header.querySelector('span:last-child').style.transform = list.classList.contains('active') ? 'rotate(180deg)' : 'none';
+        };
+
+        const itemsCat = filtrados.filter(i => i.cat === cat);
+        itemsCat.forEach(item => {
+          const card = document.createElement('div');
+          card.className = 'infraction-card';
+          card.innerHTML = `
+            <div class="infraction-header" onclick="this.parentElement.classList.toggle('active')">
+              <div class="infraction-title">
+                ${item.nombre}
+                <span class="infraction-preview">${item.norma}</span>
+              </div>
+              <span style="color:var(--border)">▼</span>
+            </div>
+            <div class="infraction-body">
+              <span class="badge-norma">${item.norma}</span>
+              <div class="text-legal">${item.texto}</div>
+              <button class="btn-copy" onclick="copyToClipboard('${item.norma}\\n${item.texto}')">📋 COPIAR / COMPARTIR</button>
+            </div>
+          `;
+          list.appendChild(card);
+        });
+
+        divCat.appendChild(header);
+        divCat.appendChild(list);
+        contenedor.appendChild(divCat);
+      });
+    }
+
+    document.getElementById('search_input').addEventListener('input', renderizarInfracciones);
+
+    function copyToClipboard(text) {
+      navigator.clipboard.writeText(text).then(() => showAppAlert("¡Copiado!", "El texto de la infracción ha sido copiado al portapapeles.", "Éxito"));
+    }
+
+    function getPatente() { return document.getElementById('patente_input').value.toUpperCase().trim(); }
+
+    async function verificarAntecedentes() {
+      const patente = getPatente();
+      if (!patente) return showAppAlert("Atención", "Ingresá una patente primero.", "Campo vacío");
+      
+      toggleLoader('btn_antecedentes', true);
+
+      try {
+        const SHEET_ID = '1KzKUy6gUYSGBf4DNnFokzqIMc2hLWQ63db5Js4S34p0';
+        const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
+        
+        const res = await fetch(url);
+        const data = await res.text();
+        
+        if (data.includes('<!DOCTYPE html>')) {
+          throw new Error("La hoja de cálculo no es pública o requiere inicio de sesión.");
+        }
+
+        const lineas = data.split('\n');
+        let resultados = [];
+
+        lineas.forEach(linea => {
+          // Parseo simple de CSV asumiendo que no hay comas complejas dentro de campos
+          const col = linea.split(',').map(s => s.trim().replace(/^"|"$/g, '')); 
+          if (col.length < 2) return;
+          const dom = col[0].toUpperCase().replace(/\s+/g, '');
+          if (dom === patente) {
+            resultados.push({
+              fecha: col[1] || '-',
+              acta: col[2] || '-',
+              estado: col[3] || 'Desconocido',
+              tipo: col[4] || '-',
+              lugar: col[5] || '-',
+              link: col[6] || ''
+            });
+          }
+        });
+
+        // Ordenar por fecha y limitar a 5
+        resultados.sort((a, b) => {
+          const dA = a.fecha.split('/'); const dB = b.fecha.split('/');
+          if(dA.length !== 3 || dB.length !== 3) return 0;
+          return new Date(dB[2], dB[1]-1, dB[0]) - new Date(dA[2], dA[1]-1, dA[0]);
+        });
+        const top5 = resultados.slice(0, 5);
+
+        if (top5.length > 0) {
+          let htmlList = top5.map(item => {
+            const isBad = item.estado.toUpperCase().includes('INFRAC');
+            return `<div class="acta-item ${isBad ? 'bad' : ''}">
+              <div class="acta-row">
+                <span class="acta-date">📅 ${item.fecha}</span>
+                <span class="acta-num">#${item.acta}</span>
+              </div>
+              <div class="acta-loc">📍 ${item.lugar}</div>
+              <div class="acta-type">🔧 ${item.tipo}</div>
+              <span class="acta-status">${item.estado}</span>
+              ${item.link.includes('http') ? `<button class="btn-pdf" onclick="window.open('${item.link}', '_blank')">👁 VER PDF</button>` : ''}
+            </div>`;
+          }).join('');
+          
+          showAppAlert("📋 Historial de Actas", htmlList, `Dominio: ${patente}`);
+        } else {
+          showAppAlert("Sin Antecedentes", `El dominio ${patente} no registra actas en esta base.`, "Limpio");
+        }
+
+      } catch (err) {
+        showAppAlert("Error de Conexión", "No se pudo leer la base de antecedentes.\nVerificá que el documento de Google Sheets esté publicado en la web.", "Falla Técnica");
+      } finally {
+        toggleLoader('btn_antecedentes', false);
+      }
+    }
+
+    async function verificarHabilitacion() {
+      const patente = getPatente();
+      if (!patente) return showAppAlert("Atención", "Ingresá una patente primero.", "Campo vacío");
+      toggleLoader('btn_habilitacion', true);
+
+      try {
+        const SHEET_ID = '1qg0v-XobD3IavyObK4gVBNB56bNm6kPcDqMbpGzhZvM';
+        const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
+        
+        const res = await fetch(url);
+        const data = await res.text();
+        
+        if (data.includes('<!DOCTYPE html>')) throw new Error("Hoja no pública.");
+
+        const lineas = data.split('\n');
+        let encontrado = null;
+
+        for(let linea of lineas) {
+          const col = linea.split(',').map(s => s.trim().replace(/^"|"$/g, ''));
+          if (col.length < 4) continue;
+          if (col[3].toUpperCase().replace(/\s+/g, '') === patente) {
+            encontrado = col; break;
+          }
+        }
+
+        if (encontrado) {
+          const empresa = encontrado[0] || 'Desconocida';
+          const modalidad = encontrado[1] || '-';
+          const tipoChapa = encontrado[4] || '-'; 
+          const fechaResolucion = encontrado[6] || ''; 
+          const permisoInicio = encontrado[7] || '';        
+          const permisoFin = encontrado[8] || '';            
+          const fechaVtoContrato = encontrado[9] || ''; 
+          const tipoContrato = (encontrado[10] || '').toUpperCase(); 
+
+          let textoVigencia = "";
+          if (tipoContrato.includes('LEASING') && fechaVtoContrato.length > 5 && !fechaVtoContrato.includes('--')) {
+               textoVigencia = `<strong>🤝 CONTRATO LEASING</strong><br>⏳ Vence: ${fechaVtoContrato}`;
+          } else if (fechaResolucion.length > 5 && !fechaResolucion.includes('--')) {
+               textoVigencia = `<strong>📅 Resolución:</strong> ${fechaResolucion}`;
+          } else {
+               textoVigencia = `<strong>⚠️ PERMISO PRECARIO</strong><br>▶ Inicio: ${permisoInicio}<br>⏹ Vence: ${permisoFin}`;
+          }
+
+          let msg = `<strong>🏢 Empresa:</strong> ${empresa}<br>
+                     <strong>📋 Modalidad:</strong> ${modalidad}<br> 
+                     <strong>🔢 Tipo Chapa:</strong> ${tipoChapa}<br><br>
+                     <div style="background:#f1f5f9; padding:10px; border-radius:8px;">${textoVigencia}</div>`;
+          showAppAlert("✅ UNIDAD HABILITADA", msg, `Dominio: ${patente}`);
+        } else {
+          showAppAlert("⚠️ NO FIGURA", `El dominio ${patente} no se encuentra en el padrón activo.`, "Alerta");
+        }
+      } catch (err) {
+        showAppAlert("Error", "No se pudo conectar con el padrón de habilitaciones.", "Falla Técnica");
+      } finally {
+        toggleLoader('btn_habilitacion', false);
+      }
+    }
+
+    async function consultarRTO() {
+      const patente = getPatente();
+      if (!patente) return showAppAlert("Atención", "Ingresá una patente primero.", "Campo vacío");
+      
+      toggleLoader('btn_rto', true);
+      
+      // NOTA ARQUITECTÓNICA: Evitamos el CORS de JS puro
+      setTimeout(() => {
+        toggleLoader('btn_rto', false);
+        showAppAlert("Bloqueo de Seguridad Web (CORS)", 
+          "Por medidas de seguridad de los navegadores (CORS), la consulta directa a 'cent.utn.edu.ar' desde una página web es bloqueada automáticamente.\n\nPara que esta función opere correctamente en la web, debemos conectar este botón a través del Backend en Python (FastAPI) de tu equipo.", 
+          "Limitación de Arquitectura Web"
+        );
+      }, 1000);
+    }
+
+    async function generarActa() {
+      const input = document.getElementById('ia_prompt').value.trim();
+      const apiKey = document.getElementById('ia_key').value.trim();
+      
+      if(!apiKey) return showAppAlert("Falta API Key", "Pegá tu clave de Cohere en el casillero correspondiente.");
+      if(!input) return showAppAlert("Sin datos", "Escribí los datos de la infracción.");
+
+      const btn = document.getElementById('btn_ia');
+      const resultBox = document.getElementById('ia_result_box');
+      const resultText = document.getElementById('ia_result_text');
+
+      btn.disabled = true;
+      btn.innerText = "PROCESANDO...";
+      resultBox.style.display = 'none';
+
+      const prompt = `ROL: Sos un Inspector del Ente Regulador de Servicios Publicos de la Provincia de Córdoba (Ersep).
+TAREA: Redactar UNICAMENTE el texto técnico para el campo "OBSERVACIONES" de un Acta de Constatación.
+ESTILO: Lenguaje administrativo, impersonal, punitivo, seco y técnico.
+REGLAS:
+1. NO cites leyes, artículos ni decretos.
+2. NO saludes, no expliques.
+3. Usá la tercera persona impersonal (Ej: "Se constata").
+4. Usá terminología técnica de Argentina ("Parabrisas", "Vereda", "Baúl").
+DATOS APORTADOS POR EL INSPECTOR: "${input}".
+TEXTO PARA EL ACTA:`;
+
+      try {
+        const res = await fetch('https://api.cohere.ai/v1/chat', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                message: prompt,
+                model: "command-nightly",
+                temperature: 0.2
+            })
+        });
+
+        const data = await res.json();
+        if(!res.ok) throw new Error(data.message || 'Verificá tu clave API');
+        
+        resultText.innerText = data.text;
+        resultBox.style.display = 'block';
+
+      } catch(e) {
+        showAppAlert("Error de IA", e.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "GENERAR TEXTO";
+      }
+    }
+
+    function copiarTextoIA() {
+      const text = document.getElementById('ia_result_text').innerText;
+      copyToClipboard(text);
+    }
+  </script>
+</body>
+</html>
