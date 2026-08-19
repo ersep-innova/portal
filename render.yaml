@@ -12,3 +12,36 @@ services:
         value: https://ersepobservatorio-cyt.github.io
       - key: SCRAPER_HTTP_TIMEOUT
         value: 45
+
+  - type: web
+    name: portal-observatorio-ersep-permisos
+    runtime: python
+    rootDir: backend-permisos
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ersep-permisos-db
+          property: connectionString
+      - key: FRONTEND_ORIGINS
+        value: https://ersepobservatorio-cyt.github.io
+      - key: GOOGLE_OAUTH_CLIENT_ID
+        sync: false
+      - key: BOOTSTRAP_ADMIN_EMAILS
+        sync: false
+      - key: GOOGLE_SHEET_ID
+        sync: false
+      - key: GOOGLE_CREDENTIALS_JSON
+        sync: false
+      - key: SHEETS_ENABLED
+        value: "true"
+
+databases:
+  - name: ersep-permisos-db
+    plan: free
+    databaseName: ersep_permisos
+    user: ersep_permisos_app
+    ipAllowList: []
