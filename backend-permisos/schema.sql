@@ -95,13 +95,11 @@ ALTER TABLE permisos_salida ADD COLUMN IF NOT EXISTS fecha_limite_devolucion DAT
 ALTER TABLE permisos_salida ADD COLUMN IF NOT EXISTS fuera_plazo_reglamentario BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE permisos_salida ADD COLUMN IF NOT EXISTS justificacion_fuera_plazo TEXT;
 
--- Conserva los permisos viejos: el valor histórico queda como declarado/calculado cuando no había distinción.
 UPDATE permisos_salida
 SET minutos_declarados = COALESCE(minutos_declarados, minutos_autorizados),
     minutos_calculados = COALESCE(minutos_calculados, minutos_autorizados)
 WHERE minutos_declarados IS NULL OR minutos_calculados IS NULL;
 
--- Reemplaza checks antiguos de estado/minutos por reglas compatibles con la V2.
 DO $$
 DECLARE
     c RECORD;
@@ -194,15 +192,20 @@ CREATE TABLE IF NOT EXISTS sync_sheets (
     numero_intentos INTEGER NOT NULL DEFAULT 0
 );
 
-
 -- Integración OAuth con Google Sheets.
 -- El refresh token queda en PostgreSQL; nunca se publica en GitHub Pages.
 CREATE TABLE IF NOT EXISTS google_sheets_oauth_states (
     state VARCHAR(255) PRIMARY KEY,
     usuario_id BIGINT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    code_verifier TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMPTZ NOT NULL
 );
+
+-- Migración idempotente para instalaciones que ya tenían la tabla OAuth.
+ALTER TABLE google_sheets_oauth_states
+    ADD COLUMN IF NOT EXISTS code_verifier TEXT;
+
 CREATE INDEX IF NOT EXISTS idx_google_sheets_oauth_states_exp
     ON google_sheets_oauth_states(expires_at);
 
