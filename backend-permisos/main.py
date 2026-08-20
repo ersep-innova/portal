@@ -146,7 +146,7 @@ def return_deadline(fecha_salida: date = Query(...), user: dict = Depends(requir
 
 
 @app.post("/api/permisos")
-def create_permission(payload: PermissionIn, user: dict = Depends(require_roles("AGENTE"))):
+def create_permission(payload: PermissionIn, bg: BackgroundTasks, user: dict = Depends(require_roles("AGENTE"))):
     if payload.tipo == "OFICIAL" and not (payload.lugar_destino or "").strip():
         raise HTTPException(status_code=422, detail="Las salidas oficiales requieren lugar de destino.")
     if payload.tipo == "PARTICULAR" and not payload.fecha_devolucion:
@@ -227,11 +227,15 @@ def create_permission(payload: PermissionIn, user: dict = Depends(require_roles(
                     )
             conn.commit()
             p["numero_permiso"] = number
-            return _serialize_permission(p)
+            result = _serialize_permission(p)
+
+    if settings.sheets_enabled:
+        bg.add_task(sync_all)
+    return result
 
 
 @app.post("/api/permisos/{permission_id}/enviar")
-def send_permission(permission_id: int, user: dict = Depends(require_roles("AGENTE"))):
+def send_permission(permission_id: int, bg: BackgroundTasks, user: dict = Depends(require_roles("AGENTE"))):
     with connection() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT * FROM permisos_salida WHERE id=%s FOR UPDATE", (permission_id,))
@@ -246,6 +250,8 @@ def send_permission(permission_id: int, user: dict = Depends(require_roles("AGEN
             cur.execute("UPDATE permisos_salida SET estado='PENDIENTE_JEFE',jefe_asignado_id=%s,updated_at=NOW() WHERE id=%s", (boss["id"], permission_id))
             add_history(cur, permission_id, user["id"], "ENVIADO_A_JEFE", "BORRADOR", "PENDIENTE_JEFE", f"Jefatura asignada: {boss['nombre']} {boss['apellido']}")
             conn.commit()
+    if settings.sheets_enabled:
+        bg.add_task(sync_all)
     return {"status": "ok", "message": "Solicitud enviada a autorización."}
 
 
@@ -309,7 +315,7 @@ def authorize(permission_id: int, payload: DecisionIn, bg: BackgroundTasks, user
 
 
 @app.post("/api/permisos/{permission_id}/rechazar")
-def reject(permission_id: int, payload: DecisionIn, user: dict = Depends(require_roles("JEFE"))):
+def reject(permission_id: int, payload: DecisionIn, bg: BackgroundTasks, user: dict = Depends(require_roles("JEFE"))):
     reason = (payload.observacion or "").strip()
     if not reason:
         raise HTTPException(status_code=422, detail="Debe indicar el motivo del rechazo.")
@@ -327,6 +333,8 @@ def reject(permission_id: int, payload: DecisionIn, user: dict = Depends(require
             cur.execute("UPDATE permisos_salida SET estado='RECHAZADO_JEFE',updated_at=NOW() WHERE id=%s", (permission_id,))
             add_history(cur, permission_id, user["id"], "RECHAZADO_JEFE", "PENDIENTE_JEFE", "RECHAZADO_JEFE", reason)
             conn.commit()
+    if settings.sheets_enabled:
+        bg.add_task(sync_all)
     return {"status": "ok"}
 
 
@@ -495,6 +503,19 @@ def set_user_status(target_id: int, payload: AdminUserStatusIn, user: dict = Dep
                 cur.execute("UPDATE jefaturas SET fecha_hasta=CURRENT_DATE-1 WHERE (usuario_id=%s OR jefe_id=%s) AND fecha_hasta IS NULL", (target_id, target_id))
             conn.commit()
     return {"status": "ok", "activo": payload.activo}
+
+
+@app.get("/api/sheets/status")
+def sheets_status(user: dict = Depends(require_roles("RRHH"))):
+    configured = bool(settings.google_sheet_id and settings.google_credentials_json)
+    return {
+        "enabled": settings.sheets_enabled,
+        "configured": configured,
+        "sheet_url": (
+            f"https://docs.google.com/spreadsheets/d/{settings.google_sheet_id}/edit"
+            if configured else None
+        ),
+    }
 
 
 @app.post("/api/sheets/sync")

@@ -9,7 +9,4 @@ window.ERSEP_PERMISOS_CONFIG = Object.freeze({
   HEALTH_PATH: "/api/health",
   HEALTH_TIMEOUT_MS: 75000,
   RETRY_DELAY_MS: 5000,
-
-  // El Sheet es privado. Este enlace solo se muestra a RR.HH./ADMIN si se configura.
-  RRHH_SHEET_URL: ""
 });

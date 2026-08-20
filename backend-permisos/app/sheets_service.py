@@ -8,8 +8,8 @@ from .config import settings
 from .database import connection
 
 SCOPES = [
+    # Acceso mínimo necesario: el Sheet se comparte directamente con la cuenta de servicio.
     "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive.file",
 ]
 
 

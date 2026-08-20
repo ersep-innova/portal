@@ -514,11 +514,33 @@
     } catch (error) { toast(error.message, "error"); }
   }
 
+  async function loadSheetsStatus() {
+    if (!currentUser || !(currentUser.roles.includes("RRHH") || currentUser.roles.includes("ADMIN"))) return;
+    try {
+      const status = await PermisosAPI.request("/api/sheets/status");
+      const label = $("#status_sheets");
+      const link = $("#rrhh_sheet_link");
+      if (status.configured && status.enabled) {
+        label.textContent = "● Google Sheets: configurado";
+        if (status.sheet_url) {
+          link.href = status.sheet_url;
+          link.hidden = false;
+        }
+      } else {
+        label.textContent = "○ Google Sheets: no configurado";
+        link.hidden = true;
+      }
+    } catch (_) {
+      $("#status_sheets").textContent = "○ Google Sheets: sin verificar";
+    }
+  }
+
   async function syncSheets() {
     try {
       const result = await PermisosAPI.request("/api/sheets/sync", { method: "POST" });
       toast(result.message || "Sincronización finalizada.", result.status === "ok" ? "success" : "");
       $("#status_sheets").textContent = result.status === "ok" ? "● Google Sheets: sincronizado" : "○ Google Sheets: no configurado";
+      await loadSheetsStatus();
     } catch (error) { toast(error.message, "error"); }
   }
 
@@ -585,13 +607,9 @@
     $("#user_widget").hidden = false;
     fillUser();
     applyRoles();
-    const sheetUrl = window.ERSEP_PERMISOS_CONFIG.RRHH_SHEET_URL;
-    if (sheetUrl && (user.roles.includes("RRHH") || user.roles.includes("ADMIN"))) {
-      $("#rrhh_sheet_link").href = sheetUrl;
-      $("#rrhh_sheet_link").hidden = false;
-    }
     resetPermissionForm();
     await loadDashboard();
+    await loadSheetsStatus();
   }
 
   function onLoggedOut() {
