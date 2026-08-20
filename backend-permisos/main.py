@@ -3,13 +3,20 @@ from datetime import date, time
 from typing import Literal
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query
+from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field
 
 from app.auth import get_current_user, require_roles
 from app.config import settings
 from app.database import close_pool, connection, init_schema, start_pool
-from app.sheets_service import sync_all
+from app.sheets_service import (
+    create_authorization_url,
+    disconnect as disconnect_sheets,
+    finish_authorization,
+    integration_status,
+    sync_all,
+)
 from app.workflow import (
     active_boss,
     add_history,
@@ -109,10 +116,12 @@ def health():
         with conn.cursor() as cur:
             cur.execute("SELECT 1 ok")
             db_ok = cur.fetchone()["ok"] == 1
+    sheets = integration_status()
     return {
         "status": "ok",
         "database": db_ok,
-        "sheets_configured": bool(settings.google_sheet_id and settings.google_credentials_json),
+        "sheets_configured": bool(sheets["configured"]),
+        "sheets_authorized": bool(sheets["authorized"]),
     }
 
 
@@ -507,15 +516,61 @@ def set_user_status(target_id: int, payload: AdminUserStatusIn, user: dict = Dep
 
 @app.get("/api/sheets/status")
 def sheets_status(user: dict = Depends(require_roles("RRHH"))):
-    configured = bool(settings.google_sheet_id and settings.google_credentials_json)
-    return {
-        "enabled": settings.sheets_enabled,
-        "configured": configured,
-        "sheet_url": (
-            f"https://docs.google.com/spreadsheets/d/{settings.google_sheet_id}/edit"
-            if configured else None
-        ),
-    }
+    return integration_status()
+
+
+@app.post("/api/sheets/connect")
+def sheets_connect(user: dict = Depends(require_roles("RRHH"))):
+    try:
+        return {"authorization_url": create_authorization_url(user)}
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"No fue posible iniciar la autorización de Google Sheets: {exc}",
+        )
+
+
+@app.get("/api/google-sheets/callback")
+def google_sheets_callback(
+    state: str | None = Query(default=None),
+    code: str | None = Query(default=None),
+    error: str | None = Query(default=None),
+):
+    base = settings.permisos_frontend_url.rstrip("/") + "/"
+    if error:
+        return RedirectResponse(
+            url=f"{base}?sheets=error&message={error}",
+            status_code=302,
+        )
+    if not state or not code:
+        return RedirectResponse(
+            url=f"{base}?sheets=error&message=respuesta_incompleta",
+            status_code=302,
+        )
+
+    try:
+        finish_authorization(state, code)
+        return RedirectResponse(
+            url=f"{base}?sheets=connected",
+            status_code=302,
+        )
+    except Exception as exc:
+        from urllib.parse import quote
+        return RedirectResponse(
+            url=f"{base}?sheets=error&message={quote(str(exc))}",
+            status_code=302,
+        )
+
+
+@app.post("/api/sheets/disconnect")
+def sheets_disconnect(user: dict = Depends(require_roles("RRHH"))):
+    try:
+        return disconnect_sheets()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"No fue posible desconectar Google Sheets: {exc}",
+        )
 
 
 @app.post("/api/sheets/sync")
@@ -523,4 +578,7 @@ def sync_sheets(user: dict = Depends(require_roles("RRHH"))):
     try:
         return sync_all()
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"No fue posible sincronizar Google Sheets: {exc}")
+        raise HTTPException(
+            status_code=502,
+            detail=f"No fue posible sincronizar Google Sheets: {exc}",
+        )

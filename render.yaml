@@ -34,8 +34,12 @@ services:
         sync: false
       - key: GOOGLE_SHEET_ID
         sync: false
-      - key: GOOGLE_CREDENTIALS_JSON
+      - key: GOOGLE_OAUTH_CLIENT_SECRET
         sync: false
+      - key: GOOGLE_SHEETS_REDIRECT_URI
+        value: https://portal-observatorio-ersep-permisos.onrender.com/api/google-sheets/callback
+      - key: PERMISOS_FRONTEND_URL
+        value: https://ersepobservatorio-cyt.github.io/portal-observatorio-ersep/modulos/permisos-salida/
       - key: SHEETS_ENABLED
         value: "true"
 

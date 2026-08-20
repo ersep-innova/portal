@@ -1,23 +1,214 @@
-import json
-from datetime import datetime
+import secrets
+from datetime import datetime, timedelta
+from urllib.parse import urlencode
 
 import gspread
-from google.oauth2.service_account import Credentials
+import requests
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import Flow
 
 from .config import settings
 from .database import connection
 
 SCOPES = [
-    # Acceso mínimo necesario: el Sheet se comparte directamente con la cuenta de servicio.
     "https://www.googleapis.com/auth/spreadsheets",
 ]
 
+AUTH_URI = "https://accounts.google.com/o/oauth2/auth"
+TOKEN_URI = "https://oauth2.googleapis.com/token"
+REVOKE_URI = "https://oauth2.googleapis.com/revoke"
+
+
+def _client_config() -> dict:
+    return {
+        "web": {
+            "client_id": settings.google_oauth_client_id,
+            "client_secret": settings.google_oauth_client_secret,
+            "auth_uri": AUTH_URI,
+            "token_uri": TOKEN_URI,
+            "redirect_uris": [settings.google_sheets_redirect_uri],
+        }
+    }
+
+
+def oauth_base_configured() -> bool:
+    return bool(
+        settings.sheets_enabled
+        and settings.google_oauth_client_id
+        and settings.google_oauth_client_secret
+        and settings.google_sheet_id
+        and settings.google_sheets_redirect_uri
+    )
+
+
+def get_integration() -> dict | None:
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT g.*, trim(concat(u.nombre,' ',u.apellido)) autorizado_nombre
+                FROM google_sheets_integracion g
+                LEFT JOIN usuarios u ON u.id=g.autorizado_por
+                WHERE g.id=1 AND g.activo=TRUE
+            """)
+            return cur.fetchone()
+
+
+def integration_status() -> dict:
+    integration = get_integration()
+    return {
+        "enabled": settings.sheets_enabled,
+        "base_configured": oauth_base_configured(),
+        "authorized": bool(integration),
+        "configured": bool(integration and oauth_base_configured()),
+        "sheet_url": (
+            f"https://docs.google.com/spreadsheets/d/{settings.google_sheet_id}/edit"
+            if settings.google_sheet_id else None
+        ),
+        "authorized_by": integration.get("autorizado_nombre") if integration else None,
+        "authorized_email": integration.get("autorizado_email") if integration else None,
+    }
+
+
+def create_authorization_url(user: dict) -> str:
+    if not oauth_base_configured():
+        raise RuntimeError(
+            "Google Sheets OAuth no está completamente configurado en Render."
+        )
+
+    state = secrets.token_urlsafe(32)
+    expires = datetime.utcnow() + timedelta(minutes=10)
+
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM google_sheets_oauth_states WHERE expires_at < NOW()")
+            cur.execute("""
+                INSERT INTO google_sheets_oauth_states (state,usuario_id,expires_at)
+                VALUES (%s,%s,%s)
+            """, (state, user["id"], expires))
+        conn.commit()
+
+    flow = Flow.from_client_config(
+        _client_config(),
+        scopes=SCOPES,
+        state=state,
+    )
+    flow.redirect_uri = settings.google_sheets_redirect_uri
+    authorization_url, _ = flow.authorization_url(
+        access_type="offline",
+        include_granted_scopes="true",
+        prompt="consent",
+    )
+    return authorization_url
+
+
+def finish_authorization(state: str, code: str) -> dict:
+    if not oauth_base_configured():
+        raise RuntimeError("La integración OAuth con Google Sheets no está configurada.")
+
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT s.*,u.email
+                FROM google_sheets_oauth_states s
+                JOIN usuarios u ON u.id=s.usuario_id
+                WHERE s.state=%s AND s.expires_at >= NOW()
+            """, (state,))
+            state_row = cur.fetchone()
+            if not state_row:
+                raise RuntimeError("La autorización expiró o el parámetro state no es válido.")
+
+    flow = Flow.from_client_config(
+        _client_config(),
+        scopes=SCOPES,
+        state=state,
+    )
+    flow.redirect_uri = settings.google_sheets_redirect_uri
+    flow.fetch_token(code=code)
+    creds = flow.credentials
+
+    if not creds.refresh_token:
+        raise RuntimeError(
+            "Google no devolvió un refresh token. Volvé a conectar la cuenta y aceptá nuevamente el acceso."
+        )
+
+    # Verifica de inmediato que la cuenta autorizada realmente puede abrir el Sheet.
+    test_client = gspread.authorize(creds)
+    test_client.open_by_key(settings.google_sheet_id)
+
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO google_sheets_integracion (
+                    id,autorizado_por,autorizado_email,refresh_token,scope,sheet_id,activo,updated_at
+                )
+                VALUES (1,%s,%s,%s,%s,%s,TRUE,NOW())
+                ON CONFLICT (id) DO UPDATE SET
+                    autorizado_por=EXCLUDED.autorizado_por,
+                    autorizado_email=EXCLUDED.autorizado_email,
+                    refresh_token=EXCLUDED.refresh_token,
+                    scope=EXCLUDED.scope,
+                    sheet_id=EXCLUDED.sheet_id,
+                    activo=TRUE,
+                    updated_at=NOW()
+            """, (
+                state_row["usuario_id"],
+                state_row["email"],
+                creds.refresh_token,
+                " ".join(SCOPES),
+                settings.google_sheet_id,
+            ))
+            cur.execute("DELETE FROM google_sheets_oauth_states WHERE state=%s", (state,))
+        conn.commit()
+
+    return {
+        "status": "ok",
+        "authorized_email": state_row["email"],
+        "sheet_url": f"https://docs.google.com/spreadsheets/d/{settings.google_sheet_id}/edit",
+    }
+
+
+def disconnect() -> dict:
+    integration = get_integration()
+    if not integration:
+        return {"status": "ok", "message": "Google Sheets ya estaba desconectado."}
+
+    try:
+        requests.post(
+            REVOKE_URI,
+            params={"token": integration["refresh_token"]},
+            timeout=15,
+        )
+    except Exception:
+        # Aunque Google no responda, se elimina localmente el token.
+        pass
+
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM google_sheets_integracion WHERE id=1")
+        conn.commit()
+
+    return {"status": "ok", "message": "Cuenta Google desconectada de Sheets."}
+
+
+def _credentials() -> Credentials | None:
+    integration = get_integration()
+    if not integration or not oauth_base_configured():
+        return None
+
+    return Credentials(
+        token=None,
+        refresh_token=integration["refresh_token"],
+        token_uri=TOKEN_URI,
+        client_id=settings.google_oauth_client_id,
+        client_secret=settings.google_oauth_client_secret,
+        scopes=SCOPES,
+    )
+
 
 def _client():
-    if not settings.sheets_enabled or not settings.google_sheet_id or not settings.google_credentials_json:
+    creds = _credentials()
+    if creds is None:
         return None
-    info = json.loads(settings.google_credentials_json)
-    creds = Credentials.from_service_account_info(info, scopes=SCOPES)
     return gspread.authorize(creds)
 
 
@@ -35,7 +226,10 @@ def _t(value):
 def sync_all() -> dict:
     client = _client()
     if client is None:
-        return {"status": "skipped", "message": "Google Sheets todavía no está configurado."}
+        return {
+            "status": "skipped",
+            "message": "Google Sheets todavía no está autorizado.",
+        }
 
     book = client.open_by_key(settings.google_sheet_id)
     ws = _worksheet(book, "PERMISOS")
@@ -59,6 +253,7 @@ def sync_all() -> dict:
                 ORDER BY p.fecha_salida DESC,p.id DESC
             """)
             permits = cur.fetchall()
+
             cur.execute("""
                 SELECT r.*,p.numero_permiso,trim(concat(u.nombre,' ',u.apellido)) agente
                 FROM reposiciones r
@@ -67,32 +262,55 @@ def sync_all() -> dict:
                 ORDER BY r.fecha_prevista DESC
             """)
             repos = cur.fetchall()
+
             cur.execute("""
                 SELECT
-                  COUNT(*) FILTER (WHERE date_trunc('month',fecha_salida)=date_trunc('month',CURRENT_DATE)) total_mes,
+                  COUNT(*) FILTER (
+                    WHERE date_trunc('month',fecha_salida)=date_trunc('month',CURRENT_DATE)
+                  ) total_mes,
                   COUNT(*) FILTER (WHERE estado='PENDIENTE_RRHH') pendientes_rrhh,
-                  COUNT(*) FILTER (WHERE tipo='PARTICULAR' AND date_trunc('month',fecha_salida)=date_trunc('month',CURRENT_DATE)) particulares_mes,
-                  COALESCE(SUM(minutos_declarados) FILTER (WHERE tipo='PARTICULAR' AND date_trunc('month',fecha_salida)=date_trunc('month',CURRENT_DATE)),0) minutos_particulares_mes
+                  COUNT(*) FILTER (
+                    WHERE tipo='PARTICULAR'
+                      AND date_trunc('month',fecha_salida)=date_trunc('month',CURRENT_DATE)
+                  ) particulares_mes,
+                  COALESCE(SUM(minutos_declarados) FILTER (
+                    WHERE tipo='PARTICULAR'
+                      AND date_trunc('month',fecha_salida)=date_trunc('month',CURRENT_DATE)
+                  ),0) minutos_particulares_mes
                 FROM permisos_salida
             """)
             summary = cur.fetchone()
 
     header = [
-        "ID","Número","Fecha","Agente","DNI","Legajo","Área","Tipo","Destino","Salida","Regreso","Sin regreso",
-        "Jornada desde","Jornada hasta","Minutos calculados","Minutos declarados","Justificación diferencia",
-        "Fecha devolución","Fecha límite 7 días hábiles","Fuera de plazo","Justificación fuera de plazo",
-        "Jefe","Estado","Creado","Actualizado"
+        "ID","Número","Fecha","Agente","DNI","Legajo","Área","Tipo","Destino",
+        "Salida","Regreso","Sin regreso","Jornada desde","Jornada hasta",
+        "Minutos calculados","Minutos declarados","Justificación diferencia",
+        "Fecha devolución","Fecha límite 7 días hábiles","Fuera de plazo",
+        "Justificación fuera de plazo","Jefe","Estado","Creado","Actualizado"
     ]
+
     values = [header]
     for p in permits:
         values.append([
-            p["id"], p["numero_permiso"], str(p["fecha_salida"]), p["agente"], p["dni"] or "", p["legajo"] or "", p["area"] or "", p["tipo"],
-            p["lugar_destino"] or "", _t(p["hora_salida"]), "" if p["sin_regreso"] else _t(p["hora_regreso"]), "SI" if p["sin_regreso"] else "NO",
-            _t(p["jornada_desde"]), _t(p["jornada_hasta"]), p["minutos_calculados"] if p["minutos_calculados"] is not None else "",
-            p["minutos_declarados"] if p["minutos_declarados"] is not None else "", p["justificacion_minutos"] or "",
-            str(p["fecha_devolucion"] or ""), str(p["fecha_limite_devolucion"] or ""), "SI" if p["fuera_plazo_reglamentario"] else "NO",
-            p["justificacion_fuera_plazo"] or "", p["jefe"] or "", p["estado"], p["created_at"].isoformat(), p["updated_at"].isoformat()
+            p["id"], p["numero_permiso"], str(p["fecha_salida"]), p["agente"],
+            p["dni"] or "", p["legajo"] or "", p["area"] or "", p["tipo"],
+            p["lugar_destino"] or "", _t(p["hora_salida"]),
+            "" if p["sin_regreso"] else _t(p["hora_regreso"]),
+            "SI" if p["sin_regreso"] else "NO",
+            _t(p["jornada_desde"]), _t(p["jornada_hasta"]),
+            p["minutos_calculados"] if p["minutos_calculados"] is not None else "",
+            p["minutos_declarados"] if p["minutos_declarados"] is not None else "",
+            p["justificacion_minutos"] or "",
+            str(p["fecha_devolucion"] or ""),
+            str(p["fecha_limite_devolucion"] or ""),
+            "SI" if p["fuera_plazo_reglamentario"] else "NO",
+            p["justificacion_fuera_plazo"] or "",
+            p["jefe"] or "",
+            p["estado"],
+            p["created_at"].isoformat(),
+            p["updated_at"].isoformat(),
         ])
+
     ws.clear()
     ws.update(values, "A1")
     ws.freeze(rows=1)
@@ -102,9 +320,14 @@ def sync_all() -> dict:
         "Minutos a reponer","Minutos repuestos","Estado"
     ]
     repo_values = [repo_header] + [[
-        r["numero_permiso"], r["agente"], str(r["fecha_prevista"]), _t(r.get("hora_desde_prevista")), _t(r.get("hora_hasta_prevista")),
-        str(r["fecha_real"] or ""), r["minutos_a_reponer"] if r["minutos_a_reponer"] is not None else "", r["minutos_repuestos"], r["estado"]
+        r["numero_permiso"], r["agente"], str(r["fecha_prevista"]),
+        _t(r.get("hora_desde_prevista")), _t(r.get("hora_hasta_prevista")),
+        str(r["fecha_real"] or ""),
+        r["minutos_a_reponer"] if r["minutos_a_reponer"] is not None else "",
+        r["minutos_repuestos"],
+        r["estado"],
     ] for r in repos]
+
     ws_repo.clear()
     ws_repo.update(repo_values, "A1")
     ws_repo.freeze(rows=1)
@@ -117,6 +340,7 @@ def sync_all() -> dict:
         ["Minutos particulares del mes", summary["minutos_particulares_mes"]],
         ["Última sincronización", datetime.now().isoformat(timespec="seconds")],
     ]
+
     ws_summary.clear()
     ws_summary.update(summary_values, "A1")
     ws_summary.freeze(rows=1)
@@ -124,11 +348,21 @@ def sync_all() -> dict:
     with connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                INSERT INTO sync_sheets (permiso_id, estado, ultimo_intento, ultimo_exito, numero_intentos)
-                SELECT id,'SINCRONIZADO',NOW(),NOW(),1 FROM permisos_salida
+                INSERT INTO sync_sheets (
+                    permiso_id, estado, ultimo_intento, ultimo_exito, numero_intentos
+                )
+                SELECT id,'SINCRONIZADO',NOW(),NOW(),1
+                FROM permisos_salida
                 ON CONFLICT (permiso_id) DO UPDATE SET
-                  estado='SINCRONIZADO',ultimo_intento=NOW(),ultimo_exito=NOW(),mensaje_error=NULL,
-                  numero_intentos=sync_sheets.numero_intentos+1
+                    estado='SINCRONIZADO',
+                    ultimo_intento=NOW(),
+                    ultimo_exito=NOW(),
+                    mensaje_error=NULL,
+                    numero_intentos=sync_sheets.numero_intentos+1
             """)
         conn.commit()
-    return {"status": "ok", "message": f"Google Sheets sincronizado: {len(permits)} permisos."}
+
+    return {
+        "status": "ok",
+        "message": f"Google Sheets sincronizado: {len(permits)} permisos.",
+    }

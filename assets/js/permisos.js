@@ -520,14 +520,35 @@
       const status = await PermisosAPI.request("/api/sheets/status");
       const label = $("#status_sheets");
       const link = $("#rrhh_sheet_link");
-      if (status.configured && status.enabled) {
-        label.textContent = "● Google Sheets: configurado";
+      const connect = $("#connect_sheets_btn");
+      const sync = $("#sync_sheets_btn");
+      const disconnect = $("#disconnect_sheets_btn");
+
+      if (!status.base_configured) {
+        label.textContent = "○ Google Sheets: falta configuración en Render";
+        connect.hidden = true;
+        sync.hidden = true;
+        disconnect.hidden = true;
+        link.hidden = true;
+        return;
+      }
+
+      if (status.authorized && status.enabled) {
+        label.textContent = status.authorized_email
+          ? `● Google Sheets: conectado · ${status.authorized_email}`
+          : "● Google Sheets: conectado";
+        connect.hidden = true;
+        sync.hidden = false;
+        disconnect.hidden = false;
         if (status.sheet_url) {
           link.href = status.sheet_url;
           link.hidden = false;
         }
       } else {
-        label.textContent = "○ Google Sheets: no configurado";
+        label.textContent = "○ Google Sheets: cuenta Google no conectada";
+        connect.hidden = false;
+        sync.hidden = true;
+        disconnect.hidden = true;
         link.hidden = true;
       }
     } catch (_) {
@@ -535,11 +556,27 @@
     }
   }
 
+  async function connectSheets() {
+    try {
+      const result = await PermisosAPI.request("/api/sheets/connect", { method: "POST" });
+      if (!result.authorization_url) throw new Error("El backend no devolvió la URL de autorización.");
+      window.location.assign(result.authorization_url);
+    } catch (error) { toast(error.message, "error"); }
+  }
+
+  async function disconnectSheets() {
+    if (!confirm("¿Desconectar la cuenta Google utilizada para sincronizar RR.HH.?")) return;
+    try {
+      const result = await PermisosAPI.request("/api/sheets/disconnect", { method: "POST" });
+      toast(result.message || "Google Sheets desconectado.", "success");
+      await loadSheetsStatus();
+    } catch (error) { toast(error.message, "error"); }
+  }
+
   async function syncSheets() {
     try {
       const result = await PermisosAPI.request("/api/sheets/sync", { method: "POST" });
       toast(result.message || "Sincronización finalizada.", result.status === "ok" ? "success" : "");
-      $("#status_sheets").textContent = result.status === "ok" ? "● Google Sheets: sincronizado" : "○ Google Sheets: no configurado";
       await loadSheetsStatus();
     } catch (error) { toast(error.message, "error"); }
   }
@@ -573,7 +610,9 @@
     $("#refresh_rrhh").addEventListener("click", loadRRHH);
     $("#rrhh_filter_estado").addEventListener("change", loadRRHH);
     $("#rrhh_filter_tipo").addEventListener("change", loadRRHH);
+    $("#connect_sheets_btn").addEventListener("click", connectSheets);
     $("#sync_sheets_btn").addEventListener("click", syncSheets);
+    $("#disconnect_sheets_btn").addEventListener("click", disconnectSheets);
     $("#refresh_users").addEventListener("click", loadUsers);
     $("#admin_clear_form").addEventListener("click", clearAdminForm);
     $("#admin_user_form").addEventListener("submit", async e => {
@@ -622,6 +661,15 @@
   }
 
   async function init() {
+    const qs = new URLSearchParams(window.location.search);
+    if (qs.get("sheets") === "connected") {
+      setTimeout(() => toast("Google Sheets quedó conectado correctamente.", "success"), 300);
+      history.replaceState({}, document.title, window.location.pathname);
+    } else if (qs.get("sheets") === "error") {
+      const msg = qs.get("message") || "No se pudo conectar Google Sheets.";
+      setTimeout(() => toast(`Google Sheets: ${msg}`, "error"), 300);
+      history.replaceState({}, document.title, window.location.pathname);
+    }
     bindEvents();
     updateFormRules();
     updateReturnRules();

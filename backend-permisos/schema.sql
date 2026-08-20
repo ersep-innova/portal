@@ -193,3 +193,27 @@ CREATE TABLE IF NOT EXISTS sync_sheets (
     mensaje_error TEXT,
     numero_intentos INTEGER NOT NULL DEFAULT 0
 );
+
+
+-- Integración OAuth con Google Sheets.
+-- El refresh token queda en PostgreSQL; nunca se publica en GitHub Pages.
+CREATE TABLE IF NOT EXISTS google_sheets_oauth_states (
+    state VARCHAR(255) PRIMARY KEY,
+    usuario_id BIGINT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_google_sheets_oauth_states_exp
+    ON google_sheets_oauth_states(expires_at);
+
+CREATE TABLE IF NOT EXISTS google_sheets_integracion (
+    id SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    autorizado_por BIGINT REFERENCES usuarios(id) ON DELETE SET NULL,
+    autorizado_email VARCHAR(255),
+    refresh_token TEXT NOT NULL,
+    scope TEXT,
+    sheet_id VARCHAR(255) NOT NULL,
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
