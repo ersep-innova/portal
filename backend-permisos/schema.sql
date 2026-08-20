@@ -8,9 +8,15 @@ CREATE TABLE IF NOT EXISTS usuarios (
     legajo VARCHAR(40) UNIQUE,
     area VARCHAR(180),
     activo BOOLEAN NOT NULL DEFAULT TRUE,
+    jornada_desde TIME NOT NULL DEFAULT '08:00',
+    jornada_hasta TIME NOT NULL DEFAULT '14:00',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Migración idempotente para bases creadas con la versión anterior.
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS jornada_desde TIME NOT NULL DEFAULT '08:00';
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS jornada_hasta TIME NOT NULL DEFAULT '14:00';
 
 CREATE TABLE IF NOT EXISTS roles (
     id BIGSERIAL PRIMARY KEY,
@@ -61,18 +67,81 @@ CREATE TABLE IF NOT EXISTS permisos_salida (
     hora_salida TIME NOT NULL,
     hora_regreso TIME,
     sin_regreso BOOLEAN NOT NULL DEFAULT FALSE,
-    minutos_autorizados INTEGER CHECK (minutos_autorizados IS NULL OR minutos_autorizados > 0),
+    jornada_desde TIME NOT NULL DEFAULT '08:00',
+    jornada_hasta TIME NOT NULL DEFAULT '14:00',
+    minutos_calculados INTEGER,
+    minutos_declarados INTEGER,
+    minutos_autorizados INTEGER,
+    justificacion_minutos TEXT,
     fecha_devolucion DATE,
+    fecha_limite_devolucion DATE,
+    fuera_plazo_reglamentario BOOLEAN NOT NULL DEFAULT FALSE,
+    justificacion_fuera_plazo TEXT,
     observaciones TEXT,
-    estado VARCHAR(30) NOT NULL DEFAULT 'BORRADOR' CHECK (estado IN (
-        'BORRADOR','PENDIENTE_JEFE','PENDIENTE_RRHH','VERIFICADO_RRHH','RECHAZADO','CANCELADO_AGENTE'
-    )),
+    estado VARCHAR(30) NOT NULL DEFAULT 'BORRADOR',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CHECK ((sin_regreso = TRUE AND hora_regreso IS NULL) OR sin_regreso = FALSE),
     CHECK ((tipo = 'OFICIAL' AND lugar_destino IS NOT NULL) OR tipo = 'PARTICULAR'),
     CHECK ((tipo = 'PARTICULAR' AND fecha_devolucion IS NOT NULL) OR tipo = 'OFICIAL')
 );
+
+ALTER TABLE permisos_salida ADD COLUMN IF NOT EXISTS jornada_desde TIME NOT NULL DEFAULT '08:00';
+ALTER TABLE permisos_salida ADD COLUMN IF NOT EXISTS jornada_hasta TIME NOT NULL DEFAULT '14:00';
+ALTER TABLE permisos_salida ADD COLUMN IF NOT EXISTS minutos_calculados INTEGER;
+ALTER TABLE permisos_salida ADD COLUMN IF NOT EXISTS minutos_declarados INTEGER;
+ALTER TABLE permisos_salida ADD COLUMN IF NOT EXISTS justificacion_minutos TEXT;
+ALTER TABLE permisos_salida ADD COLUMN IF NOT EXISTS fecha_limite_devolucion DATE;
+ALTER TABLE permisos_salida ADD COLUMN IF NOT EXISTS fuera_plazo_reglamentario BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE permisos_salida ADD COLUMN IF NOT EXISTS justificacion_fuera_plazo TEXT;
+
+-- Conserva los permisos viejos: el valor histórico queda como declarado/calculado cuando no había distinción.
+UPDATE permisos_salida
+SET minutos_declarados = COALESCE(minutos_declarados, minutos_autorizados),
+    minutos_calculados = COALESCE(minutos_calculados, minutos_autorizados)
+WHERE minutos_declarados IS NULL OR minutos_calculados IS NULL;
+
+-- Reemplaza checks antiguos de estado/minutos por reglas compatibles con la V2.
+DO $$
+DECLARE
+    c RECORD;
+BEGIN
+    FOR c IN
+        SELECT conname, pg_get_constraintdef(oid) AS def
+        FROM pg_constraint
+        WHERE conrelid = 'permisos_salida'::regclass AND contype = 'c'
+    LOOP
+        IF c.def ILIKE '%BORRADOR%' AND c.def ILIKE '%PENDIENTE_RRHH%' THEN
+            EXECUTE format('ALTER TABLE permisos_salida DROP CONSTRAINT %I', c.conname);
+        ELSIF c.def ILIKE '%minutos_autorizados%' AND c.def ILIKE '%> 0%' THEN
+            EXECUTE format('ALTER TABLE permisos_salida DROP CONSTRAINT %I', c.conname);
+        END IF;
+    END LOOP;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid='permisos_salida'::regclass AND conname='ck_permisos_estado_v2'
+    ) THEN
+        ALTER TABLE permisos_salida ADD CONSTRAINT ck_permisos_estado_v2 CHECK (estado IN (
+            'BORRADOR','PENDIENTE_JEFE','PENDIENTE_RRHH','VERIFICADO_RRHH',
+            'RECHAZADO','RECHAZADO_JEFE','RECHAZADO_RRHH','CANCELADO_AGENTE'
+        ));
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid='permisos_salida'::regclass AND conname='ck_permisos_minutos_v2'
+    ) THEN
+        ALTER TABLE permisos_salida ADD CONSTRAINT ck_permisos_minutos_v2 CHECK (
+            (minutos_autorizados IS NULL OR minutos_autorizados >= 0)
+            AND (minutos_calculados IS NULL OR minutos_calculados >= 0)
+            AND (minutos_declarados IS NULL OR minutos_declarados >= 0)
+        );
+    END IF;
+END $$;
+
 CREATE INDEX IF NOT EXISTS idx_permisos_agente ON permisos_salida(agente_id, fecha_salida DESC);
 CREATE INDEX IF NOT EXISTS idx_permisos_estado ON permisos_salida(estado, fecha_salida DESC);
 CREATE INDEX IF NOT EXISTS idx_permisos_jefe ON permisos_salida(jefe_asignado_id, estado);
@@ -104,6 +173,8 @@ CREATE TABLE IF NOT EXISTS reposiciones (
     id BIGSERIAL PRIMARY KEY,
     permiso_id BIGINT UNIQUE NOT NULL REFERENCES permisos_salida(id) ON DELETE CASCADE,
     fecha_prevista DATE NOT NULL,
+    hora_desde_prevista TIME,
+    hora_hasta_prevista TIME,
     fecha_real DATE,
     minutos_a_reponer INTEGER,
     minutos_repuestos INTEGER NOT NULL DEFAULT 0,
@@ -111,6 +182,8 @@ CREATE TABLE IF NOT EXISTS reposiciones (
     verificado_por BIGINT REFERENCES usuarios(id) ON DELETE SET NULL,
     fecha_verificacion TIMESTAMPTZ
 );
+ALTER TABLE reposiciones ADD COLUMN IF NOT EXISTS hora_desde_prevista TIME;
+ALTER TABLE reposiciones ADD COLUMN IF NOT EXISTS hora_hasta_prevista TIME;
 
 CREATE TABLE IF NOT EXISTS sync_sheets (
     permiso_id BIGINT PRIMARY KEY REFERENCES permisos_salida(id) ON DELETE CASCADE,

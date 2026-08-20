@@ -19,7 +19,11 @@ def active_boss(cur, user_id: int, on_date: date):
 
 
 def max_business_date(cur, start: date, business_days: int = 7) -> date:
-    cur.execute("SELECT fecha FROM feriados WHERE activo=TRUE AND fecha > %s AND fecha <= %s", (start, start + timedelta(days=20)))
+    # Se busca un margen amplio para contemplar fines de semana y feriados consecutivos.
+    cur.execute(
+        "SELECT fecha FROM feriados WHERE activo=TRUE AND fecha > %s AND fecha <= %s",
+        (start, start + timedelta(days=40)),
+    )
     holidays = {r["fecha"] for r in cur.fetchall()}
     cursor = start
     count = 0
@@ -30,9 +34,21 @@ def max_business_date(cur, start: date, business_days: int = 7) -> date:
     return cursor
 
 
-def calculate_minutes(start_time, end_time, no_return: bool):
+def calculate_minutes(start_time, end_time, no_return: bool, workday_end=None) -> int:
+    """Calcula la sugerencia automática de tiempo fuera.
+
+    - Con regreso: regreso - salida.
+    - Sin regreso: fin de jornada - salida.
+    La sugerencia nunca es negativa: si la salida es posterior a la jornada habitual,
+    devuelve 0 y el agente puede declarar manualmente otro tiempo con justificación.
+    """
     if no_return:
-        return None
+        if workday_end is None:
+            raise HTTPException(status_code=422, detail="No hay horario de fin de jornada configurado para el agente.")
+        start = datetime.combine(date.today(), start_time)
+        end = datetime.combine(date.today(), workday_end)
+        return max(0, int((end - start).total_seconds() // 60))
+
     if end_time is None:
         raise HTTPException(status_code=422, detail="Debe indicar hora de regreso o marcar 'Sin regreso'.")
     start = datetime.combine(date.today(), start_time)
@@ -40,6 +56,17 @@ def calculate_minutes(start_time, end_time, no_return: bool):
     minutes = int((end - start).total_seconds() // 60)
     if minutes <= 0:
         raise HTTPException(status_code=422, detail="La hora de regreso debe ser posterior a la hora de salida.")
+    return minutes
+
+
+def minutes_between(start_time, end_time) -> int:
+    if start_time is None or end_time is None:
+        raise HTTPException(status_code=422, detail="Debe indicar el tramo horario completo.")
+    start = datetime.combine(date.today(), start_time)
+    end = datetime.combine(date.today(), end_time)
+    minutes = int((end - start).total_seconds() // 60)
+    if minutes <= 0:
+        raise HTTPException(status_code=422, detail="La hora 'hasta' debe ser posterior a la hora 'desde'.")
     return minutes
 
 
@@ -54,11 +81,19 @@ def get_permission_for_user(permission_id: int, user: dict):
     with connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT p.*, trim(concat(a.nombre,' ',a.apellido)) agente_nombre, a.legajo, a.dni, a.area,
-                       trim(concat(j.nombre,' ',j.apellido)) jefe_nombre
+                SELECT p.*,
+                       trim(concat(a.nombre,' ',a.apellido)) agente_nombre,
+                       a.legajo, a.dni, a.area,
+                       trim(concat(j.nombre,' ',j.apellido)) jefe_nombre,
+                       r.fecha_prevista reposicion_fecha_prevista,
+                       r.hora_desde_prevista reposicion_hora_desde,
+                       r.hora_hasta_prevista reposicion_hora_hasta,
+                       r.minutos_a_reponer reposicion_minutos,
+                       r.estado reposicion_estado
                 FROM permisos_salida p
                 JOIN usuarios a ON a.id=p.agente_id
                 LEFT JOIN usuarios j ON j.id=p.jefe_asignado_id
+                LEFT JOIN reposiciones r ON r.permiso_id=p.id
                 WHERE p.id=%s
             """, (permission_id,))
             p = cur.fetchone()
