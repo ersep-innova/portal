@@ -1,6 +1,5 @@
 import secrets
 from datetime import datetime, timedelta
-from urllib.parse import urlencode
 
 import gspread
 import requests
@@ -78,26 +77,38 @@ def create_authorization_url(user: dict) -> str:
     state = secrets.token_urlsafe(32)
     expires = datetime.utcnow() + timedelta(minutes=10)
 
-    with connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM google_sheets_oauth_states WHERE expires_at < NOW()")
-            cur.execute("""
-                INSERT INTO google_sheets_oauth_states (state,usuario_id,expires_at)
-                VALUES (%s,%s,%s)
-            """, (state, user["id"], expires))
-        conn.commit()
-
+    # PKCE: el code_verifier debe sobrevivir hasta el callback OAuth.
     flow = Flow.from_client_config(
         _client_config(),
         scopes=SCOPES,
         state=state,
+        autogenerate_code_verifier=True,
     )
     flow.redirect_uri = settings.google_sheets_redirect_uri
+
     authorization_url, _ = flow.authorization_url(
         access_type="offline",
         include_granted_scopes="true",
         prompt="consent",
     )
+
+    code_verifier = flow.code_verifier
+    if not code_verifier:
+        raise RuntimeError("No fue posible generar el code_verifier OAuth.")
+
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM google_sheets_oauth_states WHERE expires_at < NOW()"
+            )
+            cur.execute("""
+                INSERT INTO google_sheets_oauth_states (
+                    state, usuario_id, code_verifier, expires_at
+                )
+                VALUES (%s,%s,%s,%s)
+            """, (state, user["id"], code_verifier, expires))
+        conn.commit()
+
     return authorization_url
 
 
@@ -116,11 +127,18 @@ def finish_authorization(state: str, code: str) -> dict:
             state_row = cur.fetchone()
             if not state_row:
                 raise RuntimeError("La autorización expiró o el parámetro state no es válido.")
+            if not state_row.get("code_verifier"):
+                raise RuntimeError(
+                    "La autorización OAuth no tiene code_verifier. Iniciá nuevamente la conexión con Google Sheets."
+                )
 
+    # Se reconstruye el Flow con el MISMO code_verifier utilizado al generar
+    # el code_challenge enviado a Google.
     flow = Flow.from_client_config(
         _client_config(),
         scopes=SCOPES,
         state=state,
+        code_verifier=state_row["code_verifier"],
     )
     flow.redirect_uri = settings.google_sheets_redirect_uri
     flow.fetch_token(code=code)
@@ -179,7 +197,6 @@ def disconnect() -> dict:
             timeout=15,
         )
     except Exception:
-        # Aunque Google no responda, se elimina localmente el token.
         pass
 
     with connection() as conn:
