@@ -438,9 +438,12 @@ def reject_rrhh(permission_id: int, payload: DecisionIn, bg: BackgroundTasks, us
 
 @app.post("/api/admin/email/test")
 def test_email(user: dict = Depends(require_roles("ADMIN"))):
-    """Envía un correo de prueba al administrador autenticado."""
+    """Prueba técnica de Resend usando su destinatario oficial de test."""
     try:
-        return send_test_email(user["email"], user.get("nombre") or "Administrador")
+        return send_test_email(
+            "delivered@resend.dev",
+            user.get("nombre") or "Administrador",
+        )
     except Exception as exc:
         raise HTTPException(
             status_code=502,
