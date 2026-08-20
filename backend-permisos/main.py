@@ -10,6 +10,7 @@ from pydantic import BaseModel, EmailStr, Field
 from app.auth import get_current_user, require_roles
 from app.config import settings
 from app.database import close_pool, connection, init_schema, start_pool
+from app.email_service import notify_permission_event, send_test_email
 from app.sheets_service import (
     create_authorization_url,
     disconnect as disconnect_sheets,
@@ -261,6 +262,7 @@ def send_permission(permission_id: int, bg: BackgroundTasks, user: dict = Depend
             conn.commit()
     if settings.sheets_enabled:
         bg.add_task(sync_all)
+    bg.add_task(notify_permission_event, permission_id, "SOLICITUD_ENVIADA", None)
     return {"status": "ok", "message": "Solicitud enviada a autorización."}
 
 
@@ -320,6 +322,7 @@ def authorize(permission_id: int, payload: DecisionIn, bg: BackgroundTasks, user
             conn.commit()
     if settings.sheets_enabled:
         bg.add_task(sync_all)
+    bg.add_task(notify_permission_event, permission_id, "JEFATURA_APROBADO", payload.observacion)
     return {"status": "ok"}
 
 
@@ -344,6 +347,7 @@ def reject(permission_id: int, payload: DecisionIn, bg: BackgroundTasks, user: d
             conn.commit()
     if settings.sheets_enabled:
         bg.add_task(sync_all)
+    bg.add_task(notify_permission_event, permission_id, "JEFATURA_RECHAZADO", reason)
     return {"status": "ok"}
 
 
@@ -405,6 +409,7 @@ def verify_rrhh(permission_id: int, payload: DecisionIn, bg: BackgroundTasks, us
             conn.commit()
     if settings.sheets_enabled:
         bg.add_task(sync_all)
+    bg.add_task(notify_permission_event, permission_id, "RRHH_APROBADO", payload.observacion)
     return {"status": "ok"}
 
 
@@ -427,7 +432,20 @@ def reject_rrhh(permission_id: int, payload: DecisionIn, bg: BackgroundTasks, us
             conn.commit()
     if settings.sheets_enabled:
         bg.add_task(sync_all)
+    bg.add_task(notify_permission_event, permission_id, "RRHH_RECHAZADO", reason)
     return {"status": "ok"}
+
+
+@app.post("/api/admin/email/test")
+def test_email(user: dict = Depends(require_roles("ADMIN"))):
+    """Envía un correo de prueba al administrador autenticado."""
+    try:
+        return send_test_email(user["email"], user.get("nombre") or "Administrador")
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"No fue posible enviar el correo de prueba: {exc}",
+        )
 
 
 @app.get("/api/admin/usuarios")
