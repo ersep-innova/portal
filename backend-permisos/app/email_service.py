@@ -332,8 +332,11 @@ def send_test_email(recipient: str, name: str = "Administrador") -> dict:
 
     api_key = _api_key()
     from_address = _from_address()
+
     if not api_key or not from_address:
-        raise RuntimeError("Faltan RESEND_API_KEY y/o EMAIL_FROM en Render.")
+        raise RuntimeError(
+            "Faltan RESEND_API_KEY y/o EMAIL_FROM en Render."
+        )
 
     response = requests.post(
         RESEND_URL,
@@ -349,15 +352,28 @@ def send_test_email(recipient: str, name: str = "Administrador") -> dict:
                 <div style="font-family:Arial,sans-serif;max-width:600px">
                   <h2>Correo configurado correctamente</h2>
                   <p>Hola {escape(name)},</p>
-                  <p>Si recibió este mensaje, el backend de Permisos de Salida
-                     ya puede enviar notificaciones automáticas.</p>
+                  <p>
+                    Si este envío fue aceptado, el backend de Permisos
+                    de Salida puede comunicarse correctamente con Resend.
+                  </p>
                 </div>
             """,
         },
         timeout=20,
     )
-    response.raise_for_status()
+
+    if not response.ok:
+        try:
+            detail = response.json()
+        except Exception:
+            detail = response.text
+
+        raise RuntimeError(
+            f"Resend respondió HTTP {response.status_code}: {detail}"
+        )
+
     payload = response.json()
+
     return {
         "status": "ok",
         "to": recipient,
