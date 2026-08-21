@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Compras y Contrataciones · Solicitud de Pedido de Provisión del ERSeP.">
+  <title>Compras · Portal de Innovación y Análisis de Datos</title>
+  <link rel="stylesheet" href="../../assets/css/style.css">
+  <link rel="stylesheet" href="../../assets/css/portal-pages.css">
+  <link rel="stylesheet" href="../../assets/css/standalone.css">
+  <link rel="icon" href="../../assets/img/favicon.ico">
+  <link href="../../assets/css/institutional-theme.css" rel="stylesheet"/>
+<style>
+/* ══════════ Barra de acciones del módulo ══════════ */
+.compras-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+.compras-btns{display:flex;gap:8px;flex-wrap:wrap;}
+.compras-btn{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:10px 15px;font:700 13px var(--font-main);cursor:pointer;transition:.18s ease;display:inline-flex;align-items:center;gap:7px;}
+.compras-btn:hover{border-color:var(--accent-mid);color:var(--accent-mid);transform:translateY(-1px);}
+.compras-btn.primary{background:var(--accent-mid);border-color:var(--accent-mid);color:#fff;}
+.compras-btn.primary:hover{background:#a90000;border-color:#a90000;color:#fff;}
+.compras-total{font:800 13px var(--font-main);color:var(--text-muted);letter-spacing:.3px;}
+.compras-total strong{color:var(--text);font-size:16px;margin-left:6px;}
+
+/* ══════════ Contenedor con scroll en pantallas chicas ══════════ */
+.sheet-scroll{overflow-x:auto;padding:4px 2px 2px;}
+
+/* ══════════ La hoja: réplica del formulario oficial ══════════ */
+.doc-sheet{
+  color-scheme:light;
+  width:740px;min-width:740px;margin:0 auto;
+  background:#fff;color:#000;
+  font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.35;
+  padding:24px 28px;border:1px solid #bbb;border-radius:4px;
+  box-shadow:0 10px 30px rgba(15,23,42,.14);
+}
+.doc-sheet *{box-sizing:border-box;}
+
+.doc-header{display:flex;align-items:center;border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:10px;gap:16px;}
+.doc-logo-box{display:flex;align-items:center;gap:10px;border-right:2px solid #000;padding-right:16px;min-width:150px;}
+.doc-logo-box img{height:42px;width:auto;}
+.doc-logo-text{font-size:24px;font-weight:900;letter-spacing:1px;line-height:1;}
+.doc-logo-sub{font-size:7px;letter-spacing:.4px;text-transform:uppercase;color:#333;margin-top:2px;display:block;max-width:110px;}
+.doc-header-title{font-size:17px;font-weight:bold;text-transform:uppercase;letter-spacing:.5px;}
+
+.doc-title{background:#000;color:#fff;text-align:center;font-size:14px;font-weight:bold;text-transform:uppercase;padding:6px 0;letter-spacing:1px;margin-bottom:8px;}
+
+.doc-meta{display:grid;grid-template-columns:1fr 1fr;border:1px solid #000;}
+.doc-meta-left{border-right:1px solid #000;}
+.doc-meta-org{font-weight:bold;font-size:11px;padding:4px 6px;border-bottom:1px solid #000;}
+.doc-meta-area{display:flex;align-items:center;gap:6px;padding:4px 6px;}
+.doc-meta-field{display:flex;align-items:center;padding:3px 6px;gap:6px;border-bottom:1px solid #000;}
+.doc-meta-field:last-child{border-bottom:none;}
+.doc-label{font-weight:bold;font-size:11px;white-space:nowrap;}
+/* La fecha se imprime siempre en formato dd/mm/aaaa, sin depender del idioma del navegador */
+.fecha-print{display:none;flex:1;border-bottom:1px solid #555;padding:1px 2px;}
+
+.doc-sheet input[type="text"],
+.doc-sheet input[type="date"],
+.doc-sheet textarea{
+  border:none;border-bottom:1px solid #555;outline:none;
+  font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#000;
+  background:transparent;width:100%;padding:1px 2px;border-radius:0;height:auto;
+}
+.doc-sheet input:focus,.doc-sheet textarea:focus{border-bottom-color:#0f4c8a;background:#eaf4fc;box-shadow:none;}
+
+.doc-table{width:100%;border-collapse:collapse;border:1px solid #000;}
+.doc-table th,.doc-table td{border:1px solid #000;padding:2px 5px;vertical-align:middle;}
+.doc-table th{background:#fff;font-weight:bold;text-align:center;font-size:11px;}
+.doc-table th small{font-weight:normal;font-size:10px;}
+.doc-table td.td-num{width:58px;text-align:center;}
+.doc-table td.td-qty{width:92px;text-align:center;}
+.doc-table td.td-price{width:112px;text-align:center;}
+.doc-table td input{border-bottom:none !important;text-align:inherit;}
+.doc-table tbody tr td input{min-height:20px;}
+.doc-table tbody tr:hover{background:#f6f9fc;}
+
+.doc-bottom{display:grid;grid-template-columns:2fr 1fr;border:1px solid #000;border-top:none;}
+.doc-obs{border-right:1px solid #000;padding:6px;min-height:84px;}
+.doc-obs-label{font-size:10px;color:#555;margin-bottom:2px;}
+.doc-obs textarea{resize:none;height:70px;border:none;font-size:11px;line-height:1.4;}
+.doc-resp{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;padding:8px 10px;}
+.doc-resp-line{width:90%;border-top:1px solid #000;margin-bottom:3px;}
+.doc-resp-label{font-size:10px;text-align:center;}
+
+.doc-afect{display:grid;grid-template-columns:1fr 1fr 1fr;border:1px solid #000;border-top:none;}
+.doc-afect-cell{padding:5px 8px;border-right:1px solid #000;display:flex;align-items:center;gap:6px;}
+.doc-afect-cell:last-child{border-right:none;}
+
+.doc-aut{text-align:center;padding:20px 0 4px;font-size:12px;}
+.doc-aut-line{width:200px;border-top:1px solid #000;margin:0 auto 3px;}
+
+/* La hoja nunca cambia con el tema oscuro: es papel */
+[data-theme="dark"] .doc-sheet{background:#fff;color:#000;}
+
+@media (max-width:820px){
+  .sheet-scroll{margin:0 -12px;padding:4px 12px;}
+}
+
+/* ══════════ Impresión: sólo la hoja ══════════ */
+@media print{
+  @page{size:A4 portrait;margin:12mm;}
+  body{background:#fff !important;}
+  .header,.tool-hero,.compras-toolbar,.card-head,.page-note,.no-print{display:none !important;}
+  .wrap{max-width:none !important;padding:0 !important;margin:0 !important;}
+  .card,.card-body{border:none !important;background:#fff !important;box-shadow:none !important;padding:0 !important;margin:0 !important;}
+  .sheet-scroll{overflow:visible !important;padding:0 !important;margin:0 !important;}
+  .doc-sheet{width:100% !important;min-width:0 !important;border:none !important;border-radius:0 !important;box-shadow:none !important;padding:0 !important;}
+  .doc-sheet input,.doc-sheet textarea{background:transparent !important;color:#000 !important;}
+  #fecha{display:none !important;}
+  .fecha-print{display:block !important;}
+  .doc-table tbody tr:hover{background:transparent !important;}
+  .doc-table{page-break-inside:avoid;}
+}
+</style>
+</head>
+
+<body class="tool-page compras-page area-institutional">
+<div class="wrap">
+
+  <header class="header">
+    <a class="page-brand" href="../../" aria-label="Volver al portal"><img src="../../assets/img/institucional/logo-ersep.png" alt="ERSeP"></a>
+    <div class="header-left">
+      <h1>Compras</h1>
+      <span class="header-badge">Área Compras y Contrataciones · Documentación administrativa</span>
+    </div>
+    <div class="header-right">
+      <a class="nav-chip" href="../../"><span>⌂</span> Menú</a>
+      <button class="theme-toggle" data-theme-toggle="" type="button">🌙</button>
+    </div>
+  </header>
+
+  <section class="tool-hero">
+    <div>
+      <div class="tool-kicker">Compras y Contrataciones</div>
+      <h2>Solicitud de Pedido de Provisión</h2>
+      <p>Completá el formulario en pantalla, agregá los ítems que necesites y generá el PDF o la impresión con el formato oficial del ERSeP. El documento se imprime tal como el formulario en papel, sin los controles del portal.</p>
+    </div>
+    <div class="hero-symbol official-hero-logo institutional" aria-hidden="true"><img src="../../assets/img/institucional/logo-ersep.png" alt=""></div>
+  </section>
+
+  <section class="card">
+    <div class="card-body">
+
+      <div class="compras-toolbar">
+        <div class="compras-btns">
+          <button class="compras-btn primary" id="btn_print" type="button">🖨 Imprimir / Guardar PDF</button>
+          <button class="compras-btn" id="btn_add" type="button">＋ Agregar ítem</button>
+          <button class="compras-btn" id="btn_remove" type="button">－ Quitar último</button>
+          <button class="compras-btn" id="btn_clear" type="button">🗑 Limpiar formulario</button>
+        </div>
+        <div class="compras-total">Total estimado <strong id="total_estimado">$ 0,00</strong></div>
+      </div>
+
+      <div class="sheet-scroll">
+        <div class="doc-sheet" id="doc_sheet">
+
+          <!-- ── Encabezado ── -->
+          <div class="doc-header">
+            <div class="doc-logo-box">
+              <img src="../../assets/img/institucional/logo-ersep.png" alt="ERSeP">
+              <span>
+                <span class="doc-logo-text">ERSeP</span>
+                <span class="doc-logo-sub">Ente Regulador de los Servicios Públicos</span>
+              </span>
+            </div>
+            <div class="doc-header-title">Área Compras y Contrataciones</div>
+          </div>
+
+          <div class="doc-title">Solicitud de Pedido de Provisión</div>
+
+          <!-- ── Datos generales ── -->
+          <div class="doc-meta">
+            <div class="doc-meta-left">
+              <div class="doc-meta-org">ENTE REGULADOR DE LOS SERVICIOS PÚBLICOS</div>
+              <div class="doc-meta-area">
+                <span class="doc-label">Área</span>
+                <input type="text" id="area" style="flex:1">
+              </div>
+            </div>
+            <div>
+              <div class="doc-meta-field">
+                <span class="doc-label">Fecha</span>
+                <input type="date" id="fecha" style="flex:1">
+                <span class="fecha-print" id="fecha_print"></span>
+              </div>
+              <div class="doc-meta-field">
+                <span class="doc-label">Numerado</span>
+                <input type="text" id="numerado" style="flex:1">
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Ítems ── -->
+          <table class="doc-table">
+            <thead>
+              <tr>
+                <th style="width:58px">Nº de<br>Orden</th>
+                <th>DESCRIPCIÓN<br><small>Suministros / Trabajos / Servicios</small></th>
+                <th style="width:92px">Total<br>a Proveer</th>
+                <th style="width:112px">Precio<br>estimado</th>
+              </tr>
+            </thead>
+            <tbody id="items_body"></tbody>
+          </table>
+
+          <!-- ── Observaciones y firma ── -->
+          <div class="doc-bottom">
+            <div class="doc-obs">
+              <div class="doc-obs-label">Observaciones / Justificación</div>
+              <textarea id="observaciones"></textarea>
+            </div>
+            <div class="doc-resp">
+              <div style="flex:1"></div>
+              <div class="doc-resp-line"></div>
+              <div class="doc-resp-label">Responsable del Área</div>
+            </div>
+          </div>
+
+          <!-- ── Afectación presupuestaria ── -->
+          <div class="doc-afect">
+            <div class="doc-afect-cell">
+              <span class="doc-label">Se practicó afectación</span>
+              <input type="text" id="afectacion" style="flex:1">
+            </div>
+            <div class="doc-afect-cell">
+              <span class="doc-label">Partida Pr.</span>
+              <input type="text" id="partida" style="flex:1">
+            </div>
+            <div class="doc-afect-cell">
+              <span class="doc-label">Código</span>
+              <input type="text" id="codigo" style="flex:1">
+            </div>
+          </div>
+
+          <div class="doc-aut">
+            <div class="doc-aut-line"></div>
+            Autorizado
+          </div>
+
+        </div><!-- /doc-sheet -->
+      </div>
+
+      <p class="page-note">El total estimado se calcula automáticamente a partir de la columna “Precio estimado” y se muestra sólo en pantalla: el documento impreso conserva el formato original del formulario. Los datos no se almacenan en ningún servidor; permanecen en esta pestaña hasta que la cerrés o limpies el formulario.</p>
+
+    </div>
+  </section>
+
+</div>
+
+<script defer src="../../assets/js/theme.js"></script>
+<script>
+(function () {
+  var FILAS_INICIALES = 12;
+  var MIN_FILAS = 1;
+  var MAX_FILAS = 40;
+
+  var tbody   = document.getElementById('items_body');
+  var totalEl = document.getElementById('total_estimado');
+
+  var fmt = new Intl.NumberFormat('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  // Acepta "12.500,50", "12500.50", "$ 1.200" y similares.
+  function aNumero(txt) {
+    if (!txt) return 0;
+    var s = String(txt).replace(/[^\d.,-]/g, '').trim();
+    if (!s) return 0;
+    var coma = s.lastIndexOf(','), punto = s.lastIndexOf('.');
+    if (coma > -1 && coma > punto) {
+      s = s.replace(/\./g, '').replace(',', '.');
+    } else if (punto > -1 && coma > -1) {
+      s = s.replace(/,/g, '');
+    } else if (coma > -1) {
+      s = s.replace(',', '.');
+    }
+    var n = parseFloat(s);
+    return isFinite(n) ? n : 0;
+  }
+
+  function agregarFila() {
+    if (tbody.rows.length >= MAX_FILAS) return;
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td class="td-num"><input type="text" style="text-align:center"></td>' +
+      '<td class="td-desc"><input type="text"></td>' +
+      '<td class="td-qty"><input type="text" style="text-align:center"></td>' +
+      '<td class="td-price"><input type="text" class="precio" style="text-align:right"></td>';
+    tbody.appendChild(tr);
+    renumerar();
+  }
+
+  function quitarFila() {
+    if (tbody.rows.length <= MIN_FILAS) return;
+    tbody.deleteRow(tbody.rows.length - 1);
+    calcularTotal();
+  }
+
+  function renumerar() {
+    Array.prototype.forEach.call(tbody.querySelectorAll('td.td-num input'), function (inp, i) {
+      inp.value = i + 1;
+    });
+  }
+
+  function calcularTotal() {
+    var total = 0;
+    Array.prototype.forEach.call(tbody.querySelectorAll('input.precio'), function (inp) {
+      total += aNumero(inp.value);
+    });
+    totalEl.textContent = '$ ' + fmt.format(total);
+  }
+
+  function limpiar() {
+    if (!confirm('¿Limpiar todos los campos del formulario?')) return;
+    document.querySelectorAll('#doc_sheet input, #doc_sheet textarea').forEach(function (el) {
+      el.value = '';
+    });
+    fechaInput.value = hoy();
+    sincronizarFecha();
+    renumerar();
+    calcularTotal();
+  }
+
+  function hoy() {
+    var d = new Date();
+    var mm = String(d.getMonth() + 1).padStart(2, '0');
+    var dd = String(d.getDate()).padStart(2, '0');
+    return d.getFullYear() + '-' + mm + '-' + dd;
+  }
+
+  var fechaInput = document.getElementById('fecha');
+  var fechaPrint = document.getElementById('fecha_print');
+
+  function sincronizarFecha() {
+    var v = fechaInput.value;
+    fechaPrint.textContent = v ? v.slice(8, 10) + '/' + v.slice(5, 7) + '/' + v.slice(0, 4) : '';
+  }
+
+  // ── Inicialización ──
+  for (var i = 0; i < FILAS_INICIALES; i++) agregarFila();
+  fechaInput.value = hoy();
+  sincronizarFecha();
+
+  // ── Eventos ──
+  fechaInput.addEventListener('input', sincronizarFecha);
+  fechaInput.addEventListener('change', sincronizarFecha);
+  document.getElementById('btn_print').addEventListener('click', function () { window.print(); });
+  document.getElementById('btn_add').addEventListener('click', agregarFila);
+  document.getElementById('btn_remove').addEventListener('click', quitarFila);
+  document.getElementById('btn_clear').addEventListener('click', limpiar);
+
+  tbody.addEventListener('input', function (e) {
+    if (e.target.classList.contains('precio')) calcularTotal();
+  });
+
+  // Enter en la última fila agrega una nueva
+  tbody.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    var fila = e.target.closest('tr');
+    if (fila === tbody.rows[tbody.rows.length - 1]) agregarFila();
+    var sig = fila.nextElementSibling;
+    if (sig) {
+      var idx = Array.prototype.indexOf.call(fila.cells, e.target.closest('td'));
+      var destino = sig.cells[idx] && sig.cells[idx].querySelector('input');
+      if (destino) destino.focus();
+    }
+  });
+
+  calcularTotal();
+})();
+</script>
+</body>
+</html>
