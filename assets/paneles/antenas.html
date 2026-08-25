@@ -1,0 +1,203 @@
+<!-- Panel de consulta tarifaria · Antenas · se inyecta en el índice al filtrar por Antenas Celular -->
+<style>
+.pnl{--pnl-line:#dddddd;--pnl-line-strong:#c8c8c8;--pnl-muted:#5f6368;--pnl-bg:#eeeeee;
+  --pnl-antennas:#a88976;--pnl-antennas-dark:#795f50;--pnl-antennas-soft:#f7f2ef;
+  --pnl-red:#b51234;--pnl-red-dark:#850921;--pnl-red-soft:#fff1f4;--pnl-blue:#0f4c8a;--pnl-ok:#087f5b;
+  font-size:14px;line-height:1.6;}
+.pnl *{box-sizing:border-box}
+.pnl b,.pnl strong,.pnl em,.pnl i{display:inline}
+.pnl .pnl-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:14px}
+.pnl .pnl-head h3{margin:0;font-size:24px;letter-spacing:-.02em;color:var(--text)}
+.pnl .pnl-head p{margin:2px 0 0;color:var(--pnl-muted);font-size:12.5px}
+.pnl .pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--pnl-line);background:var(--card);
+  border-radius:999px;padding:8px 12px;font-size:12px;font-weight:700;color:var(--pnl-muted);white-space:nowrap}
+.pnl .dot{width:9px;height:9px;border-radius:50%;background:#9ca79f}
+.pnl .dot.ok{background:var(--pnl-ok)}.pnl .dot.warn{background:#d9a420}
+.pnl .btn{border:1px solid var(--pnl-line);background:var(--card);color:var(--text);padding:9px 14px;border-radius:10px;
+  font-weight:800;font-size:12.5px;cursor:pointer;transition:.2s ease}
+.pnl .btn:hover{transform:translateY(-1px);border-color:var(--pnl-line-strong)}
+.pnl .btn.primary{background:linear-gradient(135deg,var(--pnl-red-dark),var(--pnl-red));color:#fff;border-color:transparent}
+.pnl .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.pnl .pcard{background:var(--card);border:1px solid var(--pnl-line);border-top:5px solid var(--pnl-antennas);
+  border-radius:16px;overflow:hidden;box-shadow:0 10px 28px rgba(25,25,25,.07)}
+.pnl .pcard-head{padding:16px 18px;border-bottom:1px solid var(--pnl-line)}
+.pnl .pcard-head h4{margin:0 0 3px;font-size:17px;color:var(--text)}
+.pnl .pcard-head p{margin:0;color:var(--pnl-muted);font-size:12.5px}
+.pnl .pcard-body{padding:16px 18px}
+.pnl .metric-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+.pnl .metric{border:1px solid var(--pnl-line);border-radius:12px;padding:14px;background:var(--pnl-bg);min-width:0}
+.pnl .metric .name{font-size:11px;color:var(--pnl-muted);font-weight:800;text-transform:uppercase;letter-spacing:.07em}
+.pnl .metric .value{font-size:clamp(21px,2vw,28px);font-weight:900;margin-top:5px;letter-spacing:-.025em;color:var(--text)}
+.pnl .metric small{display:block;color:var(--pnl-muted);margin-top:5px;line-height:1.4;font-size:11.5px}
+.pnl .maxbox{margin-top:13px;padding:14px 16px;border-radius:12px;background:var(--pnl-red-soft);
+  border:1px solid rgba(181,18,52,.22);display:flex;align-items:center;justify-content:space-between;gap:16px}
+.pnl .maxbox span{font-weight:800;color:var(--text)}
+.pnl .maxbox strong{font-size:23px;color:var(--pnl-red-dark);white-space:nowrap}
+.pnl .umbox{background:var(--pnl-antennas-soft);border-color:rgba(168,137,118,.35)}
+.pnl .umbox span{display:flex;flex-direction:column;line-height:1.3}
+.pnl .umbox span small{margin-top:3px;color:var(--pnl-muted);font-weight:600}
+.pnl .umbox strong{color:var(--pnl-antennas-dark);font-size:26px}
+.pnl .resbox{margin-top:12px;padding:13px 15px;border-radius:12px;border:1px dashed var(--pnl-antennas);
+  background:var(--pnl-antennas-soft);display:flex;justify-content:space-between;gap:14px;align-items:center;flex-wrap:wrap}
+.pnl .resbox b{font-size:16px;color:var(--pnl-antennas-dark)}
+.pnl .resbox small{display:block;color:var(--pnl-muted);font-size:11.5px;line-height:1.45;margin-top:3px}
+.pnl .statusline{margin-top:12px;padding-top:12px;border-top:1px dashed var(--pnl-line);font-size:12px;color:var(--pnl-muted);line-height:1.5}
+.pnl .source-list{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.pnl .source-list a{font-size:11.5px;font-weight:700;padding:7px 10px;border-radius:8px;background:var(--bg-subtle);
+  border:1px solid var(--pnl-line);color:var(--pnl-blue);text-decoration:none}
+.pnl details{background:var(--card);border:1px solid var(--pnl-line);border-left:4px solid var(--pnl-antennas);
+  border-radius:12px;padding:13px 15px;margin-top:14px}
+.pnl summary{font-weight:800;cursor:pointer;color:var(--text)}
+.pnl .legend{font-size:11.5px;color:var(--pnl-muted);line-height:1.55;margin-top:10px}
+.pnl .spin{display:inline-block;width:12px;height:12px;border:2px solid #e0b8c1;border-top-color:#fff;border-radius:50%;
+  animation:pnlspin .8s linear infinite;vertical-align:-2px;margin-right:5px}
+@keyframes pnlspin{to{transform:rotate(360deg)}}
+@media(max-width:900px){.pnl .grid2{grid-template-columns:1fr}.pnl .metric-grid{grid-template-columns:1fr}
+  .pnl .maxbox{flex-direction:column;align-items:flex-start}}
+</style>
+
+<div class="pnl">
+  <div class="pnl-head">
+    <div>
+      <h3>Consulta tarifaria · Antenas</h3>
+      <p>Costo equivalente de una llamada local de 60 segundos en prepago, base de cálculo de la Unidad de Multa.</p>
+    </div>
+    <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+      <span class="pill"><span id="ant_dot" class="dot"></span><span id="ant_status_global">Datos base cargados</span></span>
+      <button class="btn primary" id="ant_refresh" type="button">Actualizar desde fuentes</button>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <article class="pcard">
+      <div class="pcard-head"><h4>Último informe</h4><p>Valores de referencia informados para el expediente.</p></div>
+      <div class="pcard-body">
+        <div class="metric-grid">
+          <div class="metric"><div class="name">Claro</div><div class="value">$ 406,08</div></div>
+          <div class="metric"><div class="name">Movistar</div><div class="value">$ 406,10</div></div>
+          <div class="metric"><div class="name">Personal / Nextel</div><div class="value">$ 373,00</div></div>
+        </div>
+        <div class="maxbox umbox">
+          <span>UM (12 × valor del último informe)<small>Valor máximo del último informe: $ 406,10</small></span>
+          <strong>$ 4.873,20</strong>
+        </div>
+        <div class="resbox">
+          <span>
+            <b id="ant_resolucion">Resolución N° — / —</b>
+            <small>Norma que aprueba el último informe y el valor de la UM. <b>Pendiente de completar y verificar</b> contra el listado oficial de resoluciones del ERSeP antes de publicar.</small>
+          </span>
+          <a class="btn" href="https://ersep.cba.gov.ar/category/resoluciones/" target="_blank" rel="noopener">Ver resoluciones ERSeP</a>
+        </div>
+      </div>
+    </article>
+
+    <article class="pcard">
+      <div class="pcard-head"><h4>Consulta web actualizada</h4><p>El panel intenta releer las fuentes al abrirse y al presionar “Actualizar”.</p></div>
+      <div class="pcard-body">
+        <div class="metric-grid">
+          <div class="metric"><div class="name">Claro</div><div class="value" id="claroMinute">$ 532,01</div>
+            <small id="claroNote">$266 primeros 30 s + $8,867/s los 30 s siguientes · ago/2026.</small></div>
+          <div class="metric"><div class="name">Movistar</div><div class="value" id="movistarMinute">$ 370,10</div>
+            <small id="movistarNote">Fuente oficial publicada: $185 primeros 30 s + $6,17/s. La página informa vigencia desde 01/02/2025.</small></div>
+          <div class="metric"><div class="name">Personal</div><div class="value" id="personalMinute">$ 464,00</div>
+            <small id="personalNote">Equivalente de 60 s sobre bloque inicial final de $232. Si la fuente expone el segundo aire, se recalcula automáticamente.</small></div>
+        </div>
+        <div class="maxbox"><span>Máximo de las 3 empresas</span><strong id="currentMax">$ 532,01</strong></div>
+        <div class="statusline" id="antennaStatus">Los valores visibles son el respaldo cargado al 25/08/2026. Al actualizar, se reemplazan cuando la fuente oficial publica los parámetros necesarios.</div>
+        <div class="source-list">
+          <a href="https://www.claro.com.ar/personas/servicios/servicios-moviles/prepago/planes-y-precios/13/" target="_blank" rel="noopener">Fuente Claro</a>
+          <a href="https://www.personal.com.ar/prepago" target="_blank" rel="noopener">Fuente Personal</a>
+          <a href="https://ayuda.movistar.com.ar/pregunta/cuales-son-los-precios-de-los-planes-vigentes.html" target="_blank" rel="noopener">Fuente Movistar</a>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <details>
+    <summary>Criterio de cálculo del minuto</summary>
+    <div class="legend">Cuando la operadora publica un bloque inicial de 30 segundos y luego un precio por segundo, el minuto equivalente se calcula como <b>bloque inicial + 30 × precio del segundo</b>. En Personal, si el segundo aire no aparece en el contenido accesible, se conserva un valor de respaldo y se lo identifica expresamente.</div>
+  </details>
+</div>
+
+<script>
+(function () {
+  var fmt = function (n) { return '$ ' + Number(n).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+  var parseNum = function (s) { return Number(String(s).replace(/\./g, '').replace(',', '.')); };
+  var READER = 'https://r.jina.ai/';
+  var sources = {
+    claro: 'https://www.claro.com.ar/personas/planes-prepago-pospago/terminos-condiciones-prepago',
+    movistar: 'https://www.movistar.com.ar/prepagocontodo',
+    personal: 'https://www.personal.com.ar/prepago'
+  };
+  var $ = function (id) { return document.getElementById(id); };
+
+  function reader(url) {
+    return fetch(READER + url, { cache: 'no-store' }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    });
+  }
+
+  function setMax() {
+    var vals = ['claroMinute', 'movistarMinute', 'personalMinute']
+      .map(function (id) { return parseNum($(id).textContent.replace('$', '').trim()); })
+      .filter(function (n) { return isFinite(n); });
+    if (vals.length) $('currentMax').textContent = fmt(Math.max.apply(null, vals));
+  }
+
+  async function actualizar() {
+    var btn = $('ant_refresh');
+    btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Actualizando';
+    $('ant_dot').className = 'dot warn';
+    $('ant_status_global').textContent = 'Consultando fuentes públicas…';
+    var msgs = [];
+
+    try {
+      var t = await reader(sources.claro);
+      var a = t.match(/Establecimiento de llamada:\s*\$\s*([\d.,]+)/i);
+      var b = t.match(/Segundo local:\s*\$\s*([\d.,]+)/i);
+      if (a && b) {
+        var bloque = parseNum(a[1]), seg = parseNum(b[1]);
+        $('claroMinute').textContent = fmt(bloque + 30 * seg);
+        $('claroNote').textContent = fmt(bloque) + ' primeros 30 s + ' + fmt(seg) + '/s los 30 s siguientes.';
+        msgs.push('Claro OK');
+      } else { msgs.push('Claro: respaldo'); }
+    } catch (e) { msgs.push('Claro: respaldo'); }
+
+    try {
+      var t2 = await reader(sources.movistar);
+      var m = t2.match(/A líneas de otras operadoras[\s\S]{0,220}?Primeros 30 seg\.\s*\$\s*([\d.,]+)[\s\S]{0,80}?Luego\s*\$\s*([\d.,]+)\s*x\s*seg/i);
+      if (m) {
+        var bl = parseNum(m[1]), sg = parseNum(m[2]);
+        $('movistarMinute').textContent = fmt(bl + 30 * sg);
+        $('movistarNote').textContent = fmt(bl) + ' primeros 30 s + ' + fmt(sg) + '/s.';
+        msgs.push('Movistar OK');
+      } else { msgs.push('Movistar: respaldo'); }
+    } catch (e) { msgs.push('Movistar: respaldo'); }
+
+    try {
+      var t3 = await reader(sources.personal);
+      var blockM = t3.match(/Valor (?:del )?[Bb]loque inicial[^$]{0,80}\$\s*([\d.,]+)\s*final/i);
+      var secM = t3.match(/Precio (?:final )?del segundo aire local[^$]{0,30}\$\s*([\d.,]+)/i);
+      if (blockM) {
+        var bq = parseNum(blockM[1]), min, nota;
+        if (secM) { var sc = parseNum(secM[1]); min = bq + 30 * sc; nota = fmt(bq) + ' primeros 30 s + ' + fmt(sc) + '/s.'; }
+        else { min = bq * 2; nota = 'equivalente de 60 s usando 2 × bloque inicial de 30 s (' + fmt(bq) + ').'; }
+        $('personalMinute').textContent = fmt(min);
+        $('personalNote').textContent = nota;
+        msgs.push('Personal OK');
+      } else { msgs.push('Personal: respaldo'); }
+    } catch (e) { msgs.push('Personal: respaldo'); }
+
+    setMax();
+    $('antennaStatus').textContent = 'Consulta completada: ' + msgs.join(' · ') +
+      '. Cuando una página no expone el dato en texto, queda visible el respaldo cargado.';
+    $('ant_dot').className = 'dot ok';
+    $('ant_status_global').textContent = 'Consulta ' + new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+    btn.disabled = false; btn.textContent = 'Actualizar desde fuentes';
+  }
+
+  $('ant_refresh').addEventListener('click', actualizar);
+  setMax();
+})();
+</script>
