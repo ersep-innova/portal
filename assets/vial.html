@@ -1,0 +1,267 @@
+<!-- Panel de consulta tarifaria · Vial · se inyecta en el índice al filtrar por Vial y Edilicia -->
+<style>
+.pnlv{--pnl-line:#dddddd;--pnl-line-strong:#c8c8c8;--pnl-muted:#5f6368;--pnl-bg:#eeeeee;
+  --pnl-road:#75828a;--pnl-road-dark:#535f66;--pnl-road-soft:#f0f3f4;
+  --pnl-red:#b51234;--pnl-red-dark:#850921;--pnl-blue:#0f4c8a;--pnl-ok:#087f5b;
+  font-size:14px;line-height:1.6;}
+.pnlv *{box-sizing:border-box}
+.pnlv b,.pnlv strong,.pnlv em,.pnlv i{display:inline}
+.pnlv .pnl-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:14px}
+.pnlv .pnl-head h3{margin:0;font-size:24px;letter-spacing:-.02em;color:var(--text)}
+.pnlv .pnl-head p{margin:2px 0 0;color:var(--pnl-muted);font-size:12.5px}
+.pnlv .pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--pnl-line);background:var(--card);
+  border-radius:999px;padding:8px 12px;font-size:12px;font-weight:700;color:var(--pnl-muted);white-space:nowrap}
+.pnlv .btn{border:1px solid var(--pnl-line);background:var(--card);color:var(--text);padding:9px 14px;border-radius:10px;
+  font-weight:800;font-size:12.5px;cursor:pointer;text-decoration:none;display:inline-block;transition:.2s ease}
+.pnlv .btn:hover{transform:translateY(-1px);border-color:var(--pnl-line-strong)}
+.pnlv .pcard{background:var(--card);border:1px solid var(--pnl-line);border-top:5px solid var(--pnl-road);
+  border-radius:16px;overflow:hidden;box-shadow:0 10px 28px rgba(25,25,25,.07);margin-bottom:16px}
+.pnlv .pcard-head{padding:16px 18px;border-bottom:1px solid var(--pnl-line)}
+.pnlv .pcard-head h4{margin:0 0 3px;font-size:17px;color:var(--text)}
+.pnlv .pcard-head p{margin:0;color:var(--pnl-muted);font-size:12.5px}
+.pnlv .pcard-body{padding:16px 18px}
+.pnlv .vial-grid{display:grid;grid-template-columns:minmax(360px,.85fr) minmax(520px,1.15fr);gap:16px;align-items:start}
+.pnlv .vial-hero .pcard-body{background:var(--pnl-road-soft);padding:13px}
+.pnlv .vial-hero img{width:100%;max-height:520px;object-fit:contain;display:block;border-radius:10px;background:#e9edef}
+.pnlv .table-wrap{overflow:auto;border:1px solid var(--pnl-line);border-radius:12px;background:var(--card)}
+.pnlv table{width:100%;border-collapse:collapse;min-width:560px;font-size:13px}
+.pnlv th,.pnlv td{padding:11px 13px;border-bottom:1px solid var(--pnl-line);text-align:right;color:var(--text)}
+.pnlv th:first-child,.pnlv td:first-child{text-align:left}
+.pnlv thead th{background:var(--pnl-bg);font-size:10.5px;text-transform:uppercase;letter-spacing:.075em;
+  color:var(--pnl-muted);font-weight:800;border-bottom:2px solid var(--pnl-line-strong);white-space:nowrap}
+.pnlv tbody tr:last-child td{border-bottom:0}
+.pnlv .current-row td{background:var(--pnl-road-soft);font-weight:800}
+.pnlv .notice{padding:11px 13px;border-radius:10px;background:#fff8df;border:1px solid #ead98a;color:#665515;
+  font-size:12px;line-height:1.45;margin-top:12px}
+.pnlv .source-list{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.pnlv .source-list a{font-size:11.5px;font-weight:700;padding:7px 10px;border-radius:8px;background:var(--bg-subtle);
+  border:1px solid var(--pnl-line);color:var(--pnl-blue);text-decoration:none}
+.pnlv .conv{border-top-color:var(--pnl-red)}
+.pnlv .benef{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;margin-bottom:14px}
+.pnlv .benef div{border:1px solid var(--pnl-line);border-radius:12px;padding:13px 14px;background:var(--pnl-bg)}
+.pnlv .benef > div > b{display:block;font-size:12.5px;color:var(--text);margin-bottom:4px}
+.pnlv .benef small{display:block;color:var(--pnl-muted);font-size:11.5px;line-height:1.5}
+.pnlv .benef small b{color:var(--text)}
+.pnlv .gallery{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px}
+.pnlv .shot{background:var(--card);border:1px solid var(--pnl-line);border-top:4px solid var(--pnl-road);
+  border-radius:14px;overflow:hidden}
+.pnlv .shot button{all:unset;display:block;cursor:zoom-in;width:100%}
+.pnlv .shot img{width:100%;height:200px;object-fit:contain;background:#eef0f1;display:block}
+.pnlv .shot .cap{padding:9px 11px;font-size:11.5px;color:var(--pnl-muted);border-top:1px solid var(--pnl-line)}
+.pnlv .legend{font-size:11.5px;color:var(--pnl-muted);line-height:1.55;margin-top:10px}
+#pnl_modal{position:fixed;inset:0;background:rgba(0,0,0,.86);display:none;align-items:center;justify-content:center;padding:24px;z-index:9999}
+#pnl_modal.open{display:flex}
+#pnl_modal img{max-width:96vw;max-height:92vh;object-fit:contain}
+#pnl_modal .close{position:absolute;top:15px;right:18px;background:#fff;border:0;border-radius:999px;width:42px;height:42px;font-size:24px;cursor:pointer}
+@media(max-width:1120px){.pnlv .vial-grid{grid-template-columns:1fr}.pnlv .gallery{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:900px){.pnlv .benef{grid-template-columns:1fr}.pnlv .gallery{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){.pnlv .gallery{grid-template-columns:1fr}}
+</style>
+
+<div class="pnlv">
+  <div class="pnl-head">
+    <div>
+      <h3>Consulta tarifaria · Vial</h3>
+      <p>Tarifario de Caminos de las Sierras · Red de Accesos a Córdoba (RAC).</p>
+    </div>
+    <span class="pill" id="vialUpdated">Vigente desde 07/08/2026</span>
+  </div>
+
+  <div class="vial-grid">
+    <article class="pcard vial-hero">
+      <div class="pcard-head"><h4>Cuadro tarifario vigente</h4><p>Imagen tomada de la publicación oficial.</p></div>
+      <div class="pcard-body">
+        <a id="vialCurrentLink" href="https://caminosdelassierras.com.ar/tarifario/" target="_blank" rel="noopener">
+          <img id="vialCurrentImg" alt="Cuadro tarifario vigente de Caminos de las Sierras"
+               src="https://caminosdelassierras.com.ar/wp-content/uploads/2026/08/Tarifario-2026-08-07.jpg-scaled.jpeg">
+        </a>
+      </div>
+    </article>
+
+    <article class="pcard">
+      <div class="pcard-head"><h4>Valores vigentes · pago manual</h4><p>Respaldo numérico del cuadro publicado desde 07/08/2026.</p></div>
+      <div class="pcard-body">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Categoría</th><th>Tarifa básica</th><th>Recargo manual</th><th>Total</th></tr></thead>
+            <tbody>
+              <tr><td>1 · Motocicletas*</td><td>$ 800,00</td><td>$ 0,00</td><td>$ 800,00</td></tr>
+              <tr><td>2 · Automóviles</td><td>$ 1.958,44</td><td>$ 1.041,56</td><td>$ 3.000,00</td></tr>
+              <tr><td>3 · 2 ejes, ruedas duales / &gt; 2,10 m</td><td>$ 3.916,88</td><td>$ 2.083,12</td><td>$ 6.000,00</td></tr>
+              <tr><td>4 · 3/4 ejes, sin ruedas duales / &lt; 2,10 m</td><td>$ 3.916,88</td><td>$ 2.083,12</td><td>$ 6.000,00</td></tr>
+              <tr><td>5 · 3/4 ejes, ruedas duales / &gt; 2,10 m</td><td>$ 6.316,93</td><td>$ 11.683,07</td><td>$ 18.000,00</td></tr>
+              <tr><td>6 · 5/6 ejes</td><td>$ 8.422,57</td><td>$ 15.577,43</td><td>$ 24.000,00</td></tr>
+              <tr><td>7 · Más de 6 ejes</td><td>$ 10.528,21</td><td>$ 19.471,79</td><td>$ 30.000,00</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="notice">* Motocicletas: según el cuadro vigente, abonan únicamente sábados, domingos y feriados.</div>
+        <div class="source-list"><a href="https://caminosdelassierras.com.ar/tarifario/" target="_blank" rel="noopener">Abrir tarifario oficial</a></div>
+      </div>
+    </article>
+  </div>
+
+  <article class="pcard">
+    <div class="pcard-head"><h4>Telepeaje · Categoría 2 (Automóviles)</h4><p>Valor por pasada según cantidad mensual.</p></div>
+    <div class="pcard-body">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Tramo mensual</th><th>Tarifa vigente</th></tr></thead>
+          <tbody>
+            <tr><td>1 a 10 pasadas</td><td>$ 1.860,51</td></tr>
+            <tr><td>11 a 30 pasadas</td><td>$ 1.762,59</td></tr>
+            <tr><td>31 a 50 pasadas</td><td>$ 1.566,75</td></tr>
+            <tr><td>51 a 80 pasadas</td><td>$ 1.370,91</td></tr>
+            <tr><td>Desde la pasada 81</td><td>Tarifa bonificada según cuadro vigente</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </article>
+
+  <!-- ══════ Convenio N.º 38 ══════ -->
+  <article class="pcard conv">
+    <div class="pcard-head">
+      <h4>Convenio N.º 38 · Régimen diferencial de residentes</h4>
+      <p>Tratamiento tarifario diferencial para residentes de La Calera y Malagueño.</p>
+    </div>
+    <div class="pcard-body">
+      <div class="benef">
+        <div>
+          <b>Segundo anillo de Circunvalación</b>
+          <small>No se abona doble: quien cruza la estación de la E-53 y la del segundo anillo <b>dentro de los 30 minutos</b> paga una sola pasada. Pasado ese lapso, se cobran las dos.</small>
+        </div>
+        <div>
+          <b>Residentes de La Calera y Malagueño</b>
+          <small>Alcanzados por el régimen diferencial creado por el Convenio N.º 38.</small>
+        </div>
+        <div>
+          <b>E-55 y Ruta 20 (E-38)</b>
+          <small>Abonan el 50 %, adheridos al Telepeaje / Peaje Dinámico de Caminos de las Sierras.</small>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Caso · Ruta E-55</th><th>Valor por pasada</th></tr></thead>
+          <tbody>
+            <tr class="current-row"><td>Residente La Calera · Cat. 2 · Telepeaje</td><td>$ 979,22</td></tr>
+            <tr><td>Pasadas 1 a 80</td><td>$ 979,22 c/u</td></tr>
+            <tr><td>Desde la pasada 81</td><td>$ 0,00 — bonificada 100 %</td></tr>
+            <tr><td>Cat. 2 · tarifa básica general</td><td>$ 1.958,44</td></tr>
+            <tr><td>Cat. 2 · pago manual</td><td>$ 3.000,00</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="notice">La tarifa de $ 979,22 corresponde específicamente a residentes de La Calera por pasadas en la E-55 con adhesión al sistema dinámico; no es la tarifa general de cualquier automóvil Categoría 2. Surge del cuadro vigente desde el 07/08/2026, donde la básica Cat. 2 es $ 1.958,44.</div>
+</div>
+  </article>
+
+  <article class="pcard">
+    <div class="pcard-head"><h4>Evolución reciente</h4><p>Valores reconstruidos de los cuadros del archivo aportado.</p></div>
+    <div class="pcard-body">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Vigencia</th><th>Cat. 2 básica</th><th>Recargo manual</th><th>Total manual</th><th>Telepeaje 1–10</th><th>11–30</th><th>31–50</th><th>51–80</th></tr></thead>
+          <tbody>
+            <tr><td>01/01/2025</td><td>$ 1.300,00</td><td>$ 700,00</td><td>$ 2.000,00</td><td>$ 1.040,00*</td><td>$ 1.040,00*</td><td>$ 1.040,00*</td><td>$ 910,00</td></tr>
+            <tr><td>27/12/2025</td><td>$ 1.677,00</td><td>$ 1.323,00</td><td>$ 3.000,00</td><td>$ 1.593,15</td><td>$ 1.509,30</td><td>$ 1.341,60</td><td>$ 1.173,90</td></tr>
+            <tr><td>04/02/2026</td><td>$ 1.703,83</td><td>$ 1.296,17</td><td>$ 3.000,00</td><td>$ 1.618,64</td><td>$ 1.533,45</td><td>$ 1.363,07</td><td>$ 1.192,68</td></tr>
+            <tr><td>09/04/2026</td><td>$ 1.762,25</td><td>$ 1.237,75</td><td>$ 3.000,00</td><td>$ 1.674,14</td><td>$ 1.586,02</td><td>$ 1.409,80</td><td>$ 1.233,57</td></tr>
+            <tr><td>08/05/2026</td><td>$ 1.799,26</td><td>$ 1.200,74</td><td>$ 3.000,00</td><td>$ 1.709,29</td><td>$ 1.619,33</td><td>$ 1.439,41</td><td>$ 1.259,48</td></tr>
+            <tr class="current-row"><td>07/08/2026</td><td>$ 1.958,44</td><td>$ 1.041,56</td><td>$ 3.000,00</td><td>$ 1.860,51</td><td>$ 1.762,59</td><td>$ 1.566,75</td><td>$ 1.370,91</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="legend">* El cuadro del 01/01/2025 agrupaba de 1 a 50 pasadas a $ 1.040 y de 51 a 80 a $ 910.</div>
+    </div>
+  </article>
+
+  <article class="pcard">
+    <div class="pcard-head"><h4>Histórico completo</h4><p>Cuadros del archivo WEB_Tarifa, ordenados cronológicamente. Click para ampliar.</p></div>
+    <div class="pcard-body"><div class="gallery" id="vial_gallery"></div></div>
+  </article>
+</div>
+
+<div id="pnl_modal"><button class="close" aria-label="Cerrar">×</button><img id="pnl_modal_img" alt="Vista ampliada"></div>
+
+<script>
+(function () {
+  var historico = [
+    ['12/05/2016', 'assets/vial/Tarifario_RAC_2016_05_12.jpg'],
+    ['01/02/2017', 'assets/vial/Tarifario_RAC_2017_02_01_Dec 41-2017.jpg'],
+    ['08/01/2018', 'assets/vial/Tarifario_RAC_2018_01_08_RG 01-2018.jpg'],
+    ['01/01/2019', 'assets/vial/Tarifario_RAC_2019_01_01_RG 68-2018.jpg'],
+    ['05/07/2019', 'assets/vial/Tarifario_RAC_2019_07_05_RG 43-2019.jpg'],
+    ['05/10/2019', 'assets/vial/Tarifario_RAC_2019_10_05_RG 63-2019.jpg'],
+    ['01/01/2021', 'assets/vial/Tarifario_RAC_2021_01_01_RG 13-2020.jpg'],
+    ['01/09/2021', 'assets/vial/Tarifario_RAC_2021_09_01_RG 44-2021.jpg'],
+    ['07/11/2022', 'assets/vial/Tarifario_RAC_2022_11_07_RG 50-2022.jpg'],
+    ['01/12/2022', 'assets/vial/Tarifario_RAC_2022_12_01_RG 115-2022.jpg'],
+    ['01/08/2023', 'assets/vial/Tarifario_RAC_2023_08_01_RG 78-2023.jpg'],
+    ['22/02/2024', 'assets/vial/Tarifario_RAC_2024_02_22_RG 16-2024.jpg'],
+    ['27/08/2024', 'assets/vial/Tarifario_RAC_2024_08_27_RG 108-2024.jpg'],
+    ['01/01/2025', 'assets/vial/Tarifario-2025-01-01.png'],
+    ['27/12/2025 · Manual', 'assets/vial/Tarifario-2025-12-27.png'],
+    ['27/12/2025 · Telepeaje', 'assets/vial/Tarifario-2025-12-27desc.png'],
+    ['04/02/2026', 'assets/vial/Tarifario-completo-04_02_26.jpeg'],
+    ['09/04/2026', 'assets/vial/Tarifario-completo-09_04_26.jpeg'],
+    ['08/05/2026', 'assets/vial/Tarifario-completo-08-05-26.jpeg']
+  ];
+
+  var gal = document.getElementById('vial_gallery');
+  if (gal) {
+    gal.innerHTML = '';
+    historico.forEach(function (par) {
+      var d = document.createElement('div');
+      d.className = 'shot';
+      d.innerHTML = '<button title="Ampliar"><img loading="lazy" src="' + par[1] + '" alt="Tarifario ' + par[0] + '"></button>' +
+                    '<div class="cap">Vigencia: <b>' + par[0] + '</b></div>';
+      d.querySelector('button').onclick = function () { abrir(par[1]); };
+      // Si la imagen todavía no fue subida a assets/vial, la tarjeta no se muestra
+      d.querySelector('img').addEventListener('error', function () {
+        d.remove();
+        faltantes++;
+        avisarFaltantes();
+      });
+      gal.appendChild(d);
+    });
+  }
+
+  var faltantes = 0;
+  function avisarFaltantes() {
+    if (!gal) return;
+    var aviso = document.getElementById('vial_gallery_aviso');
+    if (!aviso) {
+      aviso = document.createElement('div');
+      aviso.id = 'vial_gallery_aviso';
+      aviso.className = 'notice';
+      aviso.style.gridColumn = '1 / -1';
+      gal.parentNode.appendChild(aviso);
+    }
+    aviso.textContent = faltantes === historico.length
+      ? 'El histórico se muestra cuando se suban los cuadros a la carpeta assets/vial del repositorio (' + historico.length + ' imágenes).'
+      : 'Faltan ' + faltantes + ' de ' + historico.length + ' cuadros en la carpeta assets/vial del repositorio.';
+  }
+
+  var modal = document.getElementById('pnl_modal');
+  var img = document.getElementById('pnl_modal_img');
+  function abrir(src) { img.src = src; modal.classList.add('open'); }
+  function cerrar() { modal.classList.remove('open'); img.src = ''; }
+  modal.querySelector('.close').onclick = cerrar;
+  modal.onclick = function (e) { if (e.target === modal) cerrar(); };
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') cerrar(); });
+
+  // Intento de detección del cuadro vigente publicado
+  fetch('https://r.jina.ai/https://caminosdelassierras.com.ar/tarifario/', { cache: 'no-store' })
+    .then(function (r) { if (!r.ok) throw new Error(); return r.text(); })
+    .then(function (t) {
+      var m = t.match(/https:\/\/caminosdelassierras\.com\.ar\/wp-content\/uploads\/[^\s)\]]*Tarifario[^\s)\]]*\.(?:jpg|jpeg|png)[^\s)\]]*/i);
+      if (m) document.getElementById('vialCurrentImg').src = m[0].replace(/\\/g, '');
+      var v = t.match(/desde\s*(\d{2}\/\d{2}\/\d{4})/i);
+      if (v) document.getElementById('vialUpdated').textContent = 'Vigencia detectada: ' + v[1];
+    })
+    .catch(function () { /* se conserva el respaldo cargado */ });
+})();
+</script>
