@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Sistema de gestión de permisos de salida del ERSeP.">
+  <title>Permisos de Salida · ERSeP</title>
+  <link rel="icon" href="../../assets/img/favicon.ico">
+  <link rel="stylesheet" href="../../assets/css/permisos.css">
+</head>
+<body>
+  <div class="perm-shell">
+    <aside class="perm-sidebar" id="app_sidebar" hidden>
+      <div class="perm-brand">
+        <img src="../../assets/img/institucional/logo-ersep.png" alt="ERSeP">
+        <div><strong>Permisos de Salida</strong><span>Gestión interna · RR.HH.</span></div>
+      </div>
+      <nav class="perm-nav" aria-label="Módulos">
+        <button class="active" data-view="dashboard">⌂ Inicio</button>
+        <button data-view="nuevo">＋ Nuevo permiso</button>
+        <button data-view="mios">▤ Mis permisos</button>
+        <button class="role-only" data-role="JEFE" data-view="jefatura">✓ Autorizaciones</button>
+        <button class="role-only" data-role="RRHH" data-view="rrhh">◎ RR.HH.</button>
+        <button class="role-only" data-role="ADMIN" data-view="admin">⚙ Administración</button>
+      </nav>
+      <div class="perm-sidebar-footer">
+        <a class="perm-back" href="../../">← Volver al Portal</a>
+        <small style="color:#8c8c8c">PostgreSQL · FastAPI · acceso local</small>
+      </div>
+    </aside>
+
+    <main class="perm-main">
+      <header class="perm-topbar">
+        <div class="perm-title-wrap">
+          <h1>Permisos de Salida</h1>
+          <p>Registro, autorización, verificación y trazabilidad</p>
+        </div>
+        <div class="perm-top-actions">
+          <div class="perm-connection connecting" id="connection_state"><span class="perm-dot"></span><span>Conectando…</span></div>
+          <div class="perm-user" id="user_widget" hidden>
+            <div class="perm-avatar" id="user_avatar">U</div>
+            <div class="perm-user-copy"><strong id="user_name">Usuario</strong><span id="user_roles"></span></div>
+            <button class="perm-logout" id="logout_btn">Salir</button>
+          </div>
+        </div>
+      </header>
+
+      <section class="perm-login" id="login_screen">
+        <div class="perm-login-card">
+          <img class="perm-login-logo" src="../../assets/img/institucional/logo-ersep.png" alt="ERSeP">
+          <div class="perm-eyebrow">Acceso interno</div>
+          <h2>Sistema de Permisos de Salida</h2>
+          <p>Ingresá con el usuario y la clave asignados por el administrador. Ya no se requiere iniciar sesión con Google.</p>
+          <form id="local_login_form" class="perm-login-form" autocomplete="on">
+            <div class="perm-field">
+              <label for="login_usuario">Usuario</label>
+              <input id="login_usuario" name="username" autocomplete="username" required autofocus>
+            </div>
+            <div class="perm-field">
+              <label for="login_clave">Clave</label>
+              <input id="login_clave" name="password" type="password" autocomplete="current-password" required>
+            </div>
+            <button class="perm-primary" id="login_submit" type="submit">Ingresar</button>
+            <div id="login_status" class="perm-login-status" aria-live="polite"></div>
+          </form>
+          <p style="font-size:11px;margin-top:22px">La interfaz está en GitHub Pages, pero usuarios, claves, permisos y trazabilidad permanecen en el backend/PostgreSQL.</p>
+        </div>
+      </section>
+
+      <section class="perm-content" id="app_content" hidden>
+        <div class="perm-view active" data-view-panel="dashboard">
+          <div class="perm-hero">
+            <div class="perm-hero-card">
+              <div class="perm-eyebrow">Gestión digital</div>
+              <h2 id="dashboard_greeting">Buen día</h2>
+              <p>Creá una solicitud, seguí cada etapa y consultá la trazabilidad completa sin depender del formulario físico.</p>
+              <button class="perm-primary" data-go="nuevo">＋ Crear nuevo permiso</button>
+            </div>
+            <div class="perm-card">
+              <div class="perm-card-header"><div><h3>Estado del sistema</h3><p>Servicios conectados</p></div></div>
+              <div class="perm-card-body" id="system_status_list">
+                <p>● GitHub Pages: interfaz cargada</p>
+                <p id="status_backend">○ Render: conectando</p>
+                <p id="status_database">○ PostgreSQL: verificando</p>
+                <p id="status_sheets">○ Google Sheets: opcional</p>
+              </div>
+            </div>
+          </div>
+          <div class="perm-stat-grid">
+            <div class="perm-stat"><span>Mis permisos</span><strong id="stat_mis_total">—</strong></div>
+            <div class="perm-stat"><span>Pendientes</span><strong id="stat_mis_pendientes">—</strong></div>
+            <div class="perm-stat"><span>Autorizados</span><strong id="stat_mis_aprobados">—</strong></div>
+            <div class="perm-stat"><span>Este mes</span><strong id="stat_mis_mes">—</strong></div>
+          </div>
+          <div class="perm-card">
+            <div class="perm-card-header"><div><h3>Actividad reciente</h3><p>Tus últimas solicitudes</p></div><button class="perm-secondary" data-go="mios">Ver todas</button></div>
+            <div class="perm-card-body" id="recent_permissions"></div>
+          </div>
+        </div>
+
+        <div class="perm-view" data-view-panel="nuevo">
+          <div class="perm-card">
+            <div class="perm-card-header">
+              <div><h3>Nuevo permiso de salida</h3><p>El sistema calcula una sugerencia según tu jornada, pero podés declarar un tiempo distinto y justificarlo.</p></div>
+            </div>
+            <div class="perm-card-body">
+              <form id="permission_form">
+                <div class="perm-section-title">Datos del agente</div>
+                <div class="perm-form-grid">
+                  <div class="perm-field"><label>Nombre y apellido</label><input class="perm-readonly" id="form_agente" readonly></div>
+                  <div class="perm-field"><label>Legajo</label><input class="perm-readonly" id="form_legajo" readonly></div>
+                  <div class="perm-field"><label>DNI</label><input class="perm-readonly" id="form_dni" readonly></div>
+                  <div class="perm-field"><label>Área</label><input class="perm-readonly" id="form_area" readonly></div>
+                  <div class="perm-field full"><label>Jornada habitual configurada</label><div class="perm-duration" id="form_jornada">08:00 → 14:00</div><small>Se toma como referencia para calcular una salida sin regreso.</small></div>
+                </div>
+
+                <div class="perm-section-title">Salida solicitada</div>
+                <div class="perm-form-grid">
+                  <div class="perm-field full">
+                    <label>Tipo de salida</label>
+                    <div class="perm-segment">
+                      <label><input type="radio" name="tipo" value="OFICIAL" required> Oficial</label>
+                      <label><input type="radio" name="tipo" value="PARTICULAR" required> Particular</label>
+                    </div>
+                  </div>
+                  <div class="perm-field"><label>Fecha de salida</label><input id="form_fecha" type="date" required></div>
+                  <div class="perm-field" id="field_destino" hidden><label>Lugar a donde concurrirá</label><input id="form_destino" maxlength="300"></div>
+                  <div class="perm-field"><label>Hora de salida</label><input id="form_hora_salida" type="time" required></div>
+                  <div class="perm-field"><label>Modalidad de regreso</label><select id="form_regreso_tipo"><option value="CON_REGRESO">Con regreso</option><option value="SIN_REGRESO">Retiro sin regresar</option></select></div>
+                  <div class="perm-field" id="field_hora_regreso"><label>Hora de regreso</label><input id="form_hora_regreso" type="time"></div>
+                  <div class="perm-field"><label>Tiempo calculado por el sistema</label><div class="perm-duration" id="form_duracion">—</div><small id="form_duracion_help">Con regreso: regreso menos salida.</small></div>
+                </div>
+
+                <div class="perm-section-title">Tiempo declarado por el agente</div>
+                <div class="perm-form-grid">
+                  <div class="perm-field"><label>Horas</label><input id="form_tiempo_horas" type="number" min="0" max="24" step="1" value="0" required></div>
+                  <div class="perm-field"><label>Minutos</label><input id="form_tiempo_minutos" type="number" min="0" max="59" step="1" value="0" required></div>
+                  <div class="perm-field full"><button type="button" class="perm-ghost perm-inline-action" id="use_auto_time">↺ Usar el cálculo automático</button></div>
+                  <div class="perm-alert warning full" id="time_difference_warning" hidden>
+                    <strong>El tiempo declarado es distinto del cálculo automático.</strong>
+                    <span>Esto está permitido para contemplar horas extra u otras situaciones, pero debe explicarse para Jefatura y RR.HH.</span>
+                  </div>
+                  <div class="perm-field full" id="field_time_reason" hidden><label>Motivo de la diferencia *</label><textarea id="form_justificacion_minutos" maxlength="1000" placeholder="Ej.: jornada extendida, horas extra, situación excepcional..."></textarea></div>
+                </div>
+
+                <div id="private_return_block" hidden>
+                  <div class="perm-section-title">Devolución de horas · salida particular</div>
+                  <div class="perm-form-grid">
+                    <div class="perm-field"><label>Fecha de devolución</label><input id="form_fecha_devolucion" type="date"></div>
+                    <div class="perm-field"><label>Plazo reglamentario sugerido</label><div class="perm-duration" id="return_deadline">Seleccioná la fecha de salida</div></div>
+                    <div class="perm-field"><label>Devolverá desde</label><input id="form_devolucion_desde" type="time"></div>
+                    <div class="perm-field"><label>Hasta</label><input id="form_devolucion_hasta" type="time"></div>
+                    <div class="perm-field full"><label>Duración del tramo de devolución</label><div class="perm-duration" id="return_duration">—</div></div>
+                    <div class="perm-alert warning full" id="deadline_warning" hidden>
+                      <strong>La fecha elegida supera los próximos 7 días hábiles.</strong>
+                      <span>La solicitud puede enviarse igualmente. Dejá una observación para que RR.HH. evalúe la excepción.</span>
+                    </div>
+                    <div class="perm-field full" id="field_deadline_reason" hidden><label>Observación por devolución fuera de término *</label><textarea id="form_justificacion_fuera_plazo" maxlength="1000" placeholder="Explique por qué propone una fecha posterior al plazo reglamentario."></textarea></div>
+                  </div>
+                </div>
+
+                <div class="perm-section-title">Observaciones generales</div>
+                <div class="perm-form-grid">
+                  <div class="perm-field full"><label>Observaciones</label><textarea id="form_observaciones" maxlength="1000" placeholder="Información adicional (opcional)"></textarea></div>
+                </div>
+
+                <div class="perm-form-actions">
+                  <button type="button" class="perm-secondary" id="save_draft_btn">Guardar borrador</button>
+                  <button type="submit" class="perm-primary">Enviar a autorización</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <div class="perm-view" data-view-panel="mios">
+          <div class="perm-card">
+            <div class="perm-card-header"><div><h3>Mis permisos</h3><p>Historial completo de solicitudes.</p></div><button class="perm-primary" data-go="nuevo">＋ Nuevo</button></div>
+            <div class="perm-card-body"><div id="my_permissions"></div></div>
+          </div>
+        </div>
+
+        <div class="perm-view" data-view-panel="jefatura">
+          <div class="perm-card">
+            <div class="perm-card-header"><div><h3>Autorizaciones pendientes</h3><p>Incluye jornada habitual, tiempo calculado/declarado y propuesta de devolución.</p></div><button class="perm-secondary" id="refresh_jefatura">Actualizar</button></div>
+            <div class="perm-card-body"><div id="boss_permissions"></div></div>
+          </div>
+        </div>
+
+        <div class="perm-view" data-view-panel="rrhh">
+          <div class="perm-stat-grid">
+            <div class="perm-stat"><span>Permisos del mes</span><strong id="rrhh_total_mes">—</strong></div>
+            <div class="perm-stat"><span>Pendientes RR.HH.</span><strong id="rrhh_pendientes">—</strong></div>
+            <div class="perm-stat"><span>Particulares</span><strong id="rrhh_particulares">—</strong></div>
+            <div class="perm-stat"><span>Minutos declarados</span><strong id="rrhh_minutos">—</strong></div>
+          </div>
+          <div class="perm-card">
+            <div class="perm-card-header">
+              <div><h3>Panel de RR.HH.</h3><p>Consulta, aprobación o rechazo motivado, control del plazo y sincronización.</p></div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="perm-secondary" id="connect_sheets_btn" hidden>Conectar Google Sheets</button>
+                <a class="perm-secondary" id="rrhh_sheet_link" href="#" target="_blank" rel="noopener" hidden>Abrir Google Sheets ↗</a>
+                <button class="perm-secondary" id="sync_sheets_btn" hidden>Sincronizar Sheets</button>
+                <button class="perm-secondary" id="disconnect_sheets_btn" hidden>Desconectar Sheets</button>
+                <button class="perm-secondary" id="test_email_btn">✉ Probar correo</button>
+                <span id="test_email_status" style="align-self:center;font-size:12px;color:#666"></span>
+                <button class="perm-secondary" id="refresh_rrhh">Actualizar</button>
+              </div>
+            </div>
+            <div class="perm-card-body">
+              <div class="perm-form-grid" style="margin-bottom:16px">
+                <div class="perm-field"><label>Estado</label><select id="rrhh_filter_estado"><option value="">Todos</option><option>PENDIENTE_JEFE</option><option>PENDIENTE_RRHH</option><option>VERIFICADO_RRHH</option><option>RECHAZADO_JEFE</option><option>RECHAZADO_RRHH</option><option>RECHAZADO</option><option>CANCELADO_AGENTE</option></select></div>
+                <div class="perm-field"><label>Tipo</label><select id="rrhh_filter_tipo"><option value="">Todos</option><option>OFICIAL</option><option>PARTICULAR</option></select></div>
+              </div>
+              <div id="rrhh_permissions"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="perm-view" data-view-panel="admin">
+          <div class="perm-grid-2">
+            <div class="perm-card">
+              <div class="perm-card-header"><div><h3>Alta / edición de usuario</h3><p>Configura usuario, clave, email de notificación, roles, jefatura y jornada habitual. Al editar, dejá la clave vacía para conservar la existente.</p></div></div>
+              <div class="perm-card-body">
+                <form id="admin_user_form" class="perm-form-grid">
+                  <div class="perm-field"><label>Usuario de acceso</label><input id="admin_username" autocomplete="off" placeholder="ej. jperez" required></div>
+                  <div class="perm-field"><label>Clave inicial / nueva clave</label><input id="admin_password" type="password" minlength="6" autocomplete="new-password" placeholder="Dejar vacío para conservar la actual"></div>
+                  <div class="perm-field"><label>Email para notificaciones</label><input id="admin_email" type="email" required></div>
+                  <div class="perm-field"><label>Nombre</label><input id="admin_nombre" required></div>
+                  <div class="perm-field"><label>Apellido</label><input id="admin_apellido" required></div>
+                  <div class="perm-field"><label>Legajo</label><input id="admin_legajo" required></div>
+                  <div class="perm-field"><label>DNI</label><input id="admin_dni"></div>
+                  <div class="perm-field"><label>Área</label><input id="admin_area"></div>
+                  <div class="perm-field"><label>Jornada desde</label><input id="admin_jornada_desde" type="time" value="08:00" required></div>
+                  <div class="perm-field"><label>Jornada hasta</label><input id="admin_jornada_hasta" type="time" value="14:00" required></div>
+                  <div class="perm-field full"><label>Roles</label><div class="perm-segment"><label><input type="checkbox" name="admin_role" value="AGENTE" checked> Agente</label><label><input type="checkbox" name="admin_role" value="JEFE"> Jefe</label><label><input type="checkbox" name="admin_role" value="RRHH"> RR.HH.</label><label><input type="checkbox" name="admin_role" value="ADMIN"> Admin</label></div></div>
+                  <div class="perm-field full"><label>Email del jefe inmediato (opcional)</label><input id="admin_jefe_email" type="email"></div>
+                  <div class="perm-field full perm-admin-form-actions"><button class="perm-primary" type="submit">Crear / actualizar usuario</button><button class="perm-secondary" id="admin_clear_form" type="button">Limpiar</button></div>
+                </form>
+              </div>
+            </div>
+            <div class="perm-card">
+              <div class="perm-card-header"><div><h3>Usuarios</h3><p>Los usuarios se deshabilitan sin borrar su historial administrativo.</p></div><button class="perm-secondary" id="refresh_users">Actualizar</button></div>
+              <div class="perm-card-body"><div id="admin_users"></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="perm-toast-stack" id="toast_stack"></div>
+  <div id="modal_root"></div>
+
+  <script src="../../assets/js/permisos-config.js"></script>
+  <script src="../../assets/js/permisos-api.js"></script>
+  <script src="../../assets/js/permisos-auth.js"></script>
+  <script src="../../assets/js/permisos-email-test.js"></script>
+  <script src="../../assets/js/permisos.js"></script>
+</body>
+</html>
