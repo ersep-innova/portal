@@ -23,7 +23,7 @@ FRONTEND_ORIGINS = [
     origin.strip().rstrip("/")
     for origin in os.getenv(
         "FRONTEND_ORIGINS",
-        "https://ersepobservatorio-cyt.github.io",
+        "https://ersep-innova.github.io,https://ersepobservatorio-cyt.github.io",
     ).split(",")
     if origin.strip()
 ]
@@ -61,7 +61,7 @@ def root():
     return {
         "ok": True,
         "service": "Boletín Oficial · Portal de Innovación y Análisis de Datos",
-        "frontend": "https://ersepobservatorio-cyt.github.io/portal-observatorio-ersep/",
+        "frontend": "https://ersep-innova.github.io/portal/",
         "health": "/api/health",
     }
 

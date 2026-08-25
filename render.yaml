@@ -9,7 +9,7 @@ services:
     healthCheckPath: /api/health
     envVars:
       - key: FRONTEND_ORIGINS
-        value: https://ersepobservatorio-cyt.github.io
+        value: https://ersep-innova.github.io,https://ersepobservatorio-cyt.github.io
 
       - key: SCRAPER_HTTP_TIMEOUT
         value: 45
