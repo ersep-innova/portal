@@ -1,0 +1,460 @@
+<!-- Versión 5: fecha actual por fotografía y logo PNG en PDF -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Generador de Acta de Estado de Corredor</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.1/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --asphalt:#23262b; --paper:#eef0f2; --card:#fff; --line:#d5dade; --ink:#1a1d21; --muted:#6a7178;
+    --road:#f0c000; --road-dk:#b08f00; --teal:#0e4d5c; --teal-2:#0b3d49; --ok:#1f7a44; --bad:#b3261e; --info:#1b6ec2;
+    --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+    --ui:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--ui);font-size:14px;line-height:1.45}
+  .wrap{max-width:1040px;margin:0 auto;padding:0 16px 90px}
+  header{background:var(--asphalt);color:#fff;border-bottom:3px solid var(--road)}
+  .hbar{max-width:1040px;margin:0 auto;padding:18px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .hbar .mark{font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:var(--road);border:1px solid var(--road-dk);padding:3px 8px;border-radius:3px}
+  .hbar h1{font-size:18px;margin:0;font-weight:650}
+  .hbar p{margin:2px 0 0;color:#aab2ba;font-size:12.5px}
+  .sec{background:var(--card);border:1px solid var(--line);border-radius:10px;margin-top:18px;overflow:hidden}
+  .sec>.shead{display:flex;align-items:baseline;gap:10px;padding:13px 18px;border-bottom:1px solid var(--line);background:#fafbfc}
+  .sec>.shead .n{font-family:var(--mono);font-size:12px;color:#fff;background:var(--teal);border-radius:4px;padding:2px 7px}
+  .sec>.shead h2{font-size:15px;margin:0;font-weight:650}
+  .sec>.shead .sub{color:var(--muted);font-size:12.5px;margin-left:auto}
+  .sbody{padding:18px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px}
+  .grid .full{grid-column:1/-1}
+  label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:0 0 5px;text-transform:uppercase;letter-spacing:.04em}
+  input[type=text],textarea{width:100%;font:inherit;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:7px;padding:9px 11px}
+  textarea{resize:vertical;min-height:74px;line-height:1.5}
+  input:focus,textarea:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(14,77,92,.12)}
+  .drop{border:2px dashed var(--line);border-radius:10px;background:#fafbfc;padding:28px 18px;text-align:center;cursor:pointer;transition:.15s}
+  .drop:hover,.drop.over{border-color:var(--teal);background:#f1f7f8}
+  .drop .big{font-size:15px;font-weight:600}
+  .drop .small{color:var(--muted);font-size:12.5px;margin-top:4px}
+  .drop input{display:none}
+  .ocrbar{display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap}
+  .ocrbar .eng{font-size:12px;color:var(--muted)}
+  .photos{display:flex;flex-direction:column;gap:14px;margin-top:16px}
+  .pcard{display:grid;grid-template-columns:170px 1fr;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+  .pcard .thumbwrap{position:relative;background:#11141a}
+  .pcard img{width:100%;height:100%;object-fit:cover;display:block;min-height:150px;cursor:zoom-in}
+  .pcard .idx{position:absolute;top:8px;left:8px;font-family:var(--mono);font-size:12px;font-weight:700;background:var(--road);color:#1a1d21;border-radius:4px;padding:2px 8px}
+  .pcard .meta{padding:14px 16px;display:flex;flex-direction:column;gap:11px}
+  .src{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;border-radius:999px;padding:3px 10px;width:fit-content}
+  .src.meta{background:#e7f0fb;color:#0d4a8a} .src.ocr{background:#fff6d6;color:#6b5500} .src.man{background:#eef0f2;color:#555} .src.work{background:#eef0f2;color:#555} .src.fail{background:#fdecea;color:#9a261e}
+  .coordrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .coordrow input{font-family:var(--mono);letter-spacing:.2px}
+  .paste{display:flex;gap:8px;align-items:flex-end}
+  .paste .fld{flex:1}.paste input{font-family:var(--mono);font-size:12.5px}
+  .row2{display:grid;grid-template-columns:120px 1fr;gap:10px}
+  .tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .copychip{font-family:var(--mono);font-size:12px;background:#fff7d6;border:1px solid var(--road-dk);color:#5b4a00;border-radius:6px;padding:6px 9px;cursor:pointer;display:inline-flex;gap:7px;align-items:center}
+  .copychip:hover{background:#fff0b0}
+  .btn{font:inherit;font-weight:600;border:1px solid transparent;border-radius:8px;padding:10px 16px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+  .btn.primary{background:var(--teal);color:#fff}.btn.primary:hover{background:var(--teal-2)}.btn.primary:disabled{background:#9bb3b9;cursor:not-allowed}
+  .btn.ghost{background:#fff;border-color:var(--line);color:var(--ink)}.btn.ghost:hover{border-color:var(--teal);color:var(--teal)}
+  .btn.warn{background:#fff;border-color:var(--bad);color:var(--bad);padding:7px 12px}.btn.warn:hover{background:#fff1f0}
+  .btn.tiny{padding:6px 11px;font-size:12.5px}
+  .gen{position:sticky;bottom:0;margin-top:18px;background:linear-gradient(0deg,var(--paper) 70%,transparent);padding-top:14px}
+  .genbox{background:var(--asphalt);color:#fff;border-radius:12px;padding:16px 18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .genbox .info{flex:1;min-width:200px}.genbox .info b{color:var(--road)}.genbox .info small{color:#aab2ba;display:block;margin-top:2px}
+  .status{font-size:12.5px;color:var(--muted);min-height:16px}.status.ok{color:#8fd6a8}.status.bad{color:#ffb4ae}
+  .empty{color:var(--muted);text-align:center;padding:18px 0;font-size:13px}
+  details.help{margin-top:14px;border:1px solid var(--line);border-radius:8px;background:#fafbfc}
+  details.help summary{cursor:pointer;padding:11px 16px;font-weight:600;font-size:13px}
+  details.help .hc{padding:0 16px 14px;color:#444;font-size:13px;line-height:1.6}
+  details.help code{font-family:var(--mono);background:#eef0f2;padding:1px 5px;border-radius:4px;font-size:12px}
+  .previewback{position:fixed;inset:0;background:rgba(20,24,29,.62);display:none;align-items:center;justify-content:center;padding:22px;z-index:20}.previewback.show{display:flex}
+  .previewbox{background:#fff;border-radius:12px;width:min(100%,980px);max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 18px 54px rgba(0,0,0,.3)}.previewhead{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}.previewhead b{flex:1}.previewbody{overflow:auto;padding:24px;background:#eef0f2}.sheet{background:#fff;max-width:850px;margin:auto;padding:24px;min-height:420px;box-shadow:0 2px 9px rgba(0,0,0,.12);font-family:Arial,sans-serif;font-size:11px}.sheetlogo{height:55px;display:block;margin-bottom:14px}.sheettitle{text-align:center;font-size:16px;font-weight:700;margin:8px 0 22px}.sheetintro{line-height:1.5;margin-bottom:18px}.sheet table{width:100%;border-collapse:collapse}.sheet th,.sheet td{border:1px solid #8a9099;padding:7px;vertical-align:top}.sheet th{background:#0e4d5c;color:#fff;text-align:center}.sheetphoto{max-width:100%;max-height:260px;display:block;margin:8px auto}.sheetlabel{background:#f4e9b0;border:1px solid #8a9099;padding:6px;font-weight:700;margin-top:16px}
+  @media(max-width:720px){.grid{grid-template-columns:1fr}.pcard{grid-template-columns:1fr}.pcard img{min-height:210px}.coordrow{grid-template-columns:1fr}}
+</style>
+
+<header><div class="hbar"><span class="mark">ERSeP</span>
+  <div><h1>Generador de Acta de Estado de Corredor</h1>
+  <p>Cargá las fotos: lee solo el sello GPS y arma el Excel — datos arriba, imágenes abajo.</p></div></div></header>
+
+<div class="wrap">
+  <section class="sec">
+    <div class="shead"><span class="n">01</span><h2>Datos del acta</h2><span class="sub">Se completan una sola vez</span></div>
+    <div class="sbody"><div class="grid">
+      <div><label>N° de acta</label><input id="f_nro" type="text" value="92/2026"></div>
+      <div><label>Ciudad</label><input id="f_ciudad" type="text" value="Córdoba"></div>
+      <div class="full"><label>Fecha (en letras)</label><input id="f_fecha" type="text"></div>
+      <div><label>Profesional interviniente</label><input id="f_prof" type="text" value="Ing. Civil Juan Loguer Carrizo"></div>
+      <div><label>Organismo / área</label><input id="f_org" type="text" value="del área técnica del Ente Regulador de Servicios Públicos (ERSeP)"></div>
+      <div class="full"><label>Corredor vial supervisado</label><input id="f_corredor" type="text" value="Ruta Provincial - Autovía Calamuchita"></div>
+      <div class="full"><label>Cita normativa presunta</label><input id="f_cita" type="text" value="Art. N° 6 y 13 - A.E.T.G."></div>
+      <div class="full"><label>Falta verificada / Observación general</label>
+        <textarea id="f_obs">Se observaron tareas de conservación de rutina consistentes en la reposición de señalización vertical y el repintado de señalización horizontal, en cumplimiento de las obligaciones de mantenimiento y seguridad vial previstas en el Artículo N° 13 del Anexo Técnico General de la Concesión.</textarea></div>
+    </div></div>
+  </section>
+
+  <section class="sec">
+    <div class="shead"><span class="n">02</span><h2>Fotos y coordenadas</h2><span class="sub" id="count">0 imágenes</span></div>
+    <div class="sbody">
+      <div class="drop" id="drop">
+        <div class="big">Arrastrá las fotos acá o tocá para elegirlas</div>
+        <div class="small">Al cargarlas intenta leer el sello GPS automáticamente. JPG / PNG.</div>
+        <input id="file" type="file" accept="image/*" multiple>
+      </div>
+      <div class="ocrbar">
+        <button class="btn ghost tiny" id="reocr">Leer sello (OCR) — todas</button>
+        <button class="btn ghost tiny" id="remeta">Leer metadatos — todas</button>
+        <span class="eng" id="eng">Al cargar, prueba metadatos y, si están vacíos, lee el sello.</span>
+      </div>
+
+      <details class="help"><summary>¿Cómo saca la ubicación? (leer antes)</summary><div class="hc">
+        Primero busca el GPS en los <b>metadatos</b> del archivo. Pero ojo: <b>WhatsApp borra los metadatos</b>, así que casi siempre vienen vacíos.
+        Por eso, si no hay metadatos, <b>lee el número blanco escrito sobre la foto</b> (el sello del app). Eso funciona aunque la foto haya pasado por WhatsApp.
+        <br>Cada tarjeta muestra de dónde salió el dato: <span class="src meta">metadatos</span> <span class="src ocr">sello leído</span> <span class="src man">a mano</span>.
+        <br><b>Siempre verificá</b> los dos números contra la foto (se abre grande al tocarla). Si la lectura falla, pegá el sello o escribilos a mano.
+        <br><br>¿Querés conservar los metadatos? Pedile a quien te manda la foto que la mande <b>"como documento/archivo"</b> en vez de "como foto" — así no la recomprime y el GPS sobrevive.
+      </div></details>
+
+      <div class="photos" id="photos"><div class="empty" id="emptyMsg">Todavía no cargaste fotos.</div></div>
+    </div>
+  </section>
+
+  <div class="gen"><div class="genbox">
+    <div class="info"><b id="genCount">0</b> imágenes listas para el acta <b id="genNro">92/2026</b>
+      <small id="status" class="status">Completá los datos y descargá el Excel o el PDF.</small></div>
+    <label style="display:flex;align-items:center;gap:7px;color:#fff;font-size:13px;cursor:pointer;text-transform:none;letter-spacing:0;font-weight:500;margin:0">
+      <input type="checkbox" id="withImgs" checked style="width:16px;height:16px;accent-color:#f0c000;cursor:pointer"> Incluir las fotos
+    </label>
+    <button class="btn ghost" id="previewBtn" disabled>Vista previa</button>
+    <button class="btn primary" id="genBtn" disabled>Descargar Excel</button>
+    <button class="btn primary" id="pdfBtn" disabled>Descargar PDF</button>
+  </div></div>
+</div>
+
+<div class="previewback" id="preview"><div class="previewbox"><div class="previewhead"><b>Vista previa del Excel</b><small style="color:var(--muted)">Editá directamente cualquier texto</small><button class="btn ghost tiny" id="closePreview">Cerrar</button></div><div class="previewbody" id="previewBody"></div></div></div>
+
+<script>
+(function(){
+  const photos=[]; let seq=0; const $=id=>document.getElementById(id);
+  const LOGO_ERSEP_BASE64='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';
+
+  /* ---------------- EXIF GPS (metadatos) ---------------- */
+  function exifGps(buf){
+    try{
+      const dv=new DataView(buf);
+      if(dv.getUint16(0)!==0xFFD8) return null;
+      let off=2;
+      while(off<dv.byteLength){
+        if(dv.getUint16(off)!==0xFFE1){ // no es APP1
+          if((dv.getUint16(off)&0xFF00)!==0xFF00) return null;
+          off+=2+dv.getUint16(off+2); continue;
+        }
+        const len=dv.getUint16(off+2); const start=off+4;
+        if(dv.getUint32(start)!==0x45786966) return null; // "Exif"
+        const tiff=start+6;
+        const le=dv.getUint16(tiff)===0x4949;
+        const u16=o=>dv.getUint16(o,le), u32=o=>dv.getUint32(o,le);
+        const ifd0=tiff+u32(tiff+4); let gpsPtr=0;
+        const n=u16(ifd0);
+        for(let i=0;i<n;i++){const e=ifd0+2+i*12; if(u16(e)===0x8825){gpsPtr=tiff+u32(e+8);break;}}
+        if(!gpsPtr) return null;
+        const gn=u16(gpsPtr); let latRef='N',lonRef='E',lat=null,lon=null;
+        const rat=o=>u32(o)/u32(o+4);
+        const dms=o=>rat(o)+rat(o+8)/60+rat(o+16)/3600;
+        for(let i=0;i<gn;i++){const e=gpsPtr+2+i*12,tag=u16(e),vo=tiff+u32(e+8);
+          if(tag===1)latRef=String.fromCharCode(dv.getUint8(e+8));
+          else if(tag===3)lonRef=String.fromCharCode(dv.getUint8(e+8));
+          else if(tag===2)lat=dms(vo); else if(tag===4)lon=dms(vo);}
+        if(lat==null||lon==null) return null;
+        if(latRef==='S')lat=-lat; if(lonRef==='W')lon=-lon;
+        return {lat:lat.toFixed(13).replace(/0+$/,'').replace(/\.$/,''),lon:lon.toFixed(13).replace(/0+$/,'').replace(/\.$/,'')};
+      }
+    }catch(e){}
+    return null;
+  }
+
+  /* ---------------- parseo de texto a coords ---------------- */
+  function parseCoords(text){
+    if(!text) return null;
+    // 1) quitar la fecha (dd.mm.aaaa / dd/mm/aa) para que no se confunda con una coordenada
+    let t=String(text).replace(/\b\d{1,2}[.\/\-]\d{1,2}[.\/\-]\d{2,4}\b/g,' ');
+    // el OCR a veces lee el punto decimal como ":" o ";" -> normalizar entre dígitos
+    t=t.replace(/(\d)\s*[:;]\s*(\d)/g,'$1.$2');
+    const all=(t.replace(/[^\d.,\-\s]/g,' ').match(/-?\d{1,3}[.,]\d{3,}/g)||[]).map(s=>parseFloat(s.replace(',','.')));
+    if(!all.length) return null;
+    // 2) rangos plausibles de Argentina: lat -56..-21 ; long -74..-53. Las coordenadas son SIEMPRE negativas.
+    const inLat=all.find(v=>v>=-56&&v<=-21);
+    const inLon=all.find(v=>v>=-74&&v<=-53.4);
+    if(inLat!=null||inLon!=null) return {lat:inLat!=null?String(inLat):'', lon:inLon!=null?String(inLon):''};
+    // 3) genérico: usar solo negativos; el de menor magnitud es la latitud
+    const negs=all.filter(v=>v<0);
+    if(negs.length>=2){negs.sort((a,b)=>Math.abs(a)-Math.abs(b));return {lat:String(negs[0]),lon:String(negs[negs.length-1])};}
+    if(negs.length===1) return {lat:String(negs[0]),lon:''};
+    return null;
+  }
+  function parseDate(text){const m=(text||'').match(/(\d{2})[.\-\/](\d{2})[.\-\/](\d{4})/);return m?`${m[1]}/${m[2]}/${m[3]}`:'';}
+
+  /* ---------------- OCR del sello ---------------- */
+  let worker=null, ocrReady=null;
+  function initOCR(){
+    if(ocrReady) return ocrReady;
+    if(typeof Tesseract==='undefined'){ $('eng').textContent='Lector de sello no disponible (sin conexión). Podés pegar o escribir las coordenadas.'; return Promise.reject(); }
+    $('eng').textContent='Preparando el lector de sello…';
+    ocrReady=(async()=>{
+      worker=await Tesseract.createWorker('eng');
+      await worker.setParameters({tessedit_char_whitelist:'0123456789.,:;- '});
+      $('eng').textContent='Lector de sello activo. Verificá siempre los números.';
+    })();
+    ocrReady.catch(()=>{$('eng').textContent='No se pudo iniciar el lector de sello. Pegá o escribí las coordenadas.';});
+    return ocrReady;
+  }
+  function stampCanvas(imgEl){
+    const W=imgEl.naturalWidth,H=imgEl.naturalHeight;
+    const sx=Math.floor(W*0.33), sy=Math.floor(H*0.85), sw=W-sx, sh=H-sy;
+    const sc=4, c=document.createElement('canvas'); c.width=sw*sc; c.height=sh*sc;
+    const ctx=c.getContext('2d'); ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+    ctx.drawImage(imgEl,sx,sy,sw,sh,0,0,c.width,c.height);
+    const d=ctx.getImageData(0,0,c.width,c.height),p=d.data;
+    for(let i=0;i<p.length;i+=4){const g=0.299*p[i]+0.587*p[i+1]+0.114*p[i+2];p[i]=p[i+1]=p[i+2]=g;}
+    ctx.putImageData(d,0,0); return c;
+  }
+  async function readStamp(p,imgEl){
+    setSrc(p,'work','leyendo sello…');
+    try{ await initOCR(); }catch(e){ setSrc(p,'man','cargá a mano'); return; }
+    if(!worker){ setSrc(p,'man','cargá a mano'); return; }
+    try{
+      const {data:{text}}=await worker.recognize(stampCanvas(imgEl));
+      const c=parseCoords(text), d=parseDate(text);
+      const ok = c && (c.lat||c.lon);
+      if(ok){ if(c.lat)p.lat=c.lat; if(c.lon)p.lon=c.lon; p.source='ocr'; }
+      if(d&&!p.fecha) p.fecha=d;
+      const partial = ok && !(p.lat&&p.lon);
+      setSrc(p, ok?'ocr':'fail', partial?'sello leído (revisá la que falta)':(ok?'sello leído':'no se pudo leer — cargá a mano'));
+      updateCard(p);
+    }catch(e){ setSrc(p,'fail','no se pudo leer — cargá a mano'); }
+  }
+  function readMeta(p){
+    const gps=p._buf && exifGps(p._buf);
+    if(gps){ p.lat=gps.lat; p.lon=gps.lon; p.source='meta'; setSrc(p,'meta','desde metadatos'); updateCard(p); }
+    else setSrc(p, p.source==='man'?'man':p.source, 'sin metadatos GPS — usá el sello');
+  }
+
+  /* ---------------- carga de archivos ---------------- */
+  const drop=$('drop'),fileInput=$('file');
+  drop.addEventListener('click',()=>fileInput.click());
+  drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over');});
+  drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
+  drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over');handleFiles(e.dataTransfer.files);});
+  fileInput.addEventListener('change',e=>handleFiles(e.target.files));
+  $('reocr').addEventListener('click',()=>{photos.forEach(p=>{if(p._imgEl)readStamp(p,p._imgEl);});});
+  $('remeta').addEventListener('click',()=>{photos.forEach(readMeta);});
+
+  function handleFiles(list){[...list].filter(f=>f.type.startsWith('image/')).forEach(readOne);fileInput.value='';}
+  function readOne(file){
+    const r=new FileReader();
+    r.onload=()=>{
+      const ab=r.result; const blob=new Blob([ab],{type:file.type});
+      const dataUrl=URL.createObjectURL(blob);
+      const b64reader=new FileReader();
+      b64reader.onload=()=>{
+        const base64=b64reader.result.split(',')[1];
+        const ext=(file.type.split('/')[1]||'jpeg').replace('jpg','jpeg');
+        const im=new Image();
+        im.onload=()=>{
+          const p={id:++seq,name:file.name,dataUrl,base64,ext,w:im.naturalWidth,h:im.naturalHeight,
+                   num:photos.length+1,lat:'',lon:'',fecha:fechaActualCorta(),obs:'',source:'man',_imgEl:im,_buf:ab};
+          normalizarImagen(p);
+          const gps=exifGps(ab);
+          photos.push(p);
+          if(gps){ p.lat=gps.lat; p.lon=gps.lon; p.source='meta'; render(); setSrc(p,'meta','desde metadatos'); }
+          else { render(); readStamp(p,im); }
+        };
+        im.src=dataUrl;
+      };
+      b64reader.readAsDataURL(blob);
+    };
+    r.readAsArrayBuffer(file);
+  }
+
+  /* ---------------- render ---------------- */
+  const photosEl=$('photos'),emptyMsg=$('emptyMsg');
+  function render(){
+    photos.forEach((p,i)=>p.num=i+1);
+    emptyMsg.style.display=photos.length?'none':'block';
+    photosEl.querySelectorAll('.pcard').forEach(n=>n.remove());
+    photos.forEach(p=>photosEl.appendChild(card(p)));
+    const n=photos.length;
+    $('count').textContent=n+' '+(n===1?'imagen':'imágenes');
+    $('genCount').textContent=n; $('genBtn').disabled=n===0;$('pdfBtn').disabled=n===0;$('previewBtn').disabled=n===0;
+  }
+  const SRCLABEL={meta:'metadatos',ocr:'sello leído',man:'a mano',work:'…',fail:'sin lectura'};
+  function setSrc(p,kind,txt){p.source=kind;const el=document.querySelector(`[data-pid="${p.id}"] .src`);if(el){el.className='src '+kind;el.textContent=txt||SRCLABEL[kind];}}
+  function updateCard(p){const root=document.querySelector(`[data-pid="${p.id}"]`);if(!root)return;
+    root.querySelector('[data-k="lat"]').value=p.lat;root.querySelector('[data-k="lon"]').value=p.lon;
+    if(p.fecha)root.querySelector('[data-k="fecha"]').value=p.fecha;
+    const cv=root.querySelector('.cv');if(cv)cv.textContent=(p.lat||p.lon)?`${p.lat||'?'}, ${p.lon||'?'}`:'—';}
+  function normalizarImagen(p,giro=0){const im=p._imgEl,rad=giro*Math.PI/180,vertical=Math.abs(giro)%180===90;
+    const c=document.createElement('canvas');c.width=vertical?im.naturalHeight:im.naturalWidth;c.height=vertical?im.naturalWidth:im.naturalHeight;
+    const x=c.getContext('2d');x.translate(c.width/2,c.height/2);x.rotate(rad);x.drawImage(im,-im.naturalWidth/2,-im.naturalHeight/2);
+    p.dataUrl=c.toDataURL('image/jpeg',.92);p.base64=p.dataUrl.split(',')[1];p.ext='jpeg';p.w=c.width;p.h=c.height;const vista=new Image();vista.src=p.dataUrl;p._imgEl=vista;}
+  function girarImagen(p,giro){normalizarImagen(p,giro);render();}
+
+  function card(p){
+    const el=document.createElement('div');el.className='pcard';el.dataset.pid=p.id;
+    el.innerHTML=`
+      <div class="thumbwrap"><span class="idx">N° ${p.num}</span><img src="${p.dataUrl}" title="Abrir grande"></div>
+      <div class="meta">
+        <span class="src ${p.source}">${SRCLABEL[p.source]||''}</span>
+        <div class="paste"><div class="fld"><label>Pegar sello GPS (opcional)</label>
+          <input type="text" data-k="paste" placeholder="-31.351989 -64.188727  23.06.2026"></div>
+          <button class="btn ghost tiny" data-act="parse">Separar</button></div>
+        <div class="coordrow">
+          <div><label>Latitud (decimal)</label><input type="text" data-k="lat" value="${p.lat}" placeholder="-31.3519892"></div>
+          <div><label>Longitud (decimal)</label><input type="text" data-k="lon" value="${p.lon}" placeholder="-64.1887267"></div></div>
+        <div class="row2">
+          <div><label>Fecha</label><input type="text" data-k="fecha" value="${p.fecha}" placeholder="23/06/2026"></div>
+          <div><label>Observación de la foto (opcional)</label><input type="text" data-k="obs" value="${p.obs}" placeholder="Detalle..."></div></div>
+        <div class="tools">
+          <span class="copychip" data-act="copy">📋 Copiar coordenadas <b class="cv"></b></span>
+          <button class="btn ghost tiny" data-act="left">↶ Girar izquierda</button>
+          <button class="btn ghost tiny" data-act="right">↷ Girar derecha</button>
+          <button class="btn ghost tiny" data-act="ocr">Leer sello</button>
+          <button class="btn ghost tiny" data-act="meta">Leer metadatos</button>
+          <button class="btn warn tiny" data-act="del">Quitar</button></div>
+      </div>`;
+    el.querySelector('img').addEventListener('click',()=>window.open(p.dataUrl,'_blank'));
+    el.querySelectorAll('input[data-k]').forEach(inp=>inp.addEventListener('input',()=>{
+      p[inp.dataset.k]=inp.value.trim();
+      if(inp.dataset.k==='lat'||inp.dataset.k==='lon'){if(p.source!=='man')setSrc(p,'man','a mano');chip();}
+    }));
+    const chipEl=el.querySelector('.copychip'),cv=el.querySelector('.cv');
+    function chip(){cv.textContent=(p.lat||p.lon)?`${p.lat||'?'}, ${p.lon||'?'}`:'—';}chip();
+    el.querySelector('[data-act="parse"]').addEventListener('click',()=>{
+      const raw=el.querySelector('[data-k="paste"]').value;const c=parseCoords(raw),d=parseDate(raw);
+      if(c&&(c.lat||c.lon)){if(c.lat){p.lat=c.lat;el.querySelector('[data-k="lat"]').value=c.lat;}if(c.lon){p.lon=c.lon;el.querySelector('[data-k="lon"]').value=c.lon;}setSrc(p,'man','a mano');}
+      if(d){p.fecha=d;el.querySelector('[data-k="fecha"]').value=d;}chip();
+      if(!c||!(c.lat||c.lon)){const i=el.querySelector('[data-k="paste"]');i.style.borderColor='var(--bad)';setTimeout(()=>i.style.borderColor='',1200);}
+    });
+    el.querySelector('[data-act="left"]').addEventListener('click',()=>girarImagen(p,-90));
+    el.querySelector('[data-act="right"]').addEventListener('click',()=>girarImagen(p,90));
+    el.querySelector('[data-act="ocr"]').addEventListener('click',()=>{if(p._imgEl)readStamp(p,p._imgEl);});
+    el.querySelector('[data-act="meta"]').addEventListener('click',()=>readMeta(p));
+    chipEl.addEventListener('click',()=>{navigator.clipboard.writeText(`${p.lat||''}\t${p.lon||''}`.trim()).then(()=>{chipEl.firstChild.textContent='✓ Copiado ';setTimeout(()=>chipEl.firstChild.textContent='📋 Copiar coordenadas ',1100);});});
+    el.querySelector('[data-act="del"]').addEventListener('click',()=>{const i=photos.indexOf(p);if(i>=0)photos.splice(i,1);render();});
+    return el;
+  }
+  $('f_nro').addEventListener('input',()=>$('genNro').textContent=$('f_nro').value);
+
+  /* ---------------- vista previa y archivos ---------------- */
+  $('genBtn').addEventListener('click',generar);
+  $('pdfBtn').addEventListener('click',generarPdf);
+  $('previewBtn').addEventListener('click',mostrarVistaPrevia);
+  $('closePreview').addEventListener('click',()=>$('preview').classList.remove('show'));
+  $('preview').addEventListener('click',e=>{if(e.target===$('preview'))$('preview').classList.remove('show');});
+  function setStatus(m,k){const s=$('status');s.textContent=m;s.className='status'+(k?' '+k:'');}
+  function numOrText(v){if(v===''||v==null)return'';const n=parseFloat(String(v).replace(',','.'));return isNaN(n)?v:n;}
+  function applyBorder(ws,range,b){const[a,z]=range.split(':');const c1=ws.getCell(a),c2=ws.getCell(z);for(let row=c1.row;row<=c2.row;row++)for(let col=c1.col;col<=c2.col;col++)ws.getCell(row,col).border=b;}
+  function datosActa(){return {nro:$('f_nro').value.trim(),ciudad:$('f_ciudad').value.trim(),fecha:$('f_fecha').value.trim(),prof:$('f_prof').value.trim(),org:$('f_org').value.trim(),corredor:$('f_corredor').value.trim(),cita:$('f_cita').value.trim(),obs:$('f_obs').value.trim()};}
+  function fechaActualEnLetras(){const n=['','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez','once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve','veinte','veintiuno','veintidós','veintitrés','veinticuatro','veinticinco','veintiséis','veintisiete','veintiocho','veintinueve','treinta','treinta y uno'];const meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'],hoy=new Date();return `los ${n[hoy.getDate()]} días del mes de ${meses[hoy.getMonth()]} de ${hoy.getFullYear()}`;}
+  function fechaActualCorta(){return new Intl.DateTimeFormat('es-AR',{timeZone:'America/Argentina/Cordoba',day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date());}
+  function logoPdfComoPng(){return new Promise((ok,fail)=>{const im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=im.naturalWidth;c.height=im.naturalHeight;const x=c.getContext('2d');x.drawImage(im,0,0);ok(c.toDataURL('image/png'));};im.onerror=()=>fail(new Error('No se pudo preparar el logo ERSeP.'));im.src=`data:image/jpeg;base64,${LOGO_ERSEP_BASE64}`;});}
+  function nombreArchivo(d,ext){return `Acta_Estado_Corredor_${(d.nro||'acta').replace(/[\\/\\\\:*?"<>|]/g,'-')}${ext}`;}
+  function esc(v){return String(v||'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));}
+  function mostrarVistaPrevia(){const d=datosActa(),conFotos=$('withImgs').checked;
+    const filas=photos.map((p,i)=>`<tr><td>${p.num}</td>${i===0?`<td rowspan="${photos.length}"><span contenteditable="true" data-field="obs">${esc(d.obs)}</span></td><td rowspan="${photos.length}"><span contenteditable="true" data-field="cita">${esc(d.cita)}</span></td>`:''}<td>${esc(p.lat)}</td><td>${esc(p.lon)}</td><td>N° ${p.num}</td><td><span contenteditable="true" data-photo-obs="${p.id}">${esc(p.obs)}</span></td></tr>`).join('');
+    const fotos=conFotos?`<h3>REGISTRO FOTOGRÁFICO</h3>${photos.map(p=>{const co=p.lat||p.lon?` — ${esc(p.lat||'?')}, ${esc(p.lon||'?')}`:'';const fe=p.fecha?` — ${esc(p.fecha)}`:'';return `<div class="sheetlabel">Imagen N° ${p.num}${co}${fe}</div><img class="sheetphoto" src="${p.dataUrl}">`;}).join('')}`:'';
+    $('previewBody').innerHTML=`<div class="sheet"><img class="sheetlogo" src="data:image/jpeg;base64,${LOGO_ERSEP_BASE64}"><div class="sheettitle">ACTA DE ESTADO DE CORREDOR N° <span contenteditable="true" data-field="nro">${esc(d.nro)}</span></div><div class="sheetintro">En la ciudad de <span contenteditable="true" data-field="ciudad">${esc(d.ciudad)}</span>, a <span contenteditable="true" data-field="fecha">${esc(d.fecha)}</span>, el <span contenteditable="true" data-field="prof">${esc(d.prof)}</span>, profesional <span contenteditable="true" data-field="org">${esc(d.org)}</span>, realizó una supervisión en el corredor vial de la <span contenteditable="true" data-field="corredor">${esc(d.corredor)}</span>, donde se constató lo siguiente:</div><table><thead><tr><th>N°</th><th>FALTA VERIFICADA</th><th>Cita Normativa presunta</th><th>Latitud</th><th>Longitud</th><th>Imagen</th><th>Observaciones</th></tr></thead><tbody>${filas}</tbody></table><p><i>Nota: La ubicación GPS está sujeta a la precisión del "dispositivo móvil".</i></p>${fotos}</div>`;
+    $('previewBody').querySelectorAll('[data-field]').forEach(el=>el.addEventListener('input',()=>{const f=el.dataset.field;$(`f_${f}`).value=el.textContent.trim();}));
+    $('previewBody').querySelectorAll('[data-photo-obs]').forEach(el=>el.addEventListener('input',()=>{const p=photos.find(x=>x.id===Number(el.dataset.photoObs));if(!p)return;p.obs=el.textContent.trim();const card=document.querySelector(`[data-pid="${p.id}"] [data-k="obs"]`);if(card)card.value=p.obs;}));
+    $('preview').classList.add('show');}
+
+  async function generar(){
+    if(typeof ExcelJS==='undefined'){setStatus('No se pudo cargar el generador de Excel. Recargá la página.','bad');return;}
+    setStatus('Generando el archivo…');$('genBtn').disabled=true;
+    try{
+      const wb=new ExcelJS.Workbook();
+      const ws=wb.addWorksheet('Acta',{pageSetup:{paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0}});
+      ws.views=[{showGridLines:false}];
+      const W={A:3,B:5,C:30,D:24,E:17,F:17,G:9,H:42};Object.entries(W).forEach(([c,w])=>ws.getColumn(c).width=w);
+      const F='Arial',thin={style:'thin',color:{argb:'FF8A9099'}},B={top:thin,left:thin,bottom:thin,right:thin};
+      const C={horizontal:'center',vertical:'middle',wrapText:true},L={horizontal:'left',vertical:'top',wrapText:true};
+      const d=datosActa();
+      const logoId=wb.addImage({base64:LOGO_ERSEP_BASE64,extension:'jpeg'});
+      ws.getRow(1).height=58;
+      ws.addImage(logoId,{tl:{col:1,row:0},ext:{width:110,height:55},editAs:'oneCell'});
+      let r=3;
+      ws.mergeCells(`B${r}:H${r}`);let t=ws.getCell(`B${r}`);t.value=`ACTA DE ESTADO DE CORREDOR N° ${d.nro}`;t.font={name:F,bold:true,size:14};t.alignment={horizontal:'center'};r+=2;
+      ws.mergeCells(`B${r}:H${r+3}`);let intro=ws.getCell(`B${r}`);
+      intro.value=`En la ciudad de ${d.ciudad}, a ${d.fecha}, el ${d.prof}, profesional ${d.org}, realizó una supervisión en el corredor vial de la ${d.corredor}, donde se constató lo siguiente:`;
+      intro.font={name:F,size:11};intro.alignment=L;r+=5;
+      const heads={B:'N°',C:'FALTA VERIFICADA',D:'Cita Normativa presunta',E:'Latitud',F:'Longitud',G:'Imagen',H:'Observaciones'};
+      Object.entries(heads).forEach(([c,x])=>{const cell=ws.getCell(`${c}${r}`);cell.value=x;cell.font={name:F,bold:true,size:10,color:{argb:'FFFFFFFF'}};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF0E4D5C'}};cell.alignment=C;cell.border=B;});
+      ws.getRow(r).height=26;r++;
+      const first=r;
+      photos.forEach(p=>{
+        ws.getCell(`B${r}`).value=p.num;ws.getCell(`E${r}`).value=numOrText(p.lat);ws.getCell(`F${r}`).value=numOrText(p.lon);
+        ws.getCell(`G${r}`).value=`N° ${p.num}`;ws.getCell(`H${r}`).value=p.obs||'';
+        ['B','E','F','G'].forEach(c=>ws.getCell(`${c}${r}`).alignment=C);ws.getCell(`H${r}`).alignment=L;
+        'BCDEFGH'.split('').forEach(c=>{const cell=ws.getCell(`${c}${r}`);cell.border=B;if(!cell.font)cell.font={name:F,size:10};});
+        ws.getCell(`E${r}`).numFmt='0.0000000000000';ws.getCell(`F${r}`).numFmt='0.0000000000000';
+        ws.getRow(r).height=22;r++;
+      });
+      const last=r-1;
+      if(photos.length){
+        ws.mergeCells(`C${first}:C${last}`);let fc=ws.getCell(`C${first}`);fc.value=d.obs;fc.alignment=L;fc.font={name:F,size:10};fc.border=B;
+        ws.mergeCells(`D${first}:D${last}`);let dc=ws.getCell(`D${first}`);dc.value=d.cita;dc.alignment=C;dc.font={name:F,size:10};dc.border=B;
+      }
+      r++;
+      ws.mergeCells(`B${r}:H${r}`);let note=ws.getCell(`B${r}`);note.value='Nota: La ubicación GPS está sujeta a la precisión del "dispositivo móvil".';note.font={name:F,italic:true,size:9,color:{argb:'FF6A7178'}};r+=2;
+      const withImgs=$('withImgs').checked;
+      if(withImgs){
+      ws.mergeCells(`B${r}:H${r}`);let it=ws.getCell(`B${r}`);it.value='REGISTRO FOTOGRÁFICO';it.font={name:F,bold:true,size:12};r+=2;
+      const DW=460;
+      for(const p of photos){
+        ws.mergeCells(`B${r}:H${r}`);let lab=ws.getCell(`B${r}`);
+        const co=(p.lat||p.lon)?`  —  ${p.lat||'?'}, ${p.lon||'?'}`:'';const da=p.fecha?`  —  ${p.fecha}`:'';
+        lab.value=`Imagen N° ${p.num}${co}${da}`;lab.font={name:F,bold:true,size:10};lab.alignment={horizontal:'left',vertical:'middle'};
+        lab.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF4E9B0'}};applyBorder(ws,`B${r}:H${r}`,B);ws.getRow(r).height=20;r++;
+        let dh=Math.round(DW*(p.h/p.w));if(dh>360)dh=360;
+        ws.mergeCells(`B${r}:H${r}`);applyBorder(ws,`B${r}:H${r}`,B);ws.getRow(r).height=Math.min(409,Math.round(dh/1.333)+6);
+        const id=wb.addImage({base64:p.base64,extension:p.ext});
+        ws.addImage(id,{tl:{col:1.15,row:(r-1)+0.06},ext:{width:DW,height:dh},editAs:'oneCell'});
+        r+=2;
+      }
+      }
+      const buf=await wb.xlsx.writeBuffer();
+      const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+      const url=URL.createObjectURL(blob),a=document.createElement('a');
+      const suf=withImgs?'':'_sin_fotos';
+      a.href=url;a.download=nombreArchivo(d,`${suf}.xlsx`);
+      document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);
+      setStatus(withImgs?'✓ Excel descargado con las fotos. Revisá las coordenadas.':'✓ Excel descargado sin fotos (solo la tabla de datos).','ok');
+    }catch(err){console.error(err);setStatus('Error al generar: '+err.message,'bad');}
+    finally{$('genBtn').disabled=photos.length===0;}
+  }
+  async function generarPdf(){
+    if(!window.jspdf){setStatus('No se pudo cargar el generador de PDF. Recargá la página.','bad');return;}
+    setStatus('Generando el PDF…');$('pdfBtn').disabled=true;
+    try{const d=datosActa(),{jsPDF}=window.jspdf,doc=new jsPDF({unit:'mm',format:'a4'}),M=14,W=182,logoPdf=await logoPdfComoPng();let y=14;
+      doc.addImage(logoPdf,'PNG',M,y,48,24,undefined,'FAST');y+=32;doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text(`ACTA DE ESTADO DE CORREDOR N° ${d.nro}`,105,y,{align:'center'});y+=11;doc.setFont('helvetica','normal');doc.setFontSize(10);const intro=`En la ciudad de ${d.ciudad}, a ${d.fecha}, el ${d.prof}, profesional ${d.org}, realizó una supervisión en el corredor vial de la ${d.corredor}, donde se constató lo siguiente:`;doc.text(doc.splitTextToSize(intro,W),M,y);y+=doc.getTextDimensions(doc.splitTextToSize(intro,W)).h+7;
+      const encabezados=['N°','Falta verificada','Cita normativa','Latitud','Longitud','Imagen','Observaciones'];const anchos=[8,38,30,24,24,14,44];function linea(vals,alto,header){let x=M;vals.forEach((v,i)=>{doc.setDrawColor(138,144,153);doc.rect(x,y,anchos[i],alto,header?'FD':'S');if(header){doc.setFillColor(14,77,92);doc.rect(x,y,anchos[i],alto,'F');doc.setTextColor(255);}else doc.setTextColor(0);doc.setFont('helvetica',header?'bold':'normal');doc.setFontSize(7.2);doc.text(doc.splitTextToSize(String(v||''),anchos[i]-2),x+1,y+4);x+=anchos[i];});doc.setTextColor(0);}
+      linea(encabezados,8,true);y+=8;photos.forEach(p=>{const vals=[p.num,d.obs,d.cita,p.lat,p.lon,`N° ${p.num}`,p.obs];const h=Math.max(10,...vals.map((v,i)=>doc.getTextDimensions(doc.splitTextToSize(String(v||''),anchos[i]-2)).h+3));if(y+h>278){doc.addPage();y=14;}linea(vals,h,false);y+=h;});y+=6;doc.setFontSize(8);doc.setFont('helvetica','italic');doc.text('Nota: La ubicación GPS está sujeta a la precisión del "dispositivo móvil".',M,y);y+=9;
+      if($('withImgs').checked){doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text('REGISTRO FOTOGRÁFICO',M,y);y+=8;for(const p of photos){let dh=Math.min(118,150*(p.h/p.w));if(y+dh+14>283){doc.addPage();y=14;}const co=p.lat||p.lon?` — ${p.lat||'?'}, ${p.lon||'?'}`:'';const fe=p.fecha?` — ${p.fecha}`:'';doc.setFontSize(9);doc.text(`Imagen N° ${p.num}${co}${fe}`,M,y);y+=4;doc.addImage(p.dataUrl,p.ext.toUpperCase(),M,y,150,dh);y+=dh+9;}}
+      doc.save(nombreArchivo(d,'.pdf'));setStatus('✓ PDF descargado. Revisá las coordenadas.','ok');
+    }catch(err){console.error(err);setStatus('Error al generar: '+err.message,'bad');}finally{$('pdfBtn').disabled=photos.length===0;}
+  }
+  $('f_fecha').value=fechaActualEnLetras();
+  render();
+})();
+</script>
+
+<!-- Volver al portal (agregado por el Portal de Innovación) -->
+<style>
+.portal-back{position:fixed;left:14px;bottom:14px;z-index:99999;display:inline-flex;align-items:center;gap:7px;
+  padding:9px 14px;border-radius:999px;background:#b51234;color:#fff;font:800 12px "Segoe UI",system-ui,Arial,sans-serif;
+  text-decoration:none;box-shadow:0 6px 18px rgba(0,0,0,.25);}
+.portal-back:hover{background:#7c0016;color:#fff;}
+@media print{.portal-back{display:none !important;}}
+</style>
+<a class="portal-back" href="../../">&larr; Portal de Innovación</a>
