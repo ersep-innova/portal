@@ -7,7 +7,7 @@
   <title>Boletín Oficial · Portal de Innovación y Análisis de Datos</title>
   <link rel="stylesheet" href="../../assets/css/style.css">
   <link rel="stylesheet" href="../../assets/css/portal-pages.css">
-  <link rel="stylesheet" href="../../assets/css/boletin.css?v=20260728">
+  <link rel="stylesheet" href="../../assets/css/boletin.css?v=20260825">
   <link rel="icon" href="../../assets/img/favicon.ico">
 <link href="../../assets/css/institutional-theme.css" rel="stylesheet"/>
 </head>
@@ -28,9 +28,9 @@
 
   <section class="tool-hero boletin-hero">
     <div>
-      <div class="tool-kicker">Vigilancia documental ERSeP</div>
-      <h2>Detectá nuevas resoluciones tarifarias</h2>
-      <p>Recorre el archivo anual del Boletín Oficial, identifica resoluciones ERSeP, compara el contenido detectado y destaca lo nuevo o modificado.</p>
+      <div class="tool-kicker">Boletín Oficial · búsquedas institucionales</div>
+      <h2>Buscá resoluciones por organismo</h2>
+      <p>Elegí ERSeP, Secretaría de Capital Humano o Secretaría General de la Gobernación. El sistema recorre la 1.ª Sección del Boletín Oficial y extrae únicamente las resoluciones del organismo seleccionado.</p>
     </div>
     <div class="hero-symbol official-hero-logo institutional" aria-hidden="true"><img src="../../assets/img/institucional/logo-ersep.png" alt=""></div>
   </section>
@@ -44,6 +44,20 @@
   <div id="global_alert" class="tool-alert" style="display:none"></div>
 
   <section class="boletin-view active" id="view_monitor">
+    <section class="source-selector card" aria-labelledby="source_selector_title">
+      <div class="card-body">
+        <div class="source-selector-heading">
+          <div><span class="tool-kicker">Origen de la búsqueda</span><h3 id="source_selector_title">¿Qué resoluciones querés consultar?</h3></div>
+          <span class="source-current" id="source_current">Resoluciones del ERSeP</span>
+        </div>
+        <div class="source-buttons" role="group" aria-label="Organismo del Boletín Oficial">
+          <button class="source-button active" data-organismo="ersep" type="button"><strong>Resoluciones del ERSeP</strong><span>Buscador regulatorio actual: alertas de prestadoras y términos regulatorios.</span></button>
+          <button class="source-button rrhh" data-organismo="capital_humano" type="button"><strong>Resoluciones Secretaría de Capital Humano</strong><span>Panel de Búsqueda de RR.HH. · encabezado oficial: “SECRETARÍA DE CAPITAL HUMANO”.</span></button>
+          <button class="source-button rrhh" data-organismo="secretaria_general" type="button"><strong>Resoluciones de Secretaría General</strong><span>Panel de Búsqueda de RR.HH. · encabezado oficial: “SECRETARÍA GENERAL DE LA GOBERNACIÓN”.</span></button>
+        </div>
+        <div class="rrhh-panel-note" id="rrhh_panel_note" hidden><b>Panel de Búsqueda de RR.HH.</b> En este modo se incluyen todas las resoluciones detectadas dentro de la sección institucional elegida; no se aplican filtros por prestadora ni términos tarifarios.</div>
+      </div>
+    </section>
     <div class="card">
       <div class="card-body">
         <div class="monitor-form-grid">
@@ -51,18 +65,18 @@
             <span>Año a revisar</span>
             <select id="monitor_year"></select>
           </label>
-          <label class="tool-field terms-field">
+          <label class="tool-field terms-field" id="terms_field">
             <span>Términos regulatorios, separados por coma</span>
             <textarea id="monitor_terms" rows="2">tarifaria, cuadro tarifario, incremento, aumento, cargo tarifario, audiencia pública</textarea>
           </label>
-          <div class="monitor-options">
+          <div class="monitor-options" id="ersep_options">
             <label class="check-row"><input type="checkbox" id="monitor_revalidate"><span>Revalidar PDFs procesados</span></label>
             <label class="check-row"><input type="checkbox" id="monitor_all"><span>Incluir todas las resoluciones ERSeP</span></label>
             <label class="check-row"><input type="checkbox" id="monitor_unchanged"><span>Mostrar también registros sin cambios</span></label>
           </div>
         </div>
         <div class="monitor-actions">
-          <button class="action primary" id="btn_start_monitor" type="button">▶ Iniciar monitoreo de alertas</button>
+          <button class="action primary" id="btn_start_monitor" type="button">▶ Iniciar búsqueda ERSeP</button>
           <button class="action danger-action" id="btn_stop_monitor" type="button" disabled>■ Detener</button>
           <span class="action-separator"></span>
           <button class="action" id="btn_save_txt" type="button" disabled>Guardar TXT para IA</button>
@@ -84,7 +98,7 @@
         <div class="kpi-grid">
           <article class="kpi-card"><span>Meses procesados</span><strong id="kpi_months">0 / 12</strong></article>
           <article class="kpi-card"><span>PDFs analizados</span><strong id="kpi_pdfs">0</strong></article>
-          <article class="kpi-card"><span>Resoluciones ERSeP</span><strong id="kpi_resolutions">0</strong></article>
+          <article class="kpi-card"><span id="kpi_resolution_label">Resoluciones ERSeP</span><strong id="kpi_resolutions">0</strong></article>
           <article class="kpi-card accent"><span>Novedades</span><strong id="kpi_news">0</strong></article>
           <article class="kpi-card danger"><span>Errores</span><strong id="kpi_errors">0</strong></article>
         </div>
@@ -304,6 +318,6 @@
   </div>
 </section>
 <script src="../../assets/js/boletin-config.js"></script>
-<script src="../../assets/js/boletin.js?v=20260728" defer></script>
+<script src="../../assets/js/boletin.js?v=20260825" defer></script>
 </body>
 </html>

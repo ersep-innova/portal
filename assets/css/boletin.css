@@ -259,3 +259,21 @@
   .alert-heading-actions { width:100%; justify-content:stretch; }
   .alert-heading-actions .action { flex:1 1 230px; }
 }
+
+
+/* Selector de organismo · Boletín Oficial */
+.source-selector { margin-bottom: 18px; }
+.source-selector-heading { display:flex; justify-content:space-between; gap:16px; align-items:flex-end; margin-bottom:14px; }
+.source-selector-heading h3 { margin:3px 0 0; font-size:20px; }
+.source-current { padding:7px 11px; border-radius:999px; background:var(--accent-soft); color:var(--accent-mid); font-size:11px; font-weight:850; }
+.source-buttons { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.source-button { min-height:112px; text-align:left; border:1px solid var(--border); border-radius:15px; background:var(--bg-subtle); color:var(--text); padding:15px; cursor:pointer; transition:.18s ease; }
+.source-button:hover { transform:translateY(-1px); border-color:color-mix(in srgb,var(--accent-mid) 45%,var(--border)); box-shadow:var(--shadow-sm); }
+.source-button.active { border-color:var(--accent-mid); background:var(--accent-soft); box-shadow:inset 0 0 0 1px var(--accent-mid); }
+.source-button strong { display:block; font-size:13px; line-height:1.25; margin-bottom:7px; }
+.source-button span { display:block; color:var(--text-muted); font-size:11px; line-height:1.45; }
+.source-button.rrhh strong::before { content:"RR.HH. · "; color:var(--accent-mid); font-size:9px; letter-spacing:.5px; }
+.rrhh-panel-note { margin-top:12px; padding:11px 13px; border-radius:11px; background:var(--bg-subtle); border:1px dashed var(--border); color:var(--text-muted); font-size:11px; line-height:1.5; }
+.monitor-form-grid.rrhh-mode { grid-template-columns:190px 1fr; }
+.monitor-form-grid.rrhh-mode #terms_field, .monitor-form-grid.rrhh-mode #ersep_options { display:none; }
+@media (max-width: 900px){ .source-buttons{grid-template-columns:1fr;} .source-selector-heading{align-items:flex-start;flex-direction:column;} }

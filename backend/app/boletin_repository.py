@@ -416,7 +416,7 @@ class BoletinRepositorio:
                     last_checked_at=excluded.last_checked_at
                 """,
                 (
-                    pdf["url"], pdf.get("year"), pdf.get("month"), pdf.get("archivo"),
+                    pdf.get("cache_url") or pdf["url"], pdf.get("year"), pdf.get("month"), pdf.get("archivo"),
                     pdf.get("fecha"), pdf_hash, json.dumps(resolutions, ensure_ascii=False),
                     warning, now_iso(),
                 ),

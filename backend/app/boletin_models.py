@@ -43,10 +43,20 @@ class AlertaEstadoUpdate(BaseModel):
 
 class MonitoreoRequest(BaseModel):
     anio: int = Field(ge=2000, le=2100)
+    organismo: str = Field(default="ersep")
     terminos: List[str] = Field(default_factory=lambda: list(DEFAULT_REGULATORY_TERMS))
     revalidar_pdfs: bool = False
     incluir_todas_ersep: bool = False
     mostrar_sin_cambios: bool = False
+
+    @field_validator("organismo")
+    @classmethod
+    def validate_organismo(cls, value):
+        value = str(value or "ersep").strip().lower()
+        allowed = {"ersep", "capital_humano", "secretaria_general"}
+        if value not in allowed:
+            raise ValueError("Organismo de búsqueda no válido.")
+        return value
 
     @field_validator("terminos", mode="before")
     @classmethod

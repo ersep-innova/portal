@@ -61,6 +61,36 @@ PAT_RESOLUTION_END = re.compile(
     re.IGNORECASE,
 )
 
+
+ENTITY_CONFIG = {
+    "ersep": {
+        "label": "ERSeP",
+        "heading": r"ENTE\s+REGULADOR\s+DE\s+(?:LOS\s+)?SERVICIOS\s+P[ÚU]BLICOS(?:\s*[-–\n]\s*ERSEP)?",
+        "publication_label": "PUBLICACIÓN ERSeP",
+    },
+    "capital_humano": {
+        "label": "Secretaría de Capital Humano",
+        "heading": r"SECRETAR[IÍ]A\s+DE\s+CAPITAL\s+HUMANO",
+        "publication_label": "PUBLICACIÓN · CAPITAL HUMANO",
+    },
+    "secretaria_general": {
+        "label": "Secretaría General de la Gobernación",
+        "heading": r"SECRETAR[IÍ]A\s+GENERAL\s+DE\s+LA\s+GOBERNACI[ÓO]N",
+        "publication_label": "PUBLICACIÓN · SECRETARÍA GENERAL",
+    },
+}
+
+PAT_ANY_RESOLUTION = re.compile(
+    r"Resoluci[oó]n(?:\s+General)?\s+N[°º\.]?\s*(\d+(?:/\d{2,4})?)"
+    r"(?:\s*[-–]\s*Letra\s*:?\s*[A-Z])?",
+    re.IGNORECASE,
+)
+
+PAT_SECTION_HEADING = re.compile(
+    r"(?m)^\s*(?:(?:MINISTERIO|SECRETAR[IÍ]A|SUBSECRETAR[IÍ]A|ENTE\s+REGULADOR|"
+    r"AGENCIA|TRIBUNAL|DIRECCI[ÓO]N\s+GENERAL)[A-ZÁÉÍÓÚÑÜ0-9 .,/()\-]{3,110})\s*$"
+)
+
 GENERIC_ALERT_PHRASES = {
     "cooperativa",
     "limitada",
@@ -134,6 +164,61 @@ def find_ersep_section_start(full_text: str) -> int:
         ):
             return match.start()
     return -1
+
+
+def organism_label(organismo: str) -> str:
+    return ENTITY_CONFIG.get(organismo, ENTITY_CONFIG["ersep"])["label"]
+
+
+def contains_organism(text: str, organismo: str) -> bool:
+    if organismo == "ersep":
+        return contains_ersep(text)
+    config = ENTITY_CONFIG.get(organismo)
+    return bool(config and re.search(config["heading"], text, re.IGNORECASE))
+
+
+def _section_end(full_text: str, start: int, organismo: str) -> int:
+    for match in PAT_SECTION_HEADING.finditer(full_text, start + 20):
+        heading = match.group(0).strip()
+        if re.search(ENTITY_CONFIG[organismo]["heading"], heading, re.IGNORECASE):
+            continue
+        # Evita confundir fórmulas decisorias con un nuevo organismo.
+        if normalize_text(heading).startswith(("el secretario", "la secretaria", "el directorio")):
+            continue
+        return match.start()
+    return len(full_text)
+
+
+def split_resolutions_for_organism(full_text: str, organismo: str) -> list[dict[str, Any]]:
+    if organismo == "ersep":
+        return split_resolutions(full_text)
+    config = ENTITY_CONFIG.get(organismo)
+    if not config:
+        return []
+    output: list[dict[str, Any]] = []
+    seen_blocks: set[str] = set()
+    for section_match in re.finditer(config["heading"], full_text, re.IGNORECASE):
+        start = section_match.start()
+        end = _section_end(full_text, start, organismo)
+        section = full_text[start:end]
+        matches = [m for m in PAT_ANY_RESOLUTION.finditer(section) if is_body_resolution_match(section, m)]
+        for index, match in enumerate(matches):
+            block_start = match.start()
+            block_end = matches[index + 1].start() if index + 1 < len(matches) else len(section)
+            block = section[block_start:block_end].strip()
+            key = normalize_text(block[:500])
+            if not block or key in seen_blocks:
+                continue
+            seen_blocks.add(key)
+            output.append({
+                "numero": re.sub(r"\s+", " ", match.group(0)).strip(),
+                "prestadora": config["label"],
+                "texto_completo": block,
+                "texto_resuelve": extract_resuelve(block),
+                "organismo": organismo,
+                "organismo_label": config["label"],
+            })
+    return output
 
 
 def extract_provider(block: str) -> str:
@@ -277,8 +362,8 @@ def extract_excerpt(text: str, terms: list[str], max_chars: int = 520) -> str:
     return excerpt
 
 
-def stable_key_for(year: int, resolution_number: str) -> str:
-    return sha256_text(f"ERSEP|{int(year)}|{normalize_text(resolution_number)}")
+def stable_key_for(year: int, resolution_number: str, organismo: str = "ersep") -> str:
+    return sha256_text(f"{normalize_text(organismo)}|{int(year)}|{normalize_text(resolution_number)}")
 
 
 def content_hash_for(finding: dict[str, Any]) -> str:
@@ -294,10 +379,10 @@ def content_hash_for(finding: dict[str, Any]) -> str:
     return sha256_text(normalize_text(content))
 
 
-def llm_text(findings: list[dict[str, Any]], year: int) -> str:
+def llm_text(findings: list[dict[str, Any]], year: int, organismo: str = "ersep") -> str:
     news = [item for item in findings if item.get("novedad") in {"NUEVO", "MODIFICADO"}]
     lines = [
-        "MONITOREO DE RESOLUCIONES TARIFARIAS — ERSeP / BOLETÍN OFICIAL DE CÓRDOBA",
+        f"MONITOREO DE RESOLUCIONES — {organism_label(organismo)} / BOLETÍN OFICIAL DE CÓRDOBA",
         f"AÑO ANALIZADO: {year}",
         f"FECHA DE GENERACIÓN: {now_label()}",
         f"NOVEDADES DETECTADAS: {len(news)}",
@@ -443,7 +528,7 @@ class BoletinJobManager:
                     self._progress(run_id, stats, month, percentage, message)
                     try:
                         resolutions, cached, warning = self._analyze_pdf(
-                            session, pdf, bool(config.get("revalidar_pdfs"))
+                            session, pdf, bool(config.get("revalidar_pdfs")), str(config.get("organismo") or "ersep")
                         )
                         stats["pdfs_processed"] += 1
                         if cached:
@@ -460,12 +545,17 @@ class BoletinJobManager:
                     stats["resolutions_seen"] += len(resolutions)
                     for resolution in resolutions:
                         text = resolution.get("texto_completo", "")
-                        alerts_match = match_alerts(text, active_alerts)
-                        term_matches = extract_keywords(text, list(config.get("terminos") or []))
-
-                        relevant = bool(config.get("incluir_todas_ersep") or alerts_match)
-                        if config.get("terminos") and not term_matches:
-                            relevant = False
+                        organismo = str(config.get("organismo") or "ersep")
+                        if organismo == "ersep":
+                            alerts_match = match_alerts(text, active_alerts)
+                            term_matches = extract_keywords(text, list(config.get("terminos") or []))
+                            relevant = bool(config.get("incluir_todas_ersep") or alerts_match)
+                            if config.get("terminos") and not term_matches:
+                                relevant = False
+                        else:
+                            alerts_match = []
+                            term_matches = []
+                            relevant = True
                         if not relevant:
                             continue
 
@@ -482,6 +572,8 @@ class BoletinJobManager:
                             "url": pdf.get("url", ""),
                             "numero": resolution.get("numero", ""),
                             "prestadora": resolution.get("prestadora", ""),
+                            "organismo": organismo,
+                            "organismo_label": organism_label(organismo),
                             "cooperativa": ", ".join(alert_names) or resolution.get("prestadora", ""),
                             "alertas": alert_names,
                             "alertas_detalle": alerts_match,
@@ -493,7 +585,7 @@ class BoletinJobManager:
                             "desde_cache": cached,
                             "warning": warning,
                         }
-                        stable_key = stable_key_for(finding["year"], finding["numero"])
+                        stable_key = stable_key_for(finding["year"], finding["numero"], organismo)
                         content_hash = content_hash_for(finding)
                         finding = self.repository.register_publication(
                             run_id, finding, stable_key, content_hash
@@ -611,8 +703,9 @@ class BoletinJobManager:
         return output
 
     def _analyze_pdf(self, session: requests.Session, pdf: dict[str, Any],
-                     revalidate: bool = False) -> tuple[list[dict[str, Any]], bool, str]:
-        cache = self.repository.get_pdf_cache(pdf["url"])
+                     revalidate: bool = False, organismo: str = "ersep") -> tuple[list[dict[str, Any]], bool, str]:
+        cache_key = f"{pdf['url']}#organismo={organismo}"
+        cache = self.repository.get_pdf_cache(cache_key)
         if cache and not revalidate:
             return cache.get("resolutions", []), True, cache.get("warning", "")
 
@@ -634,8 +727,9 @@ class BoletinJobManager:
 
         pdf_hash = hashlib.sha256(content).hexdigest()
         if cache and cache.get("pdf_hash") == pdf_hash:
+            cache_pdf = dict(pdf, cache_url=cache_key)
             self.repository.save_pdf_cache(
-                pdf, pdf_hash, cache.get("resolutions", []), cache.get("warning", "")
+                cache_pdf, pdf_hash, cache.get("resolutions", []), cache.get("warning", "")
             )
             return cache.get("resolutions", []), True, cache.get("warning", "")
 
@@ -650,8 +744,9 @@ class BoletinJobManager:
         warning = ""
         if len(normalize_text(full_text)) < MIN_TEXT_CHARS:
             warning = "PDF posiblemente escaneado o con capa textual insuficiente; revisar manualmente."
-        resolutions = split_resolutions(full_text) if contains_ersep(full_text) else []
-        self.repository.save_pdf_cache(pdf, pdf_hash, resolutions, warning)
+        resolutions = split_resolutions_for_organism(full_text, organismo) if contains_organism(full_text, organismo) else []
+        cache_pdf = dict(pdf, cache_url=cache_key)
+        self.repository.save_pdf_cache(cache_pdf, pdf_hash, resolutions, warning)
         return resolutions, False, warning
 
     @staticmethod

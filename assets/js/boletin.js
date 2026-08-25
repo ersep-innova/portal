@@ -21,6 +21,7 @@ let initialized = false;
 let wakeInProgress = false;
 let loadingMessageTimer = null;
 let retryRevealTimer = null;
+let selectedOrganism = "ersep";
 
 function apiUrl(path){
   if (!API_BASE_URL) throw new Error("No se pudo ubicar el servicio del buscador.");
@@ -121,6 +122,26 @@ async function loadHealth(){
   }
 }
 
+const ORGANISM_UI = {
+  ersep: {label:"Resoluciones del ERSeP", kpi:"Resoluciones ERSeP", button:"▶ Iniciar búsqueda ERSeP"},
+  capital_humano: {label:"Resoluciones Secretaría de Capital Humano", kpi:"Resoluciones Capital Humano", button:"▶ Buscar resoluciones de Capital Humano"},
+  secretaria_general: {label:"Resoluciones de Secretaría General", kpi:"Resoluciones Secretaría General", button:"▶ Buscar resoluciones de Secretaría General"},
+};
+
+function selectOrganism(organismo){
+  selectedOrganism = ORGANISM_UI[organismo] ? organismo : "ersep";
+  document.querySelectorAll("[data-organismo]").forEach(button => button.classList.toggle("active", button.dataset.organismo === selectedOrganism));
+  const ui = ORGANISM_UI[selectedOrganism];
+  document.getElementById("source_current").textContent = ui.label;
+  document.getElementById("kpi_resolution_label").textContent = ui.kpi;
+  document.getElementById("btn_start_monitor").textContent = ui.button;
+  document.querySelector(".monitor-form-grid")?.classList.toggle("rrhh-mode", selectedOrganism !== "ersep");
+  document.getElementById("rrhh_panel_note").hidden = selectedOrganism === "ersep";
+  document.getElementById("progress_message").textContent = selectedOrganism === "ersep"
+    ? "Configurá el año y presioná Iniciar búsqueda ERSeP."
+    : `Elegí el año y buscá todas las resoluciones de ${ui.label.replace(/^Resoluciones (del |de |)/, "")}.`;
+}
+
 function monitorPayload(){
   const terms = document.getElementById("monitor_terms").value
     .split(",")
@@ -128,6 +149,7 @@ function monitorPayload(){
     .filter(Boolean);
   return {
     anio: Number(document.getElementById("monitor_year").value),
+    organismo: selectedOrganism,
     terminos: terms,
     revalidar_pdfs: document.getElementById("monitor_revalidate").checked,
     incluir_todas_ersep: document.getElementById("monitor_all").checked,
@@ -155,7 +177,7 @@ async function startMonitoring(){
     showAlert(error.message, "error");
     setRunControls(false);
   } finally {
-    button.textContent = "▶ Iniciar monitoreo de alertas";
+    button.textContent = ORGANISM_UI[selectedOrganism].button;
     if (!currentRunId) button.disabled = false;
   }
 }
@@ -723,6 +745,11 @@ async function initialize(){
     showAlert("No fue posible iniciar el buscador.", "error");
   }
 }
+
+document.addEventListener("click", event => {
+  const sourceButton = event.target.closest("[data-organismo]");
+  if (sourceButton) selectOrganism(sourceButton.dataset.organismo);
+});
 
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initialize);
 else initialize();
