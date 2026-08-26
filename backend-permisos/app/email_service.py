@@ -1,7 +1,10 @@
+import base64
 import logging
 import os
 import smtplib
 import ssl
+import threading
+import time
 from email.message import EmailMessage
 from email.utils import make_msgid
 from html import escape
@@ -14,10 +17,17 @@ from .database import connection
 logger = logging.getLogger(__name__)
 
 RESEND_URL = "https://api.resend.com/emails"
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+GMAIL_SEND_URL = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
+
+# Cache en memoria del access_token de Gmail. El refresh token permanece sólo
+# en las variables de entorno de Render y nunca se expone al frontend.
+_GMAIL_TOKEN_LOCK = threading.Lock()
+_GMAIL_TOKEN_CACHE = {"access_token": "", "expires_at": 0.0}
 
 
 def _provider() -> str:
-    return os.getenv("EMAIL_PROVIDER", "gmail_smtp").strip().lower()
+    return os.getenv("EMAIL_PROVIDER", "gmail_api").strip().lower()
 
 
 def _smtp_config() -> dict:
@@ -28,6 +38,15 @@ def _smtp_config() -> dict:
         "password": os.getenv("SMTP_PASSWORD", "").strip(),
         "ssl": os.getenv("SMTP_SSL", "true").strip().lower() in {"1", "true", "yes", "on"},
     }
+
+
+def _gmail_api_config() -> dict:
+    return {
+        "client_id": os.getenv("GMAIL_API_CLIENT_ID", "").strip(),
+        "client_secret": os.getenv("GMAIL_API_CLIENT_SECRET", "").strip(),
+        "refresh_token": os.getenv("GMAIL_API_REFRESH_TOKEN", "").strip(),
+    }
+
 
 EVENTS = {
     "SOLICITUD_ENVIADA": {
@@ -77,24 +96,137 @@ def _from_address() -> str:
     return os.getenv("EMAIL_FROM", "").strip()
 
 
+def _http_error(response: requests.Response, context: str) -> RuntimeError:
+    detail = ""
+    try:
+        body = response.json()
+        err = body.get("error")
+        if isinstance(err, dict):
+            detail = err.get("message") or err.get("status") or str(err)
+        elif err:
+            detail = str(err)
+        detail = body.get("error_description") or detail
+    except Exception:
+        detail = (response.text or "").strip()[:1000]
+
+    suffix = f": {detail}" if detail else ""
+    return RuntimeError(f"{context} (HTTP {response.status_code}){suffix}")
+
+
+def _invalidate_gmail_access_token() -> None:
+    with _GMAIL_TOKEN_LOCK:
+        _GMAIL_TOKEN_CACHE["access_token"] = ""
+        _GMAIL_TOKEN_CACHE["expires_at"] = 0.0
+
+
+def _gmail_access_token(force_refresh: bool = False) -> str:
+    cfg = _gmail_api_config()
+    missing = [
+        name
+        for name, value in {
+            "GMAIL_API_CLIENT_ID": cfg["client_id"],
+            "GMAIL_API_CLIENT_SECRET": cfg["client_secret"],
+            "GMAIL_API_REFRESH_TOKEN": cfg["refresh_token"],
+        }.items()
+        if not value
+    ]
+    if missing:
+        raise RuntimeError("Faltan variables de Gmail API en Render: " + ", ".join(missing))
+
+    now = time.time()
+    with _GMAIL_TOKEN_LOCK:
+        cached = _GMAIL_TOKEN_CACHE["access_token"]
+        expires_at = float(_GMAIL_TOKEN_CACHE["expires_at"] or 0)
+        if not force_refresh and cached and now < expires_at - 60:
+            return cached
+
+        response = requests.post(
+            GOOGLE_TOKEN_URL,
+            data={
+                "client_id": cfg["client_id"],
+                "client_secret": cfg["client_secret"],
+                "refresh_token": cfg["refresh_token"],
+                "grant_type": "refresh_token",
+            },
+            timeout=20,
+        )
+        if not response.ok:
+            raise _http_error(response, "Google rechazó la renovación del token OAuth")
+
+        payload = response.json()
+        access_token = (payload.get("access_token") or "").strip()
+        if not access_token:
+            raise RuntimeError("Google no devolvió access_token al renovar OAuth.")
+
+        expires_in = int(payload.get("expires_in") or 3600)
+        _GMAIL_TOKEN_CACHE["access_token"] = access_token
+        _GMAIL_TOKEN_CACHE["expires_at"] = time.time() + max(expires_in, 60)
+        return access_token
+
+
+def _build_message(recipient: str, subject: str, html: str) -> EmailMessage:
+    from_address = _from_address()
+    if not from_address:
+        raise RuntimeError("Falta EMAIL_FROM en Render.")
+
+    msg = EmailMessage()
+    msg["From"] = from_address
+    msg["To"] = recipient
+    msg["Subject"] = subject
+    domain = from_address.split("@")[-1] if "@" in from_address else None
+    msg["Message-ID"] = make_msgid(domain=domain)
+    msg.set_content(
+        "Este mensaje fue generado automáticamente por el Sistema de Permisos de Salida del ERSeP. "
+        "Abra este correo con un cliente compatible con HTML para ver el contenido completo."
+    )
+    msg.add_alternative(html, subtype="html")
+    return msg
+
+
+def _send_gmail_api(recipient: str, subject: str, html: str) -> str | None:
+    msg = _build_message(recipient, subject, html)
+    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode("ascii")
+
+    # Si un access_token almacenado en caché fuera rechazado, se renueva una vez.
+    for attempt in range(2):
+        token = _gmail_access_token(force_refresh=attempt > 0)
+        response = requests.post(
+            GMAIL_SEND_URL,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            },
+            json={"raw": raw},
+            timeout=25,
+        )
+        if response.status_code == 401 and attempt == 0:
+            _invalidate_gmail_access_token()
+            continue
+        if not response.ok:
+            raise _http_error(response, "Gmail API rechazó el envío")
+        payload = response.json()
+        return payload.get("id")
+
+    raise RuntimeError("No fue posible autenticar el envío con Gmail API.")
+
+
 def _send_email(recipient: str, subject: str, html: str) -> str | None:
     provider = _provider()
     from_address = _from_address()
     if not from_address:
         raise RuntimeError("Falta EMAIL_FROM en Render.")
 
+    if provider in {"gmail_api", "gmail_https", "gmail_rest"}:
+        return _send_gmail_api(recipient, subject, html)
+
+    # Compatibilidad heredada. En Render Free los puertos SMTP pueden estar
+    # bloqueados, por eso gmail_api es el proveedor recomendado.
     if provider in {"gmail", "gmail_smtp", "smtp"}:
         cfg = _smtp_config()
         if not cfg["user"] or not cfg["password"]:
             raise RuntimeError("Faltan SMTP_USER y/o SMTP_PASSWORD en Render.")
-        msg = EmailMessage()
-        msg["From"] = from_address
-        msg["To"] = recipient
-        msg["Subject"] = subject
-        message_id = make_msgid(domain=(cfg["user"].split("@")[-1] if "@" in cfg["user"] else None))
-        msg["Message-ID"] = message_id
-        msg.set_content("Este mensaje requiere un cliente compatible con HTML.")
-        msg.add_alternative(html, subtype="html")
+        msg = _build_message(recipient, subject, html)
 
         context = ssl.create_default_context()
         if cfg["ssl"]:
@@ -106,7 +238,7 @@ def _send_email(recipient: str, subject: str, html: str) -> str | None:
                 server.starttls(context=context)
                 server.login(cfg["user"], cfg["password"])
                 server.send_message(msg)
-        return message_id
+        return msg.get("Message-ID")
 
     if provider == "resend":
         api_key = _api_key()
@@ -126,7 +258,8 @@ def _send_email(recipient: str, subject: str, html: str) -> str | None:
             },
             timeout=20,
         )
-        response.raise_for_status()
+        if not response.ok:
+            raise _http_error(response, "Resend rechazó el envío")
         return response.json().get("id")
 
     raise RuntimeError(f"EMAIL_PROVIDER no reconocido: {provider}")

@@ -11,7 +11,7 @@
 - Se corrigieron los orígenes CORS para aceptar `https://ersep-innova.github.io`.
 - El login se muestra inmediatamente: el despertar de Render ocurre en paralelo y ya no congela la interfaz.
 - Google Sheets queda opcional y desactivado por defecto (`SHEETS_ENABLED=false`).
-- El envío de correos puede funcionar por Gmail SMTP o, alternativamente, Resend.
+- El envío recomendado de correos usa Gmail API por HTTPS, compatible con Render Free; SMTP queda sólo como compatibilidad heredada.
 
 ## Variables mínimas en Render para poder entrar
 
@@ -43,20 +43,18 @@ Al editar un usuario, dejar la clave vacía conserva la clave actual.
 
 ## Gmail para notificaciones automáticas
 
-Cuando tengan la cuenta de Google dedicada, en Render configurar:
+La versión V3.2 usa Gmail API por HTTPS en lugar de SMTP. Ver la guía completa `GMAIL_API_HTTPS_SETUP.md`.
+
+Variables principales en Render:
 
 - `EMAIL_ENABLED=true`
-- `EMAIL_PROVIDER=gmail_smtp`
-- `EMAIL_FROM=<cuenta que enviará>`
-- `SMTP_HOST=smtp.gmail.com`
-- `SMTP_PORT=465`
-- `SMTP_SSL=true`
-- `SMTP_USER=<misma cuenta Gmail/Workspace>`
-- `SMTP_PASSWORD=<contraseña de aplicación de Google, no la contraseña normal>`
+- `EMAIL_PROVIDER=gmail_api`
+- `EMAIL_FROM=ersep.observatorio@gmail.com`
+- `GMAIL_API_CLIENT_ID=<OAuth Client ID>`
+- `GMAIL_API_CLIENT_SECRET=<OAuth Client Secret>`
+- `GMAIL_API_REFRESH_TOKEN=<OAuth Refresh Token>`
 
-El botón **“Probar correo”** del panel de RR.HH./Administración envía una prueba al email del administrador autenticado.
-
-Las notificaciones actuales se disparan en segundo plano cuando el agente envía una solicitud y cuando Jefatura/RR.HH. aprueban o rechazan. Si el correo falla, el acto administrativo ya guardado no se revierte; el error queda auditado en PostgreSQL.
+El botón **“Probar correo”** envía una prueba al email del administrador autenticado. Las notificaciones siguen disparándose en segundo plano cuando el agente envía una solicitud y cuando Jefatura/RR.HH. aprueban o rechazan. Un fallo de correo nunca revierte el cambio de estado ya guardado.
 
 ## Google Sheets
 

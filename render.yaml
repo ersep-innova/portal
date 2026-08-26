@@ -71,34 +71,30 @@ services:
       - key: OAUTHLIB_RELAX_TOKEN_SCOPE
         value: "1"
 
-      # Notificaciones por email. Gmail SMTP no requiere OAuth del usuario.
+      # Notificaciones por Gmail API sobre HTTPS (compatible con Render Free).
       - key: EMAIL_ENABLED
-        value: "false"
+        value: "true"
 
       - key: EMAIL_PROVIDER
-        value: gmail_smtp
+        value: gmail_api
 
       - key: EMAIL_FROM
         sync: false
 
-      - key: SMTP_HOST
-        value: smtp.gmail.com
-
-      - key: SMTP_PORT
-        value: "465"
-
-      - key: SMTP_SSL
-        value: "true"
-
-      - key: SMTP_USER
+      # OAuth 2.0 exclusivo para el envío con Gmail API. No exponer en GitHub.
+      - key: GMAIL_API_CLIENT_ID
         sync: false
 
-      - key: SMTP_PASSWORD
+      - key: GMAIL_API_CLIENT_SECRET
+        sync: false
+
+      - key: GMAIL_API_REFRESH_TOKEN
         sync: false
 
       # Alternativa opcional: cambiar EMAIL_PROVIDER a resend y configurar esta clave.
       - key: RESEND_API_KEY
         sync: false
+
 
 
 databases:
