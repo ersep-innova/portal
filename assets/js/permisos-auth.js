@@ -1,11 +1,17 @@
 (() => {
   "use strict";
 
-  const cfg = window.ERSEP_PERMISOS_CONFIG;
   let currentUser = null;
 
   function emitAuthChanged() {
     window.dispatchEvent(new CustomEvent("permisos:auth", { detail: currentUser }));
+  }
+
+  function setLoginStatus(message = "", type = "") {
+    const el = document.getElementById("login_status");
+    if (!el) return;
+    el.textContent = message;
+    el.className = `perm-login-status ${type}`.trim();
   }
 
   async function loadMe() {
@@ -15,75 +21,84 @@
       emitAuthChanged();
       return currentUser;
     } catch (error) {
-      if (error.status === 401 || error.status === 403) logout(false);
+      if (error.status === 401 || error.status === 403) {
+        window.PermisosAPI.clearToken();
+        currentUser = null;
+        emitAuthChanged();
+      }
       throw error;
     }
   }
 
-  async function handleCredentialResponse(response) {
-    if (!response?.credential) return;
-    window.PermisosAPI.setToken(response.credential);
+  async function login(usuario, clave) {
+    const result = await window.PermisosAPI.request("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ usuario, clave }),
+    });
+    if (!result?.token || !result?.user) {
+      throw new Error("El backend no devolvió una sesión válida.");
+    }
+    window.PermisosAPI.setToken(result.token);
+    currentUser = result.user;
+    setLoginStatus("");
+    emitAuthChanged();
+    return currentUser;
+  }
+
+  async function logout() {
     try {
-      await loadMe();
-    } catch (error) {
+      if (window.PermisosAPI.getToken()) {
+        await window.PermisosAPI.request("/api/auth/logout", { method: "POST" });
+      }
+    } catch (_) {
+      // El cierre local debe funcionar aunque Render esté dormido o sin conexión.
+    } finally {
       window.PermisosAPI.clearToken();
       currentUser = null;
       emitAuthChanged();
-      window.dispatchEvent(new CustomEvent("permisos:error", {
-        detail: error.message || "No fue posible validar tu cuenta."
-      }));
     }
   }
 
-  function renderGoogleButton() {
-    const target = document.getElementById("google_signin_button");
-    if (!target) return;
+  function bindLoginForm() {
+    const form = document.getElementById("local_login_form");
+    if (!form || form.dataset.bound === "1") return;
+    form.dataset.bound = "1";
 
-    if (!cfg.GOOGLE_CLIENT_ID || cfg.GOOGLE_CLIENT_ID.startsWith("REEMPLAZAR_")) {
-      target.innerHTML = '<div class="auth-setup-warning">Configurá <code>GOOGLE_CLIENT_ID</code> en <code>permisos-config.js</code> para habilitar el acceso.</div>';
-      return;
-    }
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const userInput = document.getElementById("login_usuario");
+      const passInput = document.getElementById("login_clave");
+      const submit = document.getElementById("login_submit");
+      const usuario = userInput?.value.trim() || "";
+      const clave = passInput?.value || "";
+      if (!usuario || !clave) {
+        setLoginStatus("Ingresá usuario y clave.", "error");
+        return;
+      }
 
-    if (!window.google?.accounts?.id) {
-      setTimeout(renderGoogleButton, 250);
-      return;
-    }
-
-    google.accounts.id.initialize({
-      client_id: cfg.GOOGLE_CLIENT_ID,
-      callback: handleCredentialResponse,
-      auto_select: false,
-      cancel_on_tap_outside: true
+      submit.disabled = true;
+      submit.textContent = "Ingresando…";
+      setLoginStatus("Conectando con el sistema…");
+      try {
+        await login(usuario, clave);
+        passInput.value = "";
+      } catch (error) {
+        setLoginStatus(error.message || "No fue posible iniciar sesión.", "error");
+      } finally {
+        submit.disabled = false;
+        submit.textContent = "Ingresar";
+      }
     });
-
-    target.innerHTML = "";
-    google.accounts.id.renderButton(target, {
-      theme: "outline",
-      size: "large",
-      shape: "pill",
-      text: "signin_with",
-      locale: "es",
-      width: 280
-    });
-  }
-
-  function logout(revoke = false) {
-    const token = window.PermisosAPI.getToken();
-    if (revoke && token && window.google?.accounts?.id) {
-      google.accounts.id.disableAutoSelect();
-    }
-    window.PermisosAPI.clearToken();
-    currentUser = null;
-    emitAuthChanged();
   }
 
   window.PermisosAuth = {
-    renderGoogleButton,
+    bindLoginForm,
     loadMe,
+    login,
     logout,
     getUser: () => currentUser,
     hasRole(role) {
       return !!currentUser?.roles?.includes(role);
-    }
+    },
   };
 })();

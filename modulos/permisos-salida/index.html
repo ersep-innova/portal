@@ -7,7 +7,6 @@
   <title>Permisos de Salida · ERSeP</title>
   <link rel="icon" href="../../assets/img/favicon.ico">
   <link rel="stylesheet" href="../../assets/css/permisos.css">
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
   <div class="perm-shell">
@@ -26,7 +25,7 @@
       </nav>
       <div class="perm-sidebar-footer">
         <a class="perm-back" href="../../">← Volver al Portal</a>
-        <small style="color:#8c8c8c">PostgreSQL · FastAPI · Google Sheets</small>
+        <small style="color:#8c8c8c">PostgreSQL · FastAPI · acceso local</small>
       </div>
     </aside>
 
@@ -49,11 +48,22 @@
       <section class="perm-login" id="login_screen">
         <div class="perm-login-card">
           <img class="perm-login-logo" src="../../assets/img/institucional/logo-ersep.png" alt="ERSeP">
-          <div class="perm-eyebrow">Acceso protegido</div>
+          <div class="perm-eyebrow">Acceso interno</div>
           <h2>Sistema de Permisos de Salida</h2>
-          <p>Ingresá con una cuenta Google previamente habilitada. La autenticación identifica al usuario; los permisos y roles se validan además en PostgreSQL.</p>
-          <div id="google_signin_button"></div>
-          <p style="font-size:11px;margin-top:22px">Los datos administrativos no se almacenan en GitHub Pages. El frontend consulta el backend seguro alojado en Render.</p>
+          <p>Ingresá con el usuario y la clave asignados por el administrador. Ya no se requiere iniciar sesión con Google.</p>
+          <form id="local_login_form" class="perm-login-form" autocomplete="on">
+            <div class="perm-field">
+              <label for="login_usuario">Usuario</label>
+              <input id="login_usuario" name="username" autocomplete="username" required autofocus>
+            </div>
+            <div class="perm-field">
+              <label for="login_clave">Clave</label>
+              <input id="login_clave" name="password" type="password" autocomplete="current-password" required>
+            </div>
+            <button class="perm-primary" id="login_submit" type="submit">Ingresar</button>
+            <div id="login_status" class="perm-login-status" aria-live="polite"></div>
+          </form>
+          <p style="font-size:11px;margin-top:22px">La interfaz está en GitHub Pages, pero usuarios, claves, permisos y trazabilidad permanecen en el backend/PostgreSQL.</p>
         </div>
       </section>
 
@@ -210,10 +220,12 @@
         <div class="perm-view" data-view-panel="admin">
           <div class="perm-grid-2">
             <div class="perm-card">
-              <div class="perm-card-header"><div><h3>Alta / edición de usuario</h3><p>Configura cuenta, roles, jefatura y jornada habitual. La jornada por defecto es 08:00–14:00.</p></div></div>
+              <div class="perm-card-header"><div><h3>Alta / edición de usuario</h3><p>Configura usuario, clave, email de notificación, roles, jefatura y jornada habitual. Al editar, dejá la clave vacía para conservar la existente.</p></div></div>
               <div class="perm-card-body">
                 <form id="admin_user_form" class="perm-form-grid">
-                  <div class="perm-field"><label>Email Google</label><input id="admin_email" type="email" required></div>
+                  <div class="perm-field"><label>Usuario de acceso</label><input id="admin_username" autocomplete="off" placeholder="ej. jperez" required></div>
+                  <div class="perm-field"><label>Clave inicial / nueva clave</label><input id="admin_password" type="password" minlength="6" autocomplete="new-password" placeholder="Dejar vacío para conservar la actual"></div>
+                  <div class="perm-field"><label>Email para notificaciones</label><input id="admin_email" type="email" required></div>
                   <div class="perm-field"><label>Nombre</label><input id="admin_nombre" required></div>
                   <div class="perm-field"><label>Apellido</label><input id="admin_apellido" required></div>
                   <div class="perm-field"><label>Legajo</label><input id="admin_legajo" required></div>

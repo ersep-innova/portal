@@ -2,12 +2,19 @@ from contextlib import asynccontextmanager
 from datetime import date, time
 from typing import Literal
 
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field
 
-from app.auth import get_current_user, require_roles
+from app.auth import (
+    ensure_bootstrap_admin,
+    get_current_user,
+    hash_password,
+    login_user,
+    logout_session,
+    require_roles,
+)
 from app.config import settings
 from app.database import close_pool, connection, init_schema, start_pool
 from app.email_service import notify_permission_event, send_test_email
@@ -32,11 +39,12 @@ from app.workflow import (
 async def lifespan(app: FastAPI):
     start_pool()
     init_schema()
+    ensure_bootstrap_admin()
     yield
     close_pool()
 
 
-app = FastAPI(title="ERSeP · Permisos de Salida API", version="0.2.0", lifespan=lifespan)
+app = FastAPI(title="ERSeP · Permisos de Salida API", version="0.3.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(settings.frontend_origins),
@@ -44,6 +52,11 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
+
+
+class LoginIn(BaseModel):
+    usuario: str = Field(min_length=1, max_length=80)
+    clave: str = Field(min_length=1, max_length=200)
 
 
 class PermissionIn(BaseModel):
@@ -67,6 +80,8 @@ class DecisionIn(BaseModel):
 
 
 class AdminUserIn(BaseModel):
+    username: str = Field(min_length=3, max_length=80, pattern=r"^[A-Za-z0-9._-]+$")
+    password: str | None = Field(default=None, min_length=6, max_length=200)
     email: EmailStr
     nombre: str = Field(min_length=1, max_length=120)
     apellido: str = Field(min_length=1, max_length=120)
@@ -105,6 +120,9 @@ def _serialize_permission(row: dict):
 
 
 def _serialize_user(row: dict):
+    row = dict(row)
+    row.pop("password_hash", None)
+    row.pop("google_sub", None)
     for key in ("jornada_desde", "jornada_hasta"):
         if row.get(key) is not None:
             row[key] = str(row[key])[:5]
@@ -117,13 +135,31 @@ def health():
         with conn.cursor() as cur:
             cur.execute("SELECT 1 ok")
             db_ok = cur.fetchone()["ok"] == 1
-    sheets = integration_status()
+    try:
+        sheets = integration_status()
+    except Exception:
+        sheets = {"configured": False, "authorized": False}
     return {
         "status": "ok",
         "database": db_ok,
-        "sheets_configured": bool(sheets["configured"]),
-        "sheets_authorized": bool(sheets["authorized"]),
+        "auth": "local",
+        "bootstrap_configured": bool(settings.bootstrap_admin_password),
+        "sheets_configured": bool(sheets.get("configured")),
+        "sheets_authorized": bool(sheets.get("authorized")),
     }
+
+
+@app.post("/api/auth/login")
+def auth_login(payload: LoginIn):
+    result = login_user(payload.usuario, payload.clave)
+    result["user"] = _serialize_user(result["user"])
+    return result
+
+
+@app.post("/api/auth/logout")
+def auth_logout(authorization: str | None = Header(default=None)):
+    logout_session(authorization)
+    return {"status": "ok"}
 
 
 @app.get("/api/auth/me")
@@ -438,12 +474,15 @@ def reject_rrhh(permission_id: int, payload: DecisionIn, bg: BackgroundTasks, us
 
 @app.post("/api/admin/email/test")
 def test_email(user: dict = Depends(require_roles("ADMIN"))):
-    """Prueba técnica de Resend usando su destinatario oficial de test."""
-    try:
-        return send_test_email(
-            "delivered@resend.dev",
-            user.get("nombre") or "Administrador",
+    """Envía una prueba real a la dirección del administrador autenticado."""
+    recipient = (user.get("email") or "").strip()
+    if not recipient or recipient.endswith("@ersep.local"):
+        raise HTTPException(
+            status_code=422,
+            detail="Configurá un email real para este usuario antes de probar las notificaciones.",
         )
+    try:
+        return send_test_email(recipient, user.get("nombre") or "Administrador")
     except Exception as exc:
         raise HTTPException(
             status_code=502,
@@ -480,38 +519,97 @@ def upsert_user(payload: AdminUserIn, user: dict = Depends(require_roles("ADMIN"
     if work_start >= work_end:
         raise HTTPException(status_code=422, detail="El fin de la jornada debe ser posterior al inicio.")
 
+    username = payload.username.strip().lower()
+    email = payload.email.lower()
+
     with connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("""
-              INSERT INTO usuarios(email,nombre,apellido,legajo,dni,area,jornada_desde,jornada_hasta,activo)
-              VALUES (%s,%s,%s,%s,%s,%s,%s,%s,TRUE)
-              ON CONFLICT(email) DO UPDATE SET
-                nombre=EXCLUDED.nombre,apellido=EXCLUDED.apellido,legajo=EXCLUDED.legajo,dni=EXCLUDED.dni,
-                area=EXCLUDED.area,jornada_desde=EXCLUDED.jornada_desde,jornada_hasta=EXCLUDED.jornada_hasta,
-                activo=TRUE,updated_at=NOW()
-              RETURNING *
-            """, (
-                payload.email.lower(), payload.nombre, payload.apellido, payload.legajo,
-                payload.dni, payload.area, work_start, work_end,
-            ))
-            target = cur.fetchone()
+            cur.execute("SELECT * FROM usuarios WHERE email=%s", (email,))
+            existing = cur.fetchone()
+
+            cur.execute(
+                "SELECT id FROM usuarios WHERE lower(username)=lower(%s) AND email<>%s",
+                (username, email),
+            )
+            conflict = cur.fetchone()
+            if conflict:
+                raise HTTPException(status_code=409, detail="Ese nombre de usuario ya está en uso.")
+
+            if existing:
+                if payload.password:
+                    cur.execute(
+                        """
+                        UPDATE usuarios SET
+                            username=%s,password_hash=%s,nombre=%s,apellido=%s,legajo=%s,dni=%s,area=%s,
+                            jornada_desde=%s,jornada_hasta=%s,activo=TRUE,updated_at=NOW()
+                        WHERE id=%s RETURNING *
+                        """,
+                        (
+                            username, hash_password(payload.password), payload.nombre, payload.apellido,
+                            payload.legajo, payload.dni, payload.area, work_start, work_end, existing["id"],
+                        ),
+                    )
+                else:
+                    cur.execute(
+                        """
+                        UPDATE usuarios SET
+                            username=%s,nombre=%s,apellido=%s,legajo=%s,dni=%s,area=%s,
+                            jornada_desde=%s,jornada_hasta=%s,activo=TRUE,updated_at=NOW()
+                        WHERE id=%s RETURNING *
+                        """,
+                        (
+                            username, payload.nombre, payload.apellido, payload.legajo, payload.dni,
+                            payload.area, work_start, work_end, existing["id"],
+                        ),
+                    )
+                target = cur.fetchone()
+            else:
+                if not payload.password:
+                    raise HTTPException(
+                        status_code=422,
+                        detail="Para crear un usuario nuevo debe indicar una clave inicial de al menos 6 caracteres.",
+                    )
+                cur.execute(
+                    """
+                    INSERT INTO usuarios(
+                        username,password_hash,email,nombre,apellido,legajo,dni,area,jornada_desde,jornada_hasta,activo
+                    )
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,TRUE)
+                    RETURNING *
+                    """,
+                    (
+                        username, hash_password(payload.password), email, payload.nombre, payload.apellido,
+                        payload.legajo, payload.dni, payload.area, work_start, work_end,
+                    ),
+                )
+                target = cur.fetchone()
+
             cur.execute("DELETE FROM usuario_roles WHERE usuario_id=%s", (target["id"],))
             roles = set(payload.roles or ["AGENTE"])
-            if payload.email.lower() in settings.bootstrap_admin_emails:
-                roles.update({"AGENTE", "ADMIN"})
             for role in roles:
-                cur.execute("INSERT INTO usuario_roles(usuario_id,rol_id) SELECT %s,id FROM roles WHERE codigo=%s ON CONFLICT DO NOTHING", (target["id"], role))
+                cur.execute(
+                    "INSERT INTO usuario_roles(usuario_id,rol_id) SELECT %s,id FROM roles WHERE codigo=%s ON CONFLICT DO NOTHING",
+                    (target["id"], role),
+                )
 
-            # Reemplaza la jefatura vigente sólo si se informó una nueva. Si se deja vacío, conserva la existente.
             if payload.jefe_email:
-                cur.execute("SELECT id FROM usuarios WHERE email=%s AND activo=TRUE", (payload.jefe_email.lower(),))
+                cur.execute(
+                    "SELECT id FROM usuarios WHERE email=%s AND activo=TRUE",
+                    (payload.jefe_email.lower(),),
+                )
                 boss = cur.fetchone()
                 if not boss:
                     raise HTTPException(status_code=422, detail="El email del jefe todavía no está creado como usuario activo.")
                 if boss["id"] == target["id"]:
                     raise HTTPException(status_code=422, detail="Un usuario no puede ser su propio jefe.")
-                cur.execute("UPDATE jefaturas SET fecha_hasta=CURRENT_DATE-1 WHERE usuario_id=%s AND fecha_hasta IS NULL", (target["id"],))
-                cur.execute("INSERT INTO jefaturas(usuario_id,jefe_id,fecha_desde) VALUES (%s,%s,CURRENT_DATE)", (target["id"], boss["id"]))
+                cur.execute(
+                    "UPDATE jefaturas SET fecha_hasta=CURRENT_DATE-1 WHERE usuario_id=%s AND fecha_hasta IS NULL",
+                    (target["id"],),
+                )
+                cur.execute(
+                    "INSERT INTO jefaturas(usuario_id,jefe_id,fecha_desde) VALUES (%s,%s,CURRENT_DATE)",
+                    (target["id"], boss["id"]),
+                )
             conn.commit()
             return {"status": "ok", "id": target["id"]}
 
@@ -526,8 +624,8 @@ def set_user_status(target_id: int, payload: AdminUserStatusIn, user: dict = Dep
             target = cur.fetchone()
             if not target:
                 raise HTTPException(status_code=404, detail="Usuario inexistente.")
-            if target["email"].lower() in settings.bootstrap_admin_emails and not payload.activo:
-                raise HTTPException(status_code=409, detail="La cuenta bootstrap de recuperación no puede deshabilitarse desde el panel.")
+            if (target.get("username") or "").lower() == settings.bootstrap_admin_username.lower() and not payload.activo:
+                raise HTTPException(status_code=409, detail="La cuenta administradora inicial no puede deshabilitarse desde el panel.")
             cur.execute("UPDATE usuarios SET activo=%s,updated_at=NOW() WHERE id=%s", (payload.activo, target_id))
             if not payload.activo:
                 cur.execute("UPDATE jefaturas SET fecha_hasta=CURRENT_DATE-1 WHERE (usuario_id=%s OR jefe_id=%s) AND fecha_hasta IS NULL", (target_id, target_id))

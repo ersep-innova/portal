@@ -652,39 +652,6 @@
     .tool-grid a.tool-card .menu-card-badge:not(.future)::before { animation: none; }
    }
 
-   /* Seguridad Eléctrica no tenía color propio de tarjeta */
-   .tool-card.area-safety {
-    --area-color: var(--ersep-safety);
-    --area-color-dark: #084f43;
-    --area-soft: #eef7f5;
-   }
-
-   /* ═══════ Paneles tarifarios por gerencia ═══════ */
-   .filtro-panel {
-    margin-top: 26px;
-    padding-top: 22px;
-    border-top: 1px dashed var(--border);
-    animation: panelIn .35s ease both;
-   }
-
-   .filtro-panel[hidden] { display: none !important; }
-
-   .filtro-panel .panel-cargando {
-    padding: 26px;
-    text-align: center;
-    color: var(--text-muted);
-    font: 600 13px var(--font-main);
-   }
-
-   @keyframes panelIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to   { opacity: 1; transform: none; }
-   }
-
-   @media (prefers-reduced-motion: reduce) {
-    .filtro-panel { animation: none; }
-   }
-
    /* ═══════ Franja "Quiénes somos" sobre la grilla ═══════ */
    .about-strip {
     display: flex;
@@ -1014,7 +981,7 @@
         Permisos de Salida
        </strong>
        <small>
-        Solicitud digital, autorizaci&oacute;n de jefatura, verificaci&oacute;n por RR.HH., trazabilidad y sincronizaci&oacute;n con Google Sheets.
+        Solicitud digital, autorizaci&oacute;n de jefatura, verificaci&oacute;n por RR.HH., trazabilidad y acceso interno simplificado.
        </small>
        <span class="menu-card-badge private">
         Cuenta autorizada
@@ -1121,26 +1088,6 @@
        </span>
        <span class="tool-arrow">
         Abrir mapa &rarr;
-       </span>
-      </a>
-      <a class="tool-card area-safety" data-area="safety" href="modulos/electricistas/">
-       <span class="tool-icon gerencia-card-icon">
-        <img alt="" src="assets/img/institucional/gerencia-seguridad-electrica.png"/>
-       </span>
-       <span class="tool-meta">
-        Seguridad El&eacute;ctrica
-       </span>
-       <strong>
-        Electricistas habilitados
-       </strong>
-       <small>
-        Buscador del Registro provincial por categor&iacute;a, nombre, CUIL y localidad, e instaladores calificados para generaci&oacute;n distribuida.
-       </small>
-       <span class="menu-card-badge">
-        Disponible
-       </span>
-       <span class="tool-arrow">
-        Abrir buscador &rarr;
        </span>
       </a>
       <a class="tool-card area-energy" data-area="energy" href="https://naninimarcos.github.io/mapa-cba.html" rel="noopener" target="_blank">
@@ -1271,10 +1218,6 @@
        Pod&eacute;s seleccionar otra gerencia o volver a mostrar todas las herramientas.
       </span>
      </div>
-     </div><!-- /tool-grid -->
-     <!-- Paneles tarifarios: sólo se muestran al filtrar por su gerencia -->
-     <div class="filtro-panel" id="panel_road" data-panel="road" data-src="assets/paneles/vial.html" hidden></div>
-     <div class="filtro-panel" id="panel_antennas" data-panel="antennas" data-src="assets/paneles/antenas.html" hidden></div>
     </section>
    </main>
    <footer class="menu-footer">
@@ -1382,56 +1325,6 @@
      });
     }, { once: true });
    });
-  </script>
-  <script>
-   /* Paneles tarifarios: se cargan bajo demanda y sólo con su filtro activo */
-   (function () {
-    var paneles = Array.prototype.slice.call(document.querySelectorAll('.filtro-panel'));
-    if (!paneles.length) return;
-
-    var botones = Array.prototype.slice.call(document.querySelectorAll('[data-service-filter]'));
-    if (!botones.length) return;
-
-    function cargar(panel) {
-     if (panel.dataset.cargado === '1' || panel.dataset.cargando === '1') return;
-     panel.dataset.cargando = '1';
-     panel.innerHTML = '<div class="panel-cargando">Cargando información tarifaria…</div>';
-
-     fetch(panel.dataset.src, { cache: 'no-store' })
-      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
-      .then(function (html) {
-       panel.innerHTML = html;
-       // innerHTML no ejecuta los <script>: se recrean para que corran
-       Array.prototype.forEach.call(panel.querySelectorAll('script'), function (viejo) {
-        var nuevo = document.createElement('script');
-        nuevo.textContent = viejo.textContent;
-        document.body.appendChild(nuevo);
-        viejo.remove();
-       });
-       panel.dataset.cargado = '1';
-      })
-      .catch(function () {
-       panel.innerHTML = '<div class="panel-cargando">No se pudo cargar el panel tarifario (' + panel.dataset.src + ').</div>';
-      })
-      .finally(function () { panel.dataset.cargando = '0'; });
-    }
-
-    function sincronizar() {
-     var activo = null;
-     botones.forEach(function (b) {
-      if (b.getAttribute('aria-pressed') === 'true') activo = b.dataset.serviceFilter;
-     });
-     paneles.forEach(function (panel) {
-      var visible = activo === panel.dataset.panel;
-      panel.hidden = !visible;
-      if (visible) cargar(panel);
-     });
-    }
-
-    var obs = new MutationObserver(sincronizar);
-    botones.forEach(function (b) { obs.observe(b, { attributes: true, attributeFilter: ['aria-pressed'] }); });
-    sincronizar();
-   })();
   </script>
  </body>
 </html>

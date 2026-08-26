@@ -456,6 +456,7 @@
   function clearAdminForm() {
     const form = $("#admin_user_form");
     form.reset();
+    $("#admin_password").value = "";
     $("#admin_jornada_desde").value = "08:00";
     $("#admin_jornada_hasta").value = "14:00";
     const agentRole = $('input[name="admin_role"][value="AGENTE"]');
@@ -465,6 +466,8 @@
   function editAdminUser(id) {
     const u = adminUsersCache.find(x => Number(x.id) === Number(id));
     if (!u) return;
+    $("#admin_username").value = u.username || "";
+    $("#admin_password").value = "";
     $("#admin_email").value = u.email || "";
     $("#admin_nombre").value = u.nombre || "";
     $("#admin_apellido").value = u.apellido || "";
@@ -501,7 +504,7 @@
         return;
       }
       target.innerHTML = `<div class="perm-table-wrap"><table class="perm-table perm-table-wide"><thead><tr><th>Usuario</th><th>Estado</th><th>Jornada</th><th>Roles</th><th>Jefe</th><th></th></tr></thead><tbody>${rows.map(u => `<tr class="${u.activo ? "" : "perm-row-disabled"}">
-        <td><strong>${escapeHtml(`${u.nombre || ""} ${u.apellido || ""}`.trim())}</strong><br><small>${escapeHtml(u.email)}</small><br><small>Legajo ${escapeHtml(u.legajo || "—")}</small></td>
+        <td><strong>${escapeHtml(`${u.nombre || ""} ${u.apellido || ""}`.trim())}</strong><br><small>Usuario: ${escapeHtml(u.username || "—")}</small><br><small>${escapeHtml(u.email)}</small><br><small>Legajo ${escapeHtml(u.legajo || "—")}</small></td>
         <td>${u.activo ? '<span class="perm-badge green">Activo</span>' : '<span class="perm-badge red">Sin acceso</span>'}</td>
         <td>${escapeHtml(u.jornada_desde || "08:00")} → ${escapeHtml(u.jornada_hasta || "14:00")}</td>
         <td>${escapeHtml((u.roles || []).join(", "))}</td>
@@ -584,7 +587,7 @@
   function bindEvents() {
     $$("[data-view]").forEach(btn => btn.addEventListener("click", () => setView(btn.dataset.view)));
     $$("[data-go]").forEach(btn => btn.addEventListener("click", () => setView(btn.dataset.go)));
-    $("#logout_btn").addEventListener("click", () => PermisosAuth.logout(true));
+    $("#logout_btn").addEventListener("click", () => PermisosAuth.logout());
     $$('input[name="tipo"]').forEach(el => el.addEventListener("change", updateFormRules));
     $("#form_regreso_tipo").addEventListener("change", updateReturnRules);
     $("#form_hora_salida").addEventListener("input", calculateDuration);
@@ -620,6 +623,8 @@
       const roles = $$('input[name="admin_role"]:checked').map(x => x.value);
       try {
         await PermisosAPI.request("/api/admin/usuarios", { method: "POST", body: JSON.stringify({
+          username: $("#admin_username").value.trim(),
+          password: $("#admin_password").value || null,
           email: $("#admin_email").value.trim(),
           nombre: $("#admin_nombre").value.trim(),
           apellido: $("#admin_apellido").value.trim(),
@@ -657,7 +662,9 @@
     $("#app_sidebar").hidden = true;
     $("#app_content").hidden = true;
     $("#user_widget").hidden = true;
-    PermisosAuth.renderGoogleButton();
+    PermisosAuth.bindLoginForm();
+    const loginUser = $("#login_usuario");
+    if (loginUser) setTimeout(() => loginUser.focus(), 50);
   }
 
   async function init() {
@@ -671,18 +678,29 @@
       history.replaceState({}, document.title, window.location.pathname);
     }
     bindEvents();
+    PermisosAuth.bindLoginForm();
     updateFormRules();
     updateReturnRules();
     window.addEventListener("permisos:error", e => toast(e.detail, "error"));
     window.addEventListener("permisos:auth", e => e.detail ? onAuthenticated(e.detail) : onLoggedOut());
 
-    backendReady = await PermisosAPI.wakeBackend(state => setConnection(state));
-    $("#status_database").textContent = backendReady ? "● PostgreSQL: backend disponible" : "○ PostgreSQL: sin verificar";
+    // El login se muestra inmediatamente. Render se despierta en paralelo y ya no bloquea la interfaz.
+    setConnection("connecting");
+    PermisosAPI.wakeBackend((state, health) => {
+      backendReady = state === "online";
+      setConnection(state);
+      const db = $("#status_database");
+      if (db) db.textContent = backendReady ? "● PostgreSQL: conectado" : state === "offline" ? "○ PostgreSQL: sin conexión" : "○ PostgreSQL: verificando";
+      if (health?.auth === "local") {
+        const loginStatus = $("#login_status");
+        if (loginStatus && !PermisosAPI.getToken()) loginStatus.textContent = "Servicio disponible · acceso local listo";
+      }
+    });
 
-    if (PermisosAPI.getToken() && backendReady) {
+    if (PermisosAPI.getToken()) {
       try { await PermisosAuth.loadMe(); return; } catch (_) {}
     }
-    PermisosAuth.renderGoogleButton();
+    onLoggedOut();
   }
 
   document.addEventListener("DOMContentLoaded", init);

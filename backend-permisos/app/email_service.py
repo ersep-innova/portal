@@ -1,5 +1,9 @@
 import logging
 import os
+import smtplib
+import ssl
+from email.message import EmailMessage
+from email.utils import make_msgid
 from html import escape
 
 import requests
@@ -10,6 +14,20 @@ from .database import connection
 logger = logging.getLogger(__name__)
 
 RESEND_URL = "https://api.resend.com/emails"
+
+
+def _provider() -> str:
+    return os.getenv("EMAIL_PROVIDER", "gmail_smtp").strip().lower()
+
+
+def _smtp_config() -> dict:
+    return {
+        "host": os.getenv("SMTP_HOST", "smtp.gmail.com").strip(),
+        "port": int(os.getenv("SMTP_PORT", "465")),
+        "user": os.getenv("SMTP_USER", "").strip(),
+        "password": os.getenv("SMTP_PASSWORD", "").strip(),
+        "ssl": os.getenv("SMTP_SSL", "true").strip().lower() in {"1", "true", "yes", "on"},
+    }
 
 EVENTS = {
     "SOLICITUD_ENVIADA": {
@@ -57,6 +75,61 @@ def _api_key() -> str:
 
 def _from_address() -> str:
     return os.getenv("EMAIL_FROM", "").strip()
+
+
+def _send_email(recipient: str, subject: str, html: str) -> str | None:
+    provider = _provider()
+    from_address = _from_address()
+    if not from_address:
+        raise RuntimeError("Falta EMAIL_FROM en Render.")
+
+    if provider in {"gmail", "gmail_smtp", "smtp"}:
+        cfg = _smtp_config()
+        if not cfg["user"] or not cfg["password"]:
+            raise RuntimeError("Faltan SMTP_USER y/o SMTP_PASSWORD en Render.")
+        msg = EmailMessage()
+        msg["From"] = from_address
+        msg["To"] = recipient
+        msg["Subject"] = subject
+        message_id = make_msgid(domain=(cfg["user"].split("@")[-1] if "@" in cfg["user"] else None))
+        msg["Message-ID"] = message_id
+        msg.set_content("Este mensaje requiere un cliente compatible con HTML.")
+        msg.add_alternative(html, subtype="html")
+
+        context = ssl.create_default_context()
+        if cfg["ssl"]:
+            with smtplib.SMTP_SSL(cfg["host"], cfg["port"], context=context, timeout=20) as server:
+                server.login(cfg["user"], cfg["password"])
+                server.send_message(msg)
+        else:
+            with smtplib.SMTP(cfg["host"], cfg["port"], timeout=20) as server:
+                server.starttls(context=context)
+                server.login(cfg["user"], cfg["password"])
+                server.send_message(msg)
+        return message_id
+
+    if provider == "resend":
+        api_key = _api_key()
+        if not api_key:
+            raise RuntimeError("Falta RESEND_API_KEY en Render.")
+        response = requests.post(
+            RESEND_URL,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "from": from_address,
+                "to": [recipient],
+                "subject": subject,
+                "html": html,
+            },
+            timeout=20,
+        )
+        response.raise_for_status()
+        return response.json().get("id")
+
+    raise RuntimeError(f"EMAIL_PROVIDER no reconocido: {provider}")
 
 
 def _portal_url() -> str:
@@ -188,15 +261,16 @@ def _upsert_notification(
             cur.execute(
                 """
                 INSERT INTO notificaciones_email (
-                    permiso_id,destinatario,tipo,asunto,estado
+                    permiso_id,destinatario,tipo,asunto,estado,proveedor
                 )
-                VALUES (%s,%s,%s,%s,'PENDIENTE')
+                VALUES (%s,%s,%s,%s,'PENDIENTE',%s)
                 ON CONFLICT (permiso_id,tipo) DO UPDATE SET
                     destinatario=EXCLUDED.destinatario,
-                    asunto=EXCLUDED.asunto
+                    asunto=EXCLUDED.asunto,
+                    proveedor=EXCLUDED.proveedor
                 RETURNING *
                 """,
-                (permission_id, recipient, event_type, subject),
+                (permission_id, recipient, event_type, subject, _provider().upper()),
             )
             row = cur.fetchone()
         conn.commit()
@@ -275,10 +349,8 @@ def notify_permission_event(
         )
         return {"status": "skipped", "reason": "disabled"}
 
-    api_key = _api_key()
-    from_address = _from_address()
-    if not api_key or not from_address:
-        error = "Faltan RESEND_API_KEY y/o EMAIL_FROM en Render."
+    if not _from_address():
+        error = "Falta EMAIL_FROM en Render."
         _mark(notification["id"], "ERROR", error=error)
         logger.error(error)
         return {"status": "error", "reason": "missing_configuration"}
@@ -286,24 +358,11 @@ def notify_permission_event(
     _mark(notification["id"], "ENVIANDO")
 
     try:
-        response = requests.post(
-            RESEND_URL,
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-                "Idempotency-Key": f"permiso-{permission_id}-{event_type}",
-            },
-            json={
-                "from": from_address,
-                "to": [recipient],
-                "subject": subject,
-                "html": _html_body(p, event, observation),
-            },
-            timeout=20,
+        provider_id = _send_email(
+            recipient,
+            subject,
+            _html_body(p, event, observation),
         )
-        response.raise_for_status()
-        payload = response.json()
-        provider_id = payload.get("id")
         _mark(notification["id"], "ENVIADO", provider_id=provider_id)
         return {
             "status": "ok",
@@ -330,52 +389,21 @@ def send_test_email(recipient: str, name: str = "Administrador") -> dict:
     if not _enabled():
         raise RuntimeError("EMAIL_ENABLED no está activado en Render.")
 
-    api_key = _api_key()
-    from_address = _from_address()
-
-    if not api_key or not from_address:
-        raise RuntimeError(
-            "Faltan RESEND_API_KEY y/o EMAIL_FROM en Render."
-        )
-
-    response = requests.post(
-        RESEND_URL,
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "from": from_address,
-            "to": [recipient],
-            "subject": "Prueba · Permisos de Salida ERSeP",
-            "html": f"""
-                <div style="font-family:Arial,sans-serif;max-width:600px">
-                  <h2>Correo configurado correctamente</h2>
-                  <p>Hola {escape(name)},</p>
-                  <p>
-                    Si este envío fue aceptado, el backend de Permisos
-                    de Salida puede comunicarse correctamente con Resend.
-                  </p>
-                </div>
-            """,
-        },
-        timeout=20,
-    )
-
-    if not response.ok:
-        try:
-            detail = response.json()
-        except Exception:
-            detail = response.text
-
-        raise RuntimeError(
-            f"Resend respondió HTTP {response.status_code}: {detail}"
-        )
-
-    payload = response.json()
-
+    subject = "Prueba · Permisos de Salida ERSeP"
+    html = f"""
+        <div style="font-family:Arial,sans-serif;max-width:600px">
+          <h2>Correo configurado correctamente</h2>
+          <p>Hola {escape(name)},</p>
+          <p>
+            El backend de Permisos de Salida pudo enviar este mensaje mediante
+            <strong>{escape(_provider())}</strong>.
+          </p>
+        </div>
+    """
+    provider_id = _send_email(recipient, subject, html)
     return {
         "status": "ok",
         "to": recipient,
-        "provider_id": payload.get("id"),
+        "provider": _provider(),
+        "provider_id": provider_id,
     }

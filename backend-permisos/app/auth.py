@@ -1,103 +1,238 @@
+import base64
+import hashlib
+import hmac
+import secrets
+from datetime import datetime, timedelta, timezone
+
 from fastapi import Depends, Header, HTTPException
-from google.auth.transport import requests as google_requests
-from google.oauth2 import id_token
+
 from .config import settings
 from .database import connection
 
+PBKDF2_ITERATIONS = 260_000
+
 
 def _get_roles(cur, user_id: int) -> list[str]:
-    cur.execute("""
+    cur.execute(
+        """
         SELECT r.codigo
         FROM roles r
         JOIN usuario_roles ur ON ur.rol_id = r.id
         WHERE ur.usuario_id = %s
         ORDER BY r.codigo
-    """, (user_id,))
+        """,
+        (user_id,),
+    )
     return [row["codigo"] for row in cur.fetchall()]
 
 
-def _ensure_bootstrap_roles(cur, user_id: int, email: str) -> bool:
-    """Las cuentas bootstrap conservan AGENTE + ADMIN como mecanismo de recuperación."""
-    if email.lower() not in settings.bootstrap_admin_emails:
+def hash_password(password: str) -> str:
+    if not password:
+        raise ValueError("La clave no puede estar vacía.")
+    salt = secrets.token_bytes(16)
+    digest = hashlib.pbkdf2_hmac(
+        "sha256", password.encode("utf-8"), salt, PBKDF2_ITERATIONS
+    )
+    return "pbkdf2_sha256${}${}${}".format(
+        PBKDF2_ITERATIONS,
+        base64.urlsafe_b64encode(salt).decode("ascii"),
+        base64.urlsafe_b64encode(digest).decode("ascii"),
+    )
+
+
+def verify_password(password: str, encoded: str | None) -> bool:
+    if not encoded:
         return False
-    for code in ("AGENTE", "ADMIN"):
-        cur.execute("""
-            INSERT INTO usuario_roles (usuario_id, rol_id)
-            SELECT %s, id FROM roles WHERE codigo=%s
-            ON CONFLICT DO NOTHING
-        """, (user_id, code))
-    return True
-
-
-def _bootstrap_admin(cur, email: str, sub: str, claims: dict):
-    if email.lower() not in settings.bootstrap_admin_emails:
-        return None
-    given = claims.get("given_name") or claims.get("name") or email.split("@")[0]
-    family = claims.get("family_name") or ""
-    cur.execute("""
-        INSERT INTO usuarios (google_sub, email, nombre, apellido, activo)
-        VALUES (%s,%s,%s,%s,TRUE)
-        ON CONFLICT (email) DO UPDATE SET
-          google_sub = EXCLUDED.google_sub,
-          nombre = COALESCE(NULLIF(usuarios.nombre,''), EXCLUDED.nombre),
-          apellido = COALESCE(NULLIF(usuarios.apellido,''), EXCLUDED.apellido),
-          activo = TRUE,
-          updated_at = NOW()
-        RETURNING *
-    """, (sub, email.lower(), given, family))
-    user = cur.fetchone()
-    _ensure_bootstrap_roles(cur, user["id"], email)
-    return user
-
-
-def get_current_user(authorization: str | None = Header(default=None)) -> dict:
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Sesión no iniciada.")
-    token = authorization[7:].strip()
-    if not settings.google_oauth_client_id:
-        raise HTTPException(status_code=503, detail="GOOGLE_OAUTH_CLIENT_ID no está configurado en el backend.")
-
     try:
-        claims = id_token.verify_oauth2_token(token, google_requests.Request(), settings.google_oauth_client_id)
+        algorithm, iterations_text, salt_b64, digest_b64 = encoded.split("$", 3)
+        if algorithm != "pbkdf2_sha256":
+            return False
+        iterations = int(iterations_text)
+        salt = base64.urlsafe_b64decode(salt_b64.encode("ascii"))
+        expected = base64.urlsafe_b64decode(digest_b64.encode("ascii"))
+        actual = hashlib.pbkdf2_hmac(
+            "sha256", password.encode("utf-8"), salt, iterations
+        )
+        return hmac.compare_digest(actual, expected)
     except Exception:
-        raise HTTPException(status_code=401, detail="La sesión de Google no es válida o expiró.")
+        return False
 
-    email = (claims.get("email") or "").lower()
-    sub = claims.get("sub")
-    if not email or not sub or not claims.get("email_verified"):
-        raise HTTPException(status_code=401, detail="Google no entregó una identidad verificada.")
+
+def _token_hash(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _safe_user(user: dict, roles: list[str]) -> dict:
+    return {**user, "roles": roles}
+
+
+def ensure_bootstrap_admin() -> None:
+    """Crea/recupera un administrador inicial sólo si existe clave en variables de entorno."""
+    username = settings.bootstrap_admin_username.strip().lower()
+    password = settings.bootstrap_admin_password
+    email = settings.bootstrap_admin_email.strip().lower() or "admin@ersep.local"
+
+    if not username or not password:
+        return
 
     with connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT * FROM usuarios WHERE email=%s", (email,))
+            cur.execute(
+                "SELECT * FROM usuarios WHERE lower(username)=lower(%s)",
+                (username,),
+            )
             user = cur.fetchone()
             if not user:
-                user = _bootstrap_admin(cur, email, sub, claims)
-                if not user:
-                    raise HTTPException(status_code=403, detail="Tu cuenta Google no está habilitada para este sistema.")
-                conn.commit()
-            elif not user["activo"]:
-                # La cuenta bootstrap puede recuperarse aun si fue deshabilitada por error.
-                if email in settings.bootstrap_admin_emails:
-                    cur.execute("UPDATE usuarios SET activo=TRUE, google_sub=%s, updated_at=NOW() WHERE id=%s RETURNING *", (sub, user["id"]))
-                    user = cur.fetchone()
-                    _ensure_bootstrap_roles(cur, user["id"], email)
-                    conn.commit()
-                else:
-                    raise HTTPException(status_code=403, detail="Tu usuario se encuentra deshabilitado.")
-            else:
+                # Facilita migrar una instalación anterior que ya tenía al admin por email de Google.
+                cur.execute("SELECT * FROM usuarios WHERE lower(email)=lower(%s)", (email,))
+                user = cur.fetchone()
+                if user:
+                    cur.execute(
+                        "UPDATE usuarios SET username=%s, activo=TRUE, updated_at=NOW() WHERE id=%s",
+                        (username, user["id"]),
+                    )
+                    user["username"] = username
+            if user:
+                # No pisa la clave de un administrador ya configurado.
                 changed = False
-                if user.get("google_sub") != sub:
-                    cur.execute("UPDATE usuarios SET google_sub=%s, updated_at=NOW() WHERE id=%s", (sub, user["id"]))
-                    user["google_sub"] = sub
+                if not user.get("password_hash"):
+                    cur.execute(
+                        "UPDATE usuarios SET password_hash=%s, activo=TRUE, updated_at=NOW() WHERE id=%s",
+                        (hash_password(password), user["id"]),
+                    )
                     changed = True
-                if _ensure_bootstrap_roles(cur, user["id"], email):
+                for code in ("AGENTE", "ADMIN"):
+                    cur.execute(
+                        """
+                        INSERT INTO usuario_roles (usuario_id, rol_id)
+                        SELECT %s, id FROM roles WHERE codigo=%s
+                        ON CONFLICT DO NOTHING
+                        """,
+                        (user["id"], code),
+                    )
                     changed = True
                 if changed:
                     conn.commit()
-            roles = _get_roles(cur, user["id"])
+                return
 
-    return {**user, "roles": roles}
+            cur.execute(
+                """
+                INSERT INTO usuarios (
+                    username,email,nombre,apellido,legajo,password_hash,activo
+                )
+                VALUES (%s,%s,'Administrador','Permisos',NULL,%s,TRUE)
+                RETURNING id
+                """,
+                (username, email, hash_password(password)),
+            )
+            user_id = cur.fetchone()["id"]
+            for code in ("AGENTE", "ADMIN", "RRHH"):
+                cur.execute(
+                    """
+                    INSERT INTO usuario_roles (usuario_id, rol_id)
+                    SELECT %s, id FROM roles WHERE codigo=%s
+                    ON CONFLICT DO NOTHING
+                    """,
+                    (user_id, code),
+                )
+        conn.commit()
+
+
+def login_user(username: str, password: str) -> dict:
+    username = (username or "").strip().lower()
+    if not username or not password:
+        raise HTTPException(status_code=422, detail="Ingresá usuario y clave.")
+
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT * FROM usuarios WHERE lower(username)=lower(%s)",
+                (username,),
+            )
+            user = cur.fetchone()
+            if not user or not verify_password(password, user.get("password_hash")):
+                raise HTTPException(status_code=401, detail="Usuario o clave incorrectos.")
+            if not user["activo"]:
+                raise HTTPException(status_code=403, detail="Tu usuario se encuentra deshabilitado.")
+
+            token = secrets.token_urlsafe(40)
+            expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.auth_session_hours)
+            cur.execute("DELETE FROM sesiones_usuario WHERE expires_at <= NOW()")
+            cur.execute(
+                """
+                INSERT INTO sesiones_usuario (usuario_id,token_hash,expires_at)
+                VALUES (%s,%s,%s)
+                """,
+                (user["id"], _token_hash(token), expires_at),
+            )
+            cur.execute(
+                "UPDATE usuarios SET last_login_at=NOW(),updated_at=NOW() WHERE id=%s",
+                (user["id"],),
+            )
+            roles = _get_roles(cur, user["id"])
+        conn.commit()
+
+    return {
+        "token": token,
+        "expires_at": expires_at.isoformat(),
+        "user": _safe_user(user, roles),
+    }
+
+
+def _extract_bearer(authorization: str | None) -> str:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Sesión no iniciada.")
+    token = authorization[7:].strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="Sesión no iniciada.")
+    return token
+
+
+def get_current_user(authorization: str | None = Header(default=None)) -> dict:
+    token = _extract_bearer(authorization)
+    token_hash = _token_hash(token)
+
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT u.*
+                FROM sesiones_usuario s
+                JOIN usuarios u ON u.id=s.usuario_id
+                WHERE s.token_hash=%s AND s.expires_at > NOW()
+                """,
+                (token_hash,),
+            )
+            user = cur.fetchone()
+            if not user:
+                raise HTTPException(status_code=401, detail="La sesión expiró o no es válida.")
+            if not user["activo"]:
+                cur.execute("DELETE FROM sesiones_usuario WHERE token_hash=%s", (token_hash,))
+                conn.commit()
+                raise HTTPException(status_code=403, detail="Tu usuario se encuentra deshabilitado.")
+
+            cur.execute(
+                "UPDATE sesiones_usuario SET last_used_at=NOW() WHERE token_hash=%s",
+                (token_hash,),
+            )
+            roles = _get_roles(cur, user["id"])
+        conn.commit()
+
+    return _safe_user(user, roles)
+
+
+def logout_session(authorization: str | None) -> None:
+    if not authorization or not authorization.startswith("Bearer "):
+        return
+    token = authorization[7:].strip()
+    if not token:
+        return
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM sesiones_usuario WHERE token_hash=%s", (_token_hash(token),)
+            )
+        conn.commit()
 
 
 def require_roles(*required: str):
@@ -105,4 +240,5 @@ def require_roles(*required: str):
         if "ADMIN" in user["roles"] or any(role in user["roles"] for role in required):
             return user
         raise HTTPException(status_code=403, detail="No tenés permisos para realizar esta acción.")
+
     return dependency

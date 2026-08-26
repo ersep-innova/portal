@@ -18,6 +18,23 @@ CREATE TABLE IF NOT EXISTS usuarios (
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS jornada_desde TIME NOT NULL DEFAULT '08:00';
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS jornada_hasta TIME NOT NULL DEFAULT '14:00';
 
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS username VARCHAR(80);
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password_hash TEXT;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_usuarios_username_lower
+    ON usuarios (LOWER(username)) WHERE username IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS sesiones_usuario (
+    id BIGSERIAL PRIMARY KEY,
+    usuario_id BIGINT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    token_hash CHAR(64) UNIQUE NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_used_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_sesiones_usuario_exp ON sesiones_usuario(expires_at);
+CREATE INDEX IF NOT EXISTS idx_sesiones_usuario_user ON sesiones_usuario(usuario_id);
+
 CREATE TABLE IF NOT EXISTS roles (
     id BIGSERIAL PRIMARY KEY,
     codigo VARCHAR(30) UNIQUE NOT NULL,
