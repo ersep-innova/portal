@@ -32,6 +32,14 @@ button { cursor: pointer; }
 .perm-back:hover { color:#fff; }
 
 .perm-main { min-width:0; }
+
+/* Estado de acceso: cuando el sidebar está oculto, el main debe ocupar
+   las dos columnas del grid. Sin esto, el navegador coloca el único
+   elemento visible en la columna fija de 260px y el login queda comprimido. */
+.perm-sidebar[hidden] + .perm-main {
+  grid-column: 1 / -1;
+  width: 100%;
+}
 .perm-topbar { min-height:72px; display:flex; align-items:center; justify-content:space-between; gap:18px; padding:13px clamp(18px,3vw,38px); background:#fff; border-bottom:1px solid var(--perm-border); position:sticky; top:0; z-index:20; }
 .perm-title-wrap h1 { margin:0; font-size:19px; letter-spacing:-.3px; }
 .perm-title-wrap p { margin:3px 0 0; color:var(--perm-muted); font-size:12px; }
