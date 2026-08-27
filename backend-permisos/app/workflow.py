@@ -4,6 +4,25 @@ from .database import connection
 
 
 def active_boss(cur, user_id: int, on_date: date):
+    """Resuelve la jefatura por Oficina.
+
+    V6: el agente pertenece a una Oficina y esa Oficina define su jefe.
+    Se conserva una compatibilidad de solo lectura con la tabla jefaturas
+    histórica para no romper permisos/usuarios migrados que todavía no
+    tengan Oficina configurada.
+    """
+    cur.execute("""
+        SELECT jefe.*
+        FROM usuarios agente
+        JOIN oficinas o ON o.id = agente.oficina_id AND o.activo=TRUE
+        JOIN usuarios jefe ON jefe.id = o.jefe_id AND jefe.activo=TRUE
+        WHERE agente.id=%s
+        LIMIT 1
+    """, (user_id,))
+    boss = cur.fetchone()
+    if boss:
+        return boss
+
     cur.execute("""
         SELECT u.*
         FROM jefaturas j
@@ -83,15 +102,25 @@ def get_permission_for_user(permission_id: int, user: dict):
             cur.execute("""
                 SELECT p.*,
                        trim(concat(a.nombre,' ',a.apellido)) agente_nombre,
-                       a.legajo, a.dni, a.area,
+                       a.legajo, a.dni, a.area, a.oficina_id agente_oficina_id,
+                       COALESCE(op.nombre, ou.nombre, a.area) oficina,
                        trim(concat(j.nombre,' ',j.apellido)) jefe_nombre,
                        r.fecha_prevista reposicion_fecha_prevista,
                        r.hora_desde_prevista reposicion_hora_desde,
                        r.hora_hasta_prevista reposicion_hora_hasta,
+                       CASE WHEN r.hora_desde_prevista IS NOT NULL AND r.hora_hasta_prevista IS NOT NULL
+                            THEN EXTRACT(EPOCH FROM (r.hora_hasta_prevista-r.hora_desde_prevista))/60 END reposicion_minutos_tramo,
                        r.minutos_a_reponer reposicion_minutos,
+                       r.modalidad reposicion_modalidad,
+                       r.fecha_horas_extra,
+                       r.hora_desde_horas_extra,
+                       r.hora_hasta_horas_extra,
+                       r.minutos_horas_extra,
                        r.estado reposicion_estado
                 FROM permisos_salida p
                 JOIN usuarios a ON a.id=p.agente_id
+                LEFT JOIN oficinas op ON op.id=p.oficina_id
+                LEFT JOIN oficinas ou ON ou.id=a.oficina_id
                 LEFT JOIN usuarios j ON j.id=p.jefe_asignado_id
                 LEFT JOIN reposiciones r ON r.permiso_id=p.id
                 WHERE p.id=%s
@@ -100,6 +129,14 @@ def get_permission_for_user(permission_id: int, user: dict):
             if not p:
                 raise HTTPException(status_code=404, detail="Permiso inexistente.")
             allowed = p["agente_id"] == user["id"] or p.get("jefe_asignado_id") == user["id"] or bool(set(user["roles"]) & {"RRHH","ADMIN"})
+            if not allowed and "JEFE" in user["roles"]:
+                cur.execute("""
+                    SELECT 1
+                    FROM oficinas o
+                    WHERE o.id=COALESCE(%s,%s) AND o.jefe_id=%s AND o.activo=TRUE
+                    LIMIT 1
+                """, (p.get("oficina_id"), p.get("agente_oficina_id"), user["id"]))
+                allowed = cur.fetchone() is not None
             if not allowed:
                 raise HTTPException(status_code=403, detail="No podés consultar este permiso.")
             cur.execute("""

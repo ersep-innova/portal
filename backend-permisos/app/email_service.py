@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 RESEND_URL = "https://api.resend.com/emails"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GMAIL_SEND_URL = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
+RRHH_CONTACT_EMAIL = "ersep.capacitaciones@gmail.com"
 
 # Cache en memoria del access_token de Gmail. El refresh token permanece sólo
 # en las variables de entorno de Render y nunca se expone al frontend.
@@ -278,21 +279,25 @@ def _permission(permission_id: int) -> dict:
             cur.execute(
                 """
                 SELECT
-                    p.id,
-                    p.numero_permiso,
-                    p.fecha_salida,
-                    p.tipo,
-                    p.estado,
-                    p.lugar_destino,
-                    p.hora_salida,
-                    p.hora_regreso,
-                    p.sin_regreso,
-                    p.fecha_devolucion,
-                    a.email AS agente_email,
-                    a.nombre AS agente_nombre,
-                    a.apellido AS agente_apellido
+                    p.id,p.numero_permiso,p.fecha_salida,p.tipo,p.estado,p.lugar_destino,
+                    p.hora_salida,p.hora_regreso,p.sin_regreso,p.jornada_desde,p.jornada_hasta,
+                    p.minutos_calculados,p.minutos_declarados,p.justificacion_minutos,
+                    p.fecha_devolucion,p.fecha_limite_devolucion,p.fuera_plazo_reglamentario,
+                    p.justificacion_fuera_plazo,p.modalidad_compensacion,p.observaciones,
+                    a.email AS agente_email,a.nombre AS agente_nombre,a.apellido AS agente_apellido,
+                    a.legajo,a.dni,
+                    COALESCE(op.nombre,ou.nombre,a.area) oficina,
+                    trim(concat(j.nombre,' ',j.apellido)) jefe_nombre,
+                    j.email jefe_email,
+                    r.modalidad reposicion_modalidad,r.fecha_prevista reposicion_fecha,
+                    r.hora_desde_prevista reposicion_desde,r.hora_hasta_prevista reposicion_hasta,
+                    r.fecha_horas_extra,r.hora_desde_horas_extra,r.hora_hasta_horas_extra,r.minutos_horas_extra
                 FROM permisos_salida p
                 JOIN usuarios a ON a.id = p.agente_id
+                LEFT JOIN oficinas op ON op.id=p.oficina_id
+                LEFT JOIN oficinas ou ON ou.id=a.oficina_id
+                LEFT JOIN usuarios j ON j.id = p.jefe_asignado_id
+                LEFT JOIN reposiciones r ON r.permiso_id=p.id
                 WHERE p.id = %s
                 """,
                 (permission_id,),
@@ -303,84 +308,142 @@ def _permission(permission_id: int) -> dict:
             return row
 
 
+def _fmt_date(value) -> str:
+    return value.strftime("%d/%m/%Y") if value else "—"
+
+
+def _fmt_time(value) -> str:
+    return str(value)[:5] if value is not None else "—"
+
+
+def _fmt_minutes(value) -> str:
+    if value is None:
+        return "—"
+    value = int(value)
+    h, m = divmod(value, 60)
+    if h and m:
+        return f"{h} h {m} min"
+    if h:
+        return f"{h} h"
+    return f"{m} min"
+
+
 def _html_body(p: dict, event: dict, observation: str | None) -> str:
     numero = escape(str(p.get("numero_permiso") or f"#{p['id']}"))
-    nombre = escape(
-        " ".join(
-            x for x in [p.get("agente_nombre"), p.get("agente_apellido")] if x
-        ).strip()
-        or "Agente"
-    )
-    fecha = p["fecha_salida"].strftime("%d/%m/%Y") if p.get("fecha_salida") else "-"
-    tipo = escape(str(p.get("tipo") or "-").title())
+    nombre = escape(" ".join(x for x in [p.get("agente_nombre"), p.get("agente_apellido")] if x).strip() or "Agente")
+    tipo = escape(str(p.get("tipo") or "—").title())
     estado = escape(event["status"])
     mensaje = escape(event["message"])
+    mode = p.get("reposicion_modalidad") or p.get("modalidad_compensacion") or "DEVOLVER_HORAS"
+    salida = f"{_fmt_time(p.get('hora_salida'))} → {'Sin regreso' if p.get('sin_regreso') else _fmt_time(p.get('hora_regreso'))}"
+
+    if mode == "HORAS_EXTRAS_PREVIAS" and p.get("tipo") == "PARTICULAR":
+        compensacion = (
+            f"Usa horas extras previas · {_fmt_date(p.get('fecha_horas_extra'))} · "
+            f"{_fmt_time(p.get('hora_desde_horas_extra'))} → {_fmt_time(p.get('hora_hasta_horas_extra'))} "
+            f"({_fmt_minutes(p.get('minutos_horas_extra'))})"
+        )
+    elif p.get("tipo") == "PARTICULAR":
+        compensacion = (
+            f"Devolución de horas · {_fmt_date(p.get('reposicion_fecha') or p.get('fecha_devolucion'))} · "
+            f"{_fmt_time(p.get('reposicion_desde'))} → {_fmt_time(p.get('reposicion_hasta'))}"
+        )
+    else:
+        compensacion = "No corresponde (salida oficial)"
+
+    rows = [
+        ("Permiso", numero),
+        ("Agente", nombre),
+        ("Legajo", escape(str(p.get("legajo") or "—"))),
+        ("DNI", escape(str(p.get("dni") or "—"))),
+        ("Email del agente", escape(str(p.get("agente_email") or "—"))),
+        ("Oficina", escape(str(p.get("oficina") or "—"))),
+        ("Jefatura", escape(str(p.get("jefe_nombre") or "—"))),
+        ("Fecha de salida", _fmt_date(p.get("fecha_salida"))),
+        ("Hora / regreso", escape(salida)),
+        ("Tipo de salida", tipo),
+        ("Destino", escape(str(p.get("lugar_destino") or "—"))),
+        ("Jornada habitual", escape(f"{_fmt_time(p.get('jornada_desde'))} → {_fmt_time(p.get('jornada_hasta'))}")),
+        ("Tiempo calculado por el sistema", _fmt_minutes(p.get("minutos_calculados"))),
+        ("Tiempo de salida declarado por el agente", _fmt_minutes(p.get("minutos_declarados"))),
+        ("Compensación / devolución", escape(compensacion)),
+        ("Estado actual", estado),
+    ]
+    if p.get("fecha_limite_devolucion"):
+        rows.append(("Fecha límite sugerida de devolución", _fmt_date(p.get("fecha_limite_devolucion"))))
+    if p.get("justificacion_minutos"):
+        rows.append(("Justificación del tiempo declarado", escape(str(p.get("justificacion_minutos")))))
+    if p.get("justificacion_fuera_plazo"):
+        rows.append(("Justificación por devolución fuera de término", escape(str(p.get("justificacion_fuera_plazo")))))
+    if p.get("observaciones"):
+        rows.append(("Observaciones", escape(str(p.get("observaciones")))))
+
+    table_rows = "".join(
+        '<tr><td style="padding:9px 8px;border-bottom:1px solid #e8eaed;font-weight:700;width:42%;vertical-align:top">{}</td>'
+        '<td style="padding:9px 8px;border-bottom:1px solid #e8eaed;vertical-align:top">{}</td></tr>'.format(escape(label), value)
+        for label, value in rows
+    )
+
     obs = (observation or "").strip()
     obs_html = ""
     if obs:
         obs_html = f"""
-        <div style="margin-top:18px;padding:14px 16px;background:#f6f7f9;border-left:4px solid #6b7280;border-radius:6px">
-            <div style="font-weight:700;margin-bottom:6px">Observación informada</div>
+        <div style="margin-top:18px;padding:14px 16px;background:#f6f7f9;border-left:4px solid #6b7280;border-radius:8px">
+            <div style="font-weight:700;margin-bottom:6px">Observación de la actuación</div>
             <div>{escape(obs)}</div>
         </div>
         """
 
+    critical_html = ""
+    if p.get("tipo") == "PARTICULAR":
+        declared = int(p.get("minutos_declarados") or 0)
+        compensated = None
+        if mode == "HORAS_EXTRAS_PREVIAS":
+            compensated = p.get("minutos_horas_extra")
+        elif p.get("reposicion_desde") and p.get("reposicion_hasta"):
+            try:
+                a = p["reposicion_desde"].hour * 60 + p["reposicion_desde"].minute
+                b = p["reposicion_hasta"].hour * 60 + p["reposicion_hasta"].minute
+                compensated = b - a
+            except Exception:
+                pass
+        if compensated is not None and int(compensated) < declared:
+            critical_html = f"""
+            <div style="margin-top:18px;padding:14px 16px;background:#fff1f0;border:1px solid #f5b7b1;border-left:5px solid #b42318;border-radius:8px;color:#8a1c14">
+              <strong>Atención: la compensación informada es insuficiente.</strong><br>
+              Se informaron {_fmt_minutes(compensated)} para una salida declarada de {_fmt_minutes(declared)}.
+            </div>"""
+
     portal = _portal_url()
-    button = ""
-    if portal:
-        button = f"""
-        <div style="margin-top:24px">
-            <a href="{escape(portal)}"
-               style="display:inline-block;background:#1f4e79;color:#ffffff;text-decoration:none;
-                      padding:11px 18px;border-radius:7px;font-weight:700">
-                Ver Permisos de Salida
-            </a>
-        </div>
-        """
+    button = f"""
+      <div style="margin-top:24px">
+        <a href="{escape(portal)}" style="display:inline-block;background:#850921;color:#fff;text-decoration:none;padding:11px 18px;border-radius:8px;font-weight:700">Abrir Permisos de Salida</a>
+      </div>""" if portal else ""
 
     return f"""<!doctype html>
-<html>
-<body style="margin:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#1f2937">
-  <div style="max-width:620px;margin:24px auto;background:white;border-radius:10px;
-              overflow:hidden;border:1px solid #e5e7eb">
-    <div style="padding:20px 24px;background:#1f4e79;color:white">
-      <div style="font-size:13px;opacity:.9">ERSeP · Permisos de Salida</div>
-      <div style="font-size:22px;font-weight:700;margin-top:4px">{escape(event["title"])}</div>
+<html><body style="margin:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#202124">
+  <div style="max-width:700px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e0e0e0">
+    <div style="height:7px;background:linear-gradient(90deg,#079ed0 0 16.6%,#48a62f 16.6% 33.2%,#eead08 33.2% 49.8%,#0c6858 49.8% 66.4%,#75828a 66.4% 83%,#a88976 83% 100%)"></div>
+    <div style="padding:20px 24px;background:#25282a;color:#fff">
+      <div style="font-size:13px;opacity:.85">ERSeP · Permisos de Salida</div>
+      <div style="font-size:22px;font-weight:700;margin-top:4px">{escape(event['title'])}</div>
     </div>
     <div style="padding:24px">
       <p>Hola {nombre},</p>
       <p>{mensaje}</p>
-
-      <table style="width:100%;border-collapse:collapse;margin-top:18px;font-size:14px">
-        <tr>
-          <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:700">Permiso</td>
-          <td style="padding:8px;border-bottom:1px solid #e5e7eb">{numero}</td>
-        </tr>
-        <tr>
-          <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:700">Fecha de salida</td>
-          <td style="padding:8px;border-bottom:1px solid #e5e7eb">{fecha}</td>
-        </tr>
-        <tr>
-          <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:700">Tipo</td>
-          <td style="padding:8px;border-bottom:1px solid #e5e7eb">{tipo}</td>
-        </tr>
-        <tr>
-          <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:700">Estado actual</td>
-          <td style="padding:8px;border-bottom:1px solid #e5e7eb">{estado}</td>
-        </tr>
-      </table>
-
+      <p style="color:#5f6368;font-size:13px">A continuación se incluye el detalle completo registrado en el sistema.</p>
+      <table style="width:100%;border-collapse:collapse;margin-top:18px;font-size:14px">{table_rows}</table>
+      {critical_html}
       {obs_html}
+      <div style="margin-top:22px;padding:14px 16px;background:#f7f8f9;border:1px solid #e1e4e6;border-radius:8px;font-size:13px;line-height:1.55">
+        <strong>¿Necesitás informar un cambio o inconveniente?</strong><br>
+        Comunicate con Recursos Humanos: <a href="mailto:{RRHH_CONTACT_EMAIL}" style="color:#850921;font-weight:700">{RRHH_CONTACT_EMAIL}</a>.
+      </div>
       {button}
-
-      <p style="margin-top:26px;color:#6b7280;font-size:12px;line-height:1.5">
-        Este es un mensaje automático del Sistema de Permisos de Salida del ERSeP.
-        No responda este correo.
-      </p>
+      <p style="margin-top:26px;color:#73777a;font-size:12px;line-height:1.5">Este es un mensaje automático del Sistema de Permisos de Salida del ERSeP. Ante cualquier diferencia en los datos, comuníquese con RR.HH.</p>
     </div>
   </div>
-</body>
-</html>"""
+</body></html>"""
 
 
 def _upsert_notification(

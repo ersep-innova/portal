@@ -257,7 +257,8 @@ def sync_all() -> dict:
         with conn.cursor() as cur:
             cur.execute("""
                 SELECT p.id,p.numero_permiso,p.fecha_salida,
-                       trim(concat(a.nombre,' ',a.apellido)) agente,a.dni,a.legajo,a.area,
+                       trim(concat(a.nombre,' ',a.apellido)) agente,a.dni,a.legajo,
+                       COALESCE(op.nombre,ou.nombre,a.area) oficina,
                        p.tipo,p.lugar_destino,p.hora_salida,p.hora_regreso,p.sin_regreso,
                        p.jornada_desde,p.jornada_hasta,p.minutos_calculados,p.minutos_declarados,
                        p.justificacion_minutos,p.fecha_devolucion,p.fecha_limite_devolucion,
@@ -266,6 +267,8 @@ def sync_all() -> dict:
                        p.created_at,p.updated_at
                 FROM permisos_salida p
                 JOIN usuarios a ON a.id=p.agente_id
+                LEFT JOIN oficinas op ON op.id=p.oficina_id
+                LEFT JOIN oficinas ou ON ou.id=a.oficina_id
                 LEFT JOIN usuarios j ON j.id=p.jefe_asignado_id
                 ORDER BY p.fecha_salida DESC,p.id DESC
             """)
@@ -276,7 +279,7 @@ def sync_all() -> dict:
                 FROM reposiciones r
                 JOIN permisos_salida p ON p.id=r.permiso_id
                 JOIN usuarios u ON u.id=p.agente_id
-                ORDER BY r.fecha_prevista DESC
+                ORDER BY COALESCE(r.fecha_prevista,r.fecha_horas_extra) DESC NULLS LAST
             """)
             repos = cur.fetchall()
 
@@ -299,7 +302,7 @@ def sync_all() -> dict:
             summary = cur.fetchone()
 
     header = [
-        "ID","Número","Fecha","Agente","DNI","Legajo","Área","Tipo","Destino",
+        "ID","Número","Fecha","Agente","DNI","Legajo","Oficina","Tipo","Destino",
         "Salida","Regreso","Sin regreso","Jornada desde","Jornada hasta",
         "Minutos calculados","Minutos declarados","Justificación diferencia",
         "Fecha devolución","Fecha límite 7 días hábiles","Fuera de plazo",
@@ -310,7 +313,7 @@ def sync_all() -> dict:
     for p in permits:
         values.append([
             p["id"], p["numero_permiso"], str(p["fecha_salida"]), p["agente"],
-            p["dni"] or "", p["legajo"] or "", p["area"] or "", p["tipo"],
+            p["dni"] or "", p["legajo"] or "", p["oficina"] or "", p["tipo"],
             p["lugar_destino"] or "", _t(p["hora_salida"]),
             "" if p["sin_regreso"] else _t(p["hora_regreso"]),
             "SI" if p["sin_regreso"] else "NO",
@@ -333,13 +336,18 @@ def sync_all() -> dict:
     ws.freeze(rows=1)
 
     repo_header = [
-        "Número permiso","Agente","Fecha prevista","Desde","Hasta","Fecha real",
-        "Minutos a reponer","Minutos repuestos","Estado"
+        "Número permiso","Agente","Modalidad","Fecha devolución","Desde devolución","Hasta devolución",
+        "Fecha horas extras previas","Desde horas extras","Hasta horas extras","Minutos horas extras",
+        "Fecha real","Minutos a compensar","Minutos compensados","Estado"
     ]
     repo_values = [repo_header] + [[
-        r["numero_permiso"], r["agente"], str(r["fecha_prevista"]),
+        r["numero_permiso"], r["agente"], r.get("modalidad") or "DEVOLVER_HORAS",
+        str(r.get("fecha_prevista") or ""),
         _t(r.get("hora_desde_prevista")), _t(r.get("hora_hasta_prevista")),
-        str(r["fecha_real"] or ""),
+        str(r.get("fecha_horas_extra") or ""),
+        _t(r.get("hora_desde_horas_extra")), _t(r.get("hora_hasta_horas_extra")),
+        r.get("minutos_horas_extra") if r.get("minutos_horas_extra") is not None else "",
+        str(r.get("fecha_real") or ""),
         r["minutos_a_reponer"] if r["minutos_a_reponer"] is not None else "",
         r["minutos_repuestos"],
         r["estado"],

@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
     close_pool()
 
 
-app = FastAPI(title="ERSeP · Permisos de Salida API", version="0.3.0", lifespan=lifespan)
+app = FastAPI(title="ERSeP · Permisos de Salida API", version="0.6.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(settings.frontend_origins),
@@ -71,6 +71,10 @@ class PermissionIn(BaseModel):
     fecha_devolucion: date | None = None
     devolucion_hora_desde: str | None = None
     devolucion_hora_hasta: str | None = None
+    compensacion_modo: Literal["DEVOLVER_HORAS", "HORAS_EXTRAS_PREVIAS"] = "DEVOLVER_HORAS"
+    horas_extra_fecha: date | None = None
+    horas_extra_desde: str | None = None
+    horas_extra_hasta: str | None = None
     justificacion_fuera_plazo: str | None = Field(default=None, max_length=1000)
     observaciones: str | None = Field(default=None, max_length=1000)
 
@@ -87,11 +91,19 @@ class AdminUserIn(BaseModel):
     apellido: str = Field(min_length=1, max_length=120)
     legajo: str = Field(min_length=1, max_length=40)
     dni: str | None = Field(default=None, max_length=30)
-    area: str | None = Field(default=None, max_length=180)
+    area: str | None = Field(default=None, max_length=180)  # compatibilidad heredada
+    oficina_id: int | None = None
     jornada_desde: str = "08:00"
     jornada_hasta: str = "14:00"
     roles: list[Literal["AGENTE", "JEFE", "RRHH", "ADMIN"]] = ["AGENTE"]
-    jefe_email: EmailStr | None = None
+    jefe_email: EmailStr | None = None  # compatibilidad heredada, ya no se usa en la UI V6
+
+
+class AdminOfficeIn(BaseModel):
+    id: int | None = None
+    nombre: str = Field(min_length=1, max_length=180)
+    jefe_id: int | None = None
+    activo: bool = True
 
 
 class AdminUserStatusIn(BaseModel):
@@ -110,12 +122,41 @@ def _parse_time(value: str | None):
 
 
 def _serialize_permission(row: dict):
+    row = dict(row)
     for key in (
         "hora_salida", "hora_regreso", "jornada_desde", "jornada_hasta",
         "reposicion_hora_desde", "reposicion_hora_hasta",
+        "hora_desde_horas_extra", "hora_hasta_horas_extra",
     ):
         if row.get(key) is not None:
             row[key] = str(row[key])[:5]
+
+    declared = row.get("minutos_declarados")
+    if declared is None:
+        declared = row.get("minutos_autorizados")
+    mode = row.get("reposicion_modalidad") or row.get("modalidad_compensacion") or "DEVOLVER_HORAS"
+    proposed = row.get("minutos_horas_extra") if mode == "HORAS_EXTRAS_PREVIAS" else row.get("reposicion_minutos_tramo")
+    if proposed is None and mode == "DEVOLVER_HORAS":
+        a = row.get("reposicion_hora_desde")
+        b = row.get("reposicion_hora_hasta")
+        if a and b:
+            try:
+                ah, am = map(int, str(a).split(":")[:2]); bh, bm = map(int, str(b).split(":")[:2])
+                proposed = (bh * 60 + bm) - (ah * 60 + am)
+            except Exception:
+                proposed = None
+
+    risks = []
+    if row.get("fuera_plazo_reglamentario"):
+        risks.append({"nivel": "CRITICO", "codigo": "FUERA_PLAZO", "mensaje": "La devolución propuesta supera el plazo reglamentario sugerido."})
+    if declared is not None and proposed is not None and int(proposed) < int(declared):
+        label = "horas extra informadas" if mode == "HORAS_EXTRAS_PREVIAS" else "tramo de devolución"
+        risks.append({"nivel": "CRITICO", "codigo": "COMPENSACION_INSUFICIENTE", "mensaje": f"El {label} cubre menos tiempo que la salida declarada ({proposed} min vs. {declared} min)."})
+    calculated = row.get("minutos_calculados")
+    if declared is not None and calculated is not None and int(declared) != int(calculated):
+        risks.append({"nivel": "ATENCION", "codigo": "TIEMPO_DIFERENTE", "mensaje": "El tiempo declarado por el agente difiere del cálculo automático."})
+    row["riesgos"] = risks
+    row["riesgo_critico"] = any(x["nivel"] == "CRITICO" for x in risks)
     return row
 
 
@@ -164,6 +205,17 @@ def auth_logout(authorization: str | None = Header(default=None)):
 
 @app.get("/api/auth/me")
 def auth_me(user: dict = Depends(get_current_user)):
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT o.id oficina_id,o.nombre oficina,
+                       trim(concat(j.nombre,' ',j.apellido)) jefe_nombre,j.email jefe_email
+                FROM usuarios u
+                LEFT JOIN oficinas o ON o.id=u.oficina_id
+                LEFT JOIN usuarios j ON j.id=o.jefe_id
+                WHERE u.id=%s
+            """, (user["id"],))
+            org = cur.fetchone() or {}
     return _serialize_user({
         "id": user["id"],
         "email": user["email"],
@@ -171,7 +223,11 @@ def auth_me(user: dict = Depends(get_current_user)):
         "apellido": user["apellido"],
         "dni": user.get("dni"),
         "legajo": user.get("legajo"),
-        "area": user.get("area"),
+        "area": org.get("oficina") or user.get("area"),
+        "oficina_id": org.get("oficina_id"),
+        "oficina": org.get("oficina") or user.get("area"),
+        "jefe_nombre": org.get("jefe_nombre"),
+        "jefe_email": org.get("jefe_email"),
         "jornada_desde": user.get("jornada_desde"),
         "jornada_hasta": user.get("jornada_hasta"),
         "roles": user["roles"],
@@ -195,8 +251,6 @@ def return_deadline(fecha_salida: date = Query(...), user: dict = Depends(requir
 def create_permission(payload: PermissionIn, bg: BackgroundTasks, user: dict = Depends(require_roles("AGENTE"))):
     if payload.tipo == "OFICIAL" and not (payload.lugar_destino or "").strip():
         raise HTTPException(status_code=422, detail="Las salidas oficiales requieren lugar de destino.")
-    if payload.tipo == "PARTICULAR" and not payload.fecha_devolucion:
-        raise HTTPException(status_code=422, detail="Las salidas particulares requieren fecha de devolución de horas.")
 
     start = _parse_time(payload.hora_salida)
     end = _parse_time(payload.hora_regreso)
@@ -208,54 +262,89 @@ def create_permission(payload: PermissionIn, bg: BackgroundTasks, user: dict = D
     if declared != calculated and not (payload.justificacion_minutos or "").strip():
         raise HTTPException(
             status_code=422,
-            detail="El tiempo declarado difiere del cálculo automático. Debe explicar el motivo de la diferencia.",
+            detail="El tiempo de salida declarado difiere del cálculo automático. Debe explicar el motivo de la diferencia.",
         )
 
+    mode = payload.compensacion_modo if payload.tipo == "PARTICULAR" else None
     return_from = _parse_time(payload.devolucion_hora_desde)
     return_to = _parse_time(payload.devolucion_hora_hasta)
+    extra_from = _parse_time(payload.horas_extra_desde)
+    extra_to = _parse_time(payload.horas_extra_hasta)
 
     with connection() as conn:
         with conn.cursor() as cur:
             limit_date = None
             outside = False
             return_minutes = None
+            extra_minutes = None
+            return_date = None
+            extra_date = None
+
             if payload.tipo == "PARTICULAR":
-                if payload.fecha_devolucion < payload.fecha_salida:
-                    raise HTTPException(status_code=422, detail="La fecha de devolución no puede ser anterior a la salida.")
-                if return_from is None or return_to is None:
-                    raise HTTPException(status_code=422, detail="Debe indicar el tramo horario desde/hasta en el que devolverá las horas.")
-                return_minutes = minutes_between(return_from, return_to)
-                limit_date = max_business_date(cur, payload.fecha_salida, 7)
-                outside = payload.fecha_devolucion > limit_date
-                if outside and not (payload.justificacion_fuera_plazo or "").strip():
-                    raise HTTPException(
-                        status_code=422,
-                        detail=(
-                            f"La fecha seleccionada supera el plazo reglamentario sugerido ({limit_date.strftime('%d/%m/%Y')}). "
-                            "Puede continuar, pero debe indicar una observación para consideración de RR.HH."
-                        ),
-                    )
+                if mode == "DEVOLVER_HORAS":
+                    if not payload.fecha_devolucion:
+                        raise HTTPException(status_code=422, detail="Debe indicar la fecha en la que devolverá las horas.")
+                    if payload.fecha_devolucion < payload.fecha_salida:
+                        raise HTTPException(status_code=422, detail="La fecha de devolución no puede ser anterior a la salida.")
+                    if return_from is None or return_to is None:
+                        raise HTTPException(status_code=422, detail="Debe indicar el horario completo en el que devolverá las horas.")
+                    return_minutes = minutes_between(return_from, return_to)
+                    return_date = payload.fecha_devolucion
+                    limit_date = max_business_date(cur, payload.fecha_salida, 7)
+                    outside = payload.fecha_devolucion > limit_date
+                    if outside and not (payload.justificacion_fuera_plazo or "").strip():
+                        raise HTTPException(
+                            status_code=422,
+                            detail=(
+                                f"La fecha seleccionada supera el plazo reglamentario sugerido ({limit_date.strftime('%d/%m/%Y')}). "
+                                "Puede continuar, pero debe indicar una observación para consideración de RR.HH."
+                            ),
+                        )
+                elif mode == "HORAS_EXTRAS_PREVIAS":
+                    if not payload.horas_extra_fecha or extra_from is None or extra_to is None:
+                        raise HTTPException(
+                            status_code=422,
+                            detail="Para usar horas extras previas debe indicar el día y el horario exacto en que fueron realizadas.",
+                        )
+                    if payload.horas_extra_fecha >= payload.fecha_salida:
+                        raise HTTPException(
+                            status_code=422,
+                            detail="Las horas extra utilizadas deben haber sido realizadas antes de la fecha de salida.",
+                        )
+                    extra_minutes = minutes_between(extra_from, extra_to)
+                    extra_date = payload.horas_extra_fecha
+                else:
+                    raise HTTPException(status_code=422, detail="Modalidad de compensación inválida.")
 
             cur.execute("""
                 INSERT INTO permisos_salida (
-                  agente_id,tipo,fecha_salida,lugar_destino,hora_salida,hora_regreso,sin_regreso,
+                  agente_id,oficina_id,tipo,fecha_salida,lugar_destino,hora_salida,hora_regreso,sin_regreso,
                   jornada_desde,jornada_hasta,minutos_calculados,minutos_declarados,minutos_autorizados,
                   justificacion_minutos,fecha_devolucion,fecha_limite_devolucion,fuera_plazo_reglamentario,
-                  justificacion_fuera_plazo,observaciones,estado
-                ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'BORRADOR') RETURNING *
+                  justificacion_fuera_plazo,modalidad_compensacion,observaciones,estado
+                ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'BORRADOR') RETURNING *
             """, (
-                user["id"], payload.tipo, payload.fecha_salida, (payload.lugar_destino or "").strip() or None,
+                user["id"], user.get("oficina_id"), payload.tipo, payload.fecha_salida,
+                (payload.lugar_destino or "").strip() or None,
                 start, end, payload.sin_regreso, workday_start, workday_end, calculated, declared, declared,
-                (payload.justificacion_minutos or "").strip() or None, payload.fecha_devolucion, limit_date, outside,
-                (payload.justificacion_fuera_plazo or "").strip() or None, payload.observaciones,
+                (payload.justificacion_minutos or "").strip() or None, return_date, limit_date, outside,
+                (payload.justificacion_fuera_plazo or "").strip() or None, mode, payload.observaciones,
             ))
             p = cur.fetchone()
             number = f"PS-{payload.fecha_salida.year}-{p['id']:06d}"
             cur.execute("UPDATE permisos_salida SET numero_permiso=%s WHERE id=%s", (number, p["id"]))
 
-            details = [f"Jornada {str(workday_start)[:5]}–{str(workday_end)[:5]}", f"Cálculo automático: {calculated} min", f"Declarado: {declared} min"]
+            details = [
+                f"Jornada {str(workday_start)[:5]}–{str(workday_end)[:5]}",
+                f"Cálculo automático: {calculated} min",
+                f"Tiempo de salida declarado: {declared} min",
+            ]
             if declared != calculated:
                 details.append(f"Justificación: {(payload.justificacion_minutos or '').strip()}")
+            if mode == "DEVOLVER_HORAS":
+                details.append(f"Compensación: devolución el {return_date.strftime('%d/%m/%Y')} de {str(return_from)[:5]} a {str(return_to)[:5]} ({return_minutes} min)")
+            elif mode == "HORAS_EXTRAS_PREVIAS":
+                details.append(f"Compensación: horas extra previas del {extra_date.strftime('%d/%m/%Y')} de {str(extra_from)[:5]} a {str(extra_to)[:5]} ({extra_minutes} min)")
             if outside:
                 details.append(f"Devolución fuera del plazo sugerido ({limit_date.strftime('%d/%m/%Y')}): {(payload.justificacion_fuera_plazo or '').strip()}")
             add_history(cur, p["id"], user["id"], "SOLICITUD_CREADA", None, "BORRADOR", " · ".join(details))
@@ -263,13 +352,18 @@ def create_permission(payload: PermissionIn, bg: BackgroundTasks, user: dict = D
             if payload.tipo == "PARTICULAR":
                 cur.execute("""
                     INSERT INTO reposiciones (
-                        permiso_id,fecha_prevista,hora_desde_prevista,hora_hasta_prevista,minutos_a_reponer
-                    ) VALUES (%s,%s,%s,%s,%s)
-                """, (p["id"], payload.fecha_devolucion, return_from, return_to, declared))
-                if return_minutes != declared:
+                        permiso_id,fecha_prevista,hora_desde_prevista,hora_hasta_prevista,minutos_a_reponer,
+                        modalidad,fecha_horas_extra,hora_desde_horas_extra,hora_hasta_horas_extra,minutos_horas_extra
+                    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                """, (
+                    p["id"], return_date, return_from, return_to, declared,
+                    mode, extra_date, extra_from, extra_to, extra_minutes,
+                ))
+                compensated = extra_minutes if mode == "HORAS_EXTRAS_PREVIAS" else return_minutes
+                if compensated != declared:
                     add_history(
-                        cur, p["id"], user["id"], "TRAMO_REPOSICION_DIFERENTE", "BORRADOR", "BORRADOR",
-                        f"El tramo propuesto equivale a {return_minutes} min y el tiempo declarado es {declared} min.",
+                        cur, p["id"], user["id"], "COMPENSACION_DIFERENTE", "BORRADOR", "BORRADOR",
+                        f"La compensación informada equivale a {compensated} min y el tiempo de salida declarado es {declared} min.",
                     )
             conn.commit()
             p["numero_permiso"] = number
@@ -292,7 +386,7 @@ def send_permission(permission_id: int, bg: BackgroundTasks, user: dict = Depend
                 raise HTTPException(status_code=409, detail="Solo un borrador puede enviarse a autorización.")
             boss = active_boss(cur, user["id"], p["fecha_salida"])
             if not boss:
-                raise HTTPException(status_code=409, detail="No tenés un jefe activo configurado para esa fecha. Solicitá a un administrador que configure tu jefatura.")
+                raise HTTPException(status_code=409, detail="No tenés una Oficina con jefatura activa configurada para esa fecha. Solicitá a Administración o RR.HH. que revise tu Oficina.")
             cur.execute("UPDATE permisos_salida SET estado='PENDIENTE_JEFE',jefe_asignado_id=%s,updated_at=NOW() WHERE id=%s", (boss["id"], permission_id))
             add_history(cur, permission_id, user["id"], "ENVIADO_A_JEFE", "BORRADOR", "PENDIENTE_JEFE", f"Jefatura asignada: {boss['nombre']} {boss['apellido']}")
             conn.commit()
@@ -307,10 +401,20 @@ def my_permissions(user: dict = Depends(require_roles("AGENTE"))):
     with connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT p.*,trim(concat(u.nombre,' ',u.apellido)) agente_nombre,
-                       r.hora_desde_prevista reposicion_hora_desde,r.hora_hasta_prevista reposicion_hora_hasta
+                SELECT p.*,trim(concat(u.nombre,' ',u.apellido)) agente_nombre,u.legajo,
+                       COALESCE(op.nombre,ou.nombre,u.area) oficina,
+                       trim(concat(j.nombre,' ',j.apellido)) jefe_nombre,
+                       r.fecha_prevista reposicion_fecha_prevista,
+                       r.hora_desde_prevista reposicion_hora_desde,r.hora_hasta_prevista reposicion_hora_hasta,
+                       CASE WHEN r.hora_desde_prevista IS NOT NULL AND r.hora_hasta_prevista IS NOT NULL
+                            THEN EXTRACT(EPOCH FROM (r.hora_hasta_prevista-r.hora_desde_prevista))/60 END reposicion_minutos_tramo,
+                       r.minutos_a_reponer reposicion_minutos,r.modalidad reposicion_modalidad,
+                       r.fecha_horas_extra,r.hora_desde_horas_extra,r.hora_hasta_horas_extra,r.minutos_horas_extra
                 FROM permisos_salida p
                 JOIN usuarios u ON u.id=p.agente_id
+                LEFT JOIN oficinas op ON op.id=p.oficina_id
+                LEFT JOIN oficinas ou ON ou.id=u.oficina_id
+                LEFT JOIN usuarios j ON j.id=p.jefe_asignado_id
                 LEFT JOIN reposiciones r ON r.permiso_id=p.id
                 WHERE p.agente_id=%s ORDER BY p.fecha_salida DESC,p.id DESC
             """, (user["id"],))
@@ -323,21 +427,115 @@ def permission_detail(permission_id: int, user: dict = Depends(get_current_user)
     return _serialize_permission(get_permission_for_user(permission_id, user))
 
 
-@app.get("/api/jefatura/pendientes")
-def boss_queue(user: dict = Depends(require_roles("JEFE"))):
+def _jefatura_rows(user_id: int, estado: str | None = None, tipo: str | None = None,
+                    agente: str | None = None, fecha_desde: date | None = None,
+                    fecha_hasta: date | None = None, limit: int = 2000):
+    clauses = ["(p.jefe_asignado_id=%s OR EXISTS (SELECT 1 FROM oficinas oj WHERE oj.id=p.oficina_id AND oj.jefe_id=%s))"]
+    params: list = [user_id, user_id]
+    if estado:
+        clauses.append("p.estado=%s"); params.append(estado)
+    if tipo:
+        clauses.append("p.tipo=%s"); params.append(tipo)
+    if agente:
+        clauses.append("(lower(concat(a.nombre,' ',a.apellido)) LIKE %s OR lower(a.legajo) LIKE %s)")
+        q = f"%{agente.lower()}%"; params.extend([q, q])
+    if fecha_desde:
+        clauses.append("p.fecha_salida >= %s"); params.append(fecha_desde)
+    if fecha_hasta:
+        clauses.append("p.fecha_salida <= %s"); params.append(fecha_hasta)
+    params.append(limit)
     with connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("""
-                SELECT p.*,trim(concat(u.nombre,' ',u.apellido)) agente_nombre,u.legajo,
-                       r.hora_desde_prevista reposicion_hora_desde,r.hora_hasta_prevista reposicion_hora_hasta
+            cur.execute(f"""
+                SELECT p.*,trim(concat(a.nombre,' ',a.apellido)) agente_nombre,a.legajo,
+                       COALESCE(op.nombre,ou.nombre,a.area) oficina,
+                       trim(concat(j.nombre,' ',j.apellido)) jefe_nombre,
+                       r.fecha_prevista reposicion_fecha_prevista,
+                       r.hora_desde_prevista reposicion_hora_desde,r.hora_hasta_prevista reposicion_hora_hasta,
+                       CASE WHEN r.hora_desde_prevista IS NOT NULL AND r.hora_hasta_prevista IS NOT NULL
+                            THEN EXTRACT(EPOCH FROM (r.hora_hasta_prevista-r.hora_desde_prevista))/60 END reposicion_minutos_tramo,
+                       r.minutos_a_reponer reposicion_minutos,r.modalidad reposicion_modalidad,
+                       r.fecha_horas_extra,r.hora_desde_horas_extra,r.hora_hasta_horas_extra,r.minutos_horas_extra,
+                       aj.decision decision_jefatura,aj.fecha_hora decision_jefatura_fecha
                 FROM permisos_salida p
-                JOIN usuarios u ON u.id=p.agente_id
+                JOIN usuarios a ON a.id=p.agente_id
+                LEFT JOIN oficinas op ON op.id=p.oficina_id
+                LEFT JOIN oficinas ou ON ou.id=a.oficina_id
+                LEFT JOIN usuarios j ON j.id=p.jefe_asignado_id
                 LEFT JOIN reposiciones r ON r.permiso_id=p.id
-                WHERE p.jefe_asignado_id=%s AND p.estado='PENDIENTE_JEFE'
-                ORDER BY p.fecha_salida,p.hora_salida
-            """, (user["id"],))
-            rows = [_serialize_permission(r) for r in cur.fetchall()]
-    return {"items": rows}
+                LEFT JOIN LATERAL (
+                    SELECT ap.decision,ap.fecha_hora
+                    FROM aprobaciones ap
+                    WHERE ap.permiso_id=p.id AND ap.tipo_aprobacion='JEFE'
+                    ORDER BY ap.fecha_hora DESC,ap.id DESC LIMIT 1
+                ) aj ON TRUE
+                WHERE {' AND '.join(clauses)}
+                ORDER BY p.fecha_salida DESC,p.id DESC LIMIT %s
+            """, params)
+            return [_serialize_permission(r) for r in cur.fetchall()]
+
+
+@app.get("/api/jefatura/pendientes")
+def boss_queue(user: dict = Depends(require_roles("JEFE"))):
+    return {"items": _jefatura_rows(user["id"], estado="PENDIENTE_JEFE")}
+
+
+@app.get("/api/jefatura/permisos")
+def boss_permissions(
+    estado: str | None = Query(default=None),
+    tipo: str | None = Query(default=None),
+    agente: str | None = Query(default=None),
+    fecha_desde: date | None = Query(default=None),
+    fecha_hasta: date | None = Query(default=None),
+    user: dict = Depends(require_roles("JEFE")),
+):
+    return {"items": _jefatura_rows(user["id"], estado, tipo, agente, fecha_desde, fecha_hasta)}
+
+
+@app.get("/api/jefatura/dashboard")
+def boss_dashboard(
+    estado: str | None = Query(default=None),
+    tipo: str | None = Query(default=None),
+    agente: str | None = Query(default=None),
+    fecha_desde: date | None = Query(default=None),
+    fecha_hasta: date | None = Query(default=None),
+    user: dict = Depends(require_roles("JEFE")),
+):
+    rows = _jefatura_rows(user["id"], estado, tipo, agente, fecha_desde, fecha_hasta)
+    total = len(rows)
+    by_agent = {}
+    by_hour = {}
+    by_office = {}
+    for r in rows:
+        by_agent[r.get("agente_nombre") or "Sin identificar"] = by_agent.get(r.get("agente_nombre") or "Sin identificar", 0) + 1
+        hh = str(r.get("hora_salida") or "—")[:2]
+        hour_label = f"{hh}:00" if hh.isdigit() else "Sin horario"
+        by_hour[hour_label] = by_hour.get(hour_label, 0) + 1
+        office = r.get("oficina") or "Sin Oficina"
+        by_office[office] = by_office.get(office, 0) + 1
+    top = lambda d, n=8: [{"label": k, "valor": v} for k, v in sorted(d.items(), key=lambda x: (-x[1], x[0]))[:n]]
+    return {
+        "total": total,
+        "pendientes": sum(1 for r in rows if r.get("estado") == "PENDIENTE_JEFE"),
+        "autorizados": sum(1 for r in rows if r.get("decision_jefatura") == "APROBADO"),
+        "rechazados": sum(1 for r in rows if r.get("decision_jefatura") == "RECHAZADO"),
+        "criticos": sum(1 for r in rows if r.get("riesgo_critico")),
+        "por_agente": top(by_agent),
+        "por_hora": top(by_hour, 12),
+        "por_oficina": top(by_office),
+    }
+
+
+def _can_boss_act(cur, permission: dict, user: dict) -> bool:
+    if "ADMIN" in user.get("roles", []):
+        return True
+    if permission.get("jefe_asignado_id") == user.get("id"):
+        return True
+    office_id = permission.get("oficina_id")
+    if not office_id:
+        return False
+    cur.execute("SELECT 1 FROM oficinas WHERE id=%s AND jefe_id=%s AND activo=TRUE", (office_id, user["id"]))
+    return cur.fetchone() is not None
 
 
 @app.post("/api/permisos/{permission_id}/autorizar")
@@ -348,8 +546,8 @@ def authorize(permission_id: int, payload: DecisionIn, bg: BackgroundTasks, user
             p = cur.fetchone()
             if not p:
                 raise HTTPException(status_code=404, detail="Permiso inexistente.")
-            if p["jefe_asignado_id"] != user["id"] and "ADMIN" not in user["roles"]:
-                raise HTTPException(status_code=403, detail="No sos la jefatura asignada a esta solicitud.")
+            if not _can_boss_act(cur, p, user):
+                raise HTTPException(status_code=403, detail="No sos la jefatura asignada ni la jefatura actual de esta Oficina.")
             if p["estado"] != "PENDIENTE_JEFE":
                 raise HTTPException(status_code=409, detail="La solicitud ya no está pendiente de autorización.")
             cur.execute("INSERT INTO aprobaciones (permiso_id,usuario_id,tipo_aprobacion,decision,observacion) VALUES (%s,%s,'JEFE','APROBADO',%s)", (permission_id, user["id"], payload.observacion))
@@ -373,8 +571,8 @@ def reject(permission_id: int, payload: DecisionIn, bg: BackgroundTasks, user: d
             p = cur.fetchone()
             if not p:
                 raise HTTPException(status_code=404, detail="Permiso inexistente.")
-            if p["jefe_asignado_id"] != user["id"] and "ADMIN" not in user["roles"]:
-                raise HTTPException(status_code=403, detail="No sos la jefatura asignada.")
+            if not _can_boss_act(cur, p, user):
+                raise HTTPException(status_code=403, detail="No sos la jefatura asignada ni la jefatura actual de esta Oficina.")
             if p["estado"] != "PENDIENTE_JEFE":
                 raise HTTPException(status_code=409, detail="La solicitud ya no está pendiente.")
             cur.execute("INSERT INTO aprobaciones (permiso_id,usuario_id,tipo_aprobacion,decision,observacion) VALUES (%s,%s,'JEFE','RECHAZADO',%s)", (permission_id, user["id"], reason))
@@ -387,46 +585,107 @@ def reject(permission_id: int, payload: DecisionIn, bg: BackgroundTasks, user: d
     return {"status": "ok"}
 
 
-@app.get("/api/rrhh/permisos")
-def rrhh_permissions(estado: str | None = Query(default=None), tipo: str | None = Query(default=None), user: dict = Depends(require_roles("RRHH"))):
+def _rrhh_rows(
+    estado: str | None = None,
+    tipo: str | None = None,
+    oficina_id: int | None = None,
+    agente: str | None = None,
+    fecha_desde: date | None = None,
+    fecha_hasta: date | None = None,
+    limit: int = 3000,
+):
     clauses = []
-    params = []
+    params: list = []
     if estado:
-        clauses.append("p.estado=%s")
-        params.append(estado)
+        clauses.append("p.estado=%s"); params.append(estado)
     if tipo:
-        clauses.append("p.tipo=%s")
-        params.append(tipo)
+        clauses.append("p.tipo=%s"); params.append(tipo)
+    if oficina_id:
+        clauses.append("COALESCE(p.oficina_id,a.oficina_id)=%s"); params.append(oficina_id)
+    if agente:
+        clauses.append("(lower(concat(a.nombre,' ',a.apellido)) LIKE %s OR lower(a.legajo) LIKE %s)")
+        q = f"%{agente.lower()}%"; params.extend([q, q])
+    if fecha_desde:
+        clauses.append("p.fecha_salida >= %s"); params.append(fecha_desde)
+    if fecha_hasta:
+        clauses.append("p.fecha_salida <= %s"); params.append(fecha_hasta)
     where = "WHERE " + " AND ".join(clauses) if clauses else ""
+    params.append(limit)
     with connection() as conn:
         with conn.cursor() as cur:
             cur.execute(f"""
-                SELECT p.*,trim(concat(a.nombre,' ',a.apellido)) agente_nombre,a.legajo,
+                SELECT p.*,trim(concat(a.nombre,' ',a.apellido)) agente_nombre,a.legajo,a.email agente_email,
+                       COALESCE(op.nombre,ou.nombre,a.area) oficina,
                        trim(concat(j.nombre,' ',j.apellido)) jefe_nombre,
-                       r.hora_desde_prevista reposicion_hora_desde,r.hora_hasta_prevista reposicion_hora_hasta
+                       r.fecha_prevista reposicion_fecha_prevista,
+                       r.hora_desde_prevista reposicion_hora_desde,r.hora_hasta_prevista reposicion_hora_hasta,
+                       CASE WHEN r.hora_desde_prevista IS NOT NULL AND r.hora_hasta_prevista IS NOT NULL
+                            THEN EXTRACT(EPOCH FROM (r.hora_hasta_prevista-r.hora_desde_prevista))/60 END reposicion_minutos_tramo,
+                       r.minutos_a_reponer reposicion_minutos,r.modalidad reposicion_modalidad,
+                       r.fecha_horas_extra,r.hora_desde_horas_extra,r.hora_hasta_horas_extra,r.minutos_horas_extra
                 FROM permisos_salida p
                 JOIN usuarios a ON a.id=p.agente_id
+                LEFT JOIN oficinas op ON op.id=p.oficina_id
+                LEFT JOIN oficinas ou ON ou.id=a.oficina_id
                 LEFT JOIN usuarios j ON j.id=p.jefe_asignado_id
                 LEFT JOIN reposiciones r ON r.permiso_id=p.id
-                {where} ORDER BY p.fecha_salida DESC,p.id DESC LIMIT 1000
+                {where} ORDER BY p.fecha_salida DESC,p.id DESC LIMIT %s
             """, params)
-            rows = [_serialize_permission(r) for r in cur.fetchall()]
-    return {"items": rows}
+            return [_serialize_permission(r) for r in cur.fetchall()]
+
+
+@app.get("/api/rrhh/permisos")
+def rrhh_permissions(
+    estado: str | None = Query(default=None),
+    tipo: str | None = Query(default=None),
+    oficina_id: int | None = Query(default=None),
+    agente: str | None = Query(default=None),
+    fecha_desde: date | None = Query(default=None),
+    fecha_hasta: date | None = Query(default=None),
+    user: dict = Depends(require_roles("RRHH")),
+):
+    return {"items": _rrhh_rows(estado, tipo, oficina_id, agente, fecha_desde, fecha_hasta)}
 
 
 @app.get("/api/rrhh/dashboard")
-def rrhh_dashboard(user: dict = Depends(require_roles("RRHH"))):
-    with connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT
-                  COUNT(*) FILTER (WHERE date_trunc('month',fecha_salida)=date_trunc('month',CURRENT_DATE)) total_mes,
-                  COUNT(*) FILTER (WHERE estado='PENDIENTE_RRHH') pendientes_rrhh,
-                  COUNT(*) FILTER (WHERE tipo='PARTICULAR' AND date_trunc('month',fecha_salida)=date_trunc('month',CURRENT_DATE)) particulares_mes,
-                  COALESCE(SUM(minutos_declarados) FILTER (WHERE tipo='PARTICULAR' AND date_trunc('month',fecha_salida)=date_trunc('month',CURRENT_DATE)),0) minutos_particulares_mes
-                FROM permisos_salida
-            """)
-            return cur.fetchone()
+def rrhh_dashboard(
+    estado: str | None = Query(default=None),
+    tipo: str | None = Query(default=None),
+    oficina_id: int | None = Query(default=None),
+    agente: str | None = Query(default=None),
+    fecha_desde: date | None = Query(default=None),
+    fecha_hasta: date | None = Query(default=None),
+    user: dict = Depends(require_roles("RRHH")),
+):
+    rows = _rrhh_rows(estado, tipo, oficina_id, agente, fecha_desde, fecha_hasta)
+    by_office = {}
+    by_agent = {}
+    by_hour = {}
+    by_type = {}
+    declared_minutes = 0
+    for r in rows:
+        office = r.get("oficina") or "Sin Oficina"
+        agent_name = r.get("agente_nombre") or "Sin identificar"
+        hh = str(r.get("hora_salida") or "—")[:2]
+        hour_label = f"{hh}:00" if hh.isdigit() else "Sin horario"
+        by_office[office] = by_office.get(office, 0) + 1
+        by_agent[agent_name] = by_agent.get(agent_name, 0) + 1
+        by_hour[hour_label] = by_hour.get(hour_label, 0) + 1
+        by_type[r.get("tipo") or "—"] = by_type.get(r.get("tipo") or "—", 0) + 1
+        if r.get("tipo") == "PARTICULAR":
+            declared_minutes += int(r.get("minutos_declarados") or 0)
+    top = lambda d, n=10: [{"label": k, "valor": v} for k, v in sorted(d.items(), key=lambda x: (-x[1], x[0]))[:n]]
+    return {
+        "total": len(rows),
+        "pendientes_rrhh": sum(1 for r in rows if r.get("estado") == "PENDIENTE_RRHH"),
+        "particulares": sum(1 for r in rows if r.get("tipo") == "PARTICULAR"),
+        "minutos_particulares": declared_minutes,
+        "criticos": sum(1 for r in rows if r.get("riesgo_critico")),
+        "por_oficina": top(by_office),
+        "agentes_recurrentes": top(by_agent),
+        "por_hora": top(by_hour, 12),
+        "por_tipo": top(by_type, 4),
+    }
 
 
 @app.post("/api/permisos/{permission_id}/verificar-rrhh")
@@ -473,7 +732,7 @@ def reject_rrhh(permission_id: int, payload: DecisionIn, bg: BackgroundTasks, us
 
 
 @app.post("/api/admin/email/test")
-def test_email(user: dict = Depends(require_roles("ADMIN"))):
+def test_email(user: dict = Depends(require_roles("RRHH"))):
     """Envía una prueba real a la dirección del administrador autenticado."""
     recipient = (user.get("email") or "").strip()
     if not recipient or recipient.endswith("@ersep.local"):
@@ -490,23 +749,95 @@ def test_email(user: dict = Depends(require_roles("ADMIN"))):
         )
 
 
+@app.get("/api/catalogos/oficinas")
+def office_catalog(user: dict = Depends(get_current_user)):
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT o.id,o.nombre,o.jefe_id,
+                       trim(concat(j.nombre,' ',j.apellido)) jefe_nombre
+                FROM oficinas o
+                LEFT JOIN usuarios j ON j.id=o.jefe_id
+                WHERE o.activo=TRUE
+                ORDER BY o.nombre
+            """)
+            return {"items": cur.fetchall()}
+
+
+@app.get("/api/admin/oficinas")
+def list_offices(user: dict = Depends(require_roles("ADMIN"))):
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT o.id,o.nombre,o.jefe_id,o.activo,o.created_at,o.updated_at,
+                       trim(concat(j.nombre,' ',j.apellido)) jefe_nombre,j.email jefe_email,
+                       COUNT(u.id) FILTER (WHERE u.activo=TRUE) agentes_activos
+                FROM oficinas o
+                LEFT JOIN usuarios j ON j.id=o.jefe_id
+                LEFT JOIN usuarios u ON u.oficina_id=o.id
+                GROUP BY o.id,j.nombre,j.apellido,j.email
+                ORDER BY o.activo DESC,o.nombre
+            """)
+            return {"items": cur.fetchall()}
+
+
+@app.post("/api/admin/oficinas")
+def upsert_office(payload: AdminOfficeIn, user: dict = Depends(require_roles("ADMIN"))):
+    name = payload.nombre.strip()
+    with connection() as conn:
+        with conn.cursor() as cur:
+            if payload.jefe_id is not None:
+                cur.execute("SELECT id,activo FROM usuarios WHERE id=%s", (payload.jefe_id,))
+                boss = cur.fetchone()
+                if not boss or not boss["activo"]:
+                    raise HTTPException(status_code=422, detail="El jefe seleccionado debe ser un usuario activo.")
+            if payload.id:
+                cur.execute("SELECT id FROM oficinas WHERE id=%s", (payload.id,))
+                if not cur.fetchone():
+                    raise HTTPException(status_code=404, detail="Oficina inexistente.")
+                cur.execute("SELECT id FROM oficinas WHERE lower(nombre)=lower(%s) AND id<>%s", (name, payload.id))
+                if cur.fetchone():
+                    raise HTTPException(status_code=409, detail="Ya existe otra Oficina con ese nombre.")
+                cur.execute("""
+                    UPDATE oficinas SET nombre=%s,jefe_id=%s,activo=%s,updated_at=NOW()
+                    WHERE id=%s RETURNING id
+                """, (name, payload.jefe_id, payload.activo, payload.id))
+                office_id = cur.fetchone()["id"]
+            else:
+                cur.execute("""
+                    INSERT INTO oficinas(nombre,jefe_id,activo)
+                    VALUES (%s,%s,%s)
+                    ON CONFLICT (nombre) DO UPDATE SET jefe_id=EXCLUDED.jefe_id,activo=EXCLUDED.activo,updated_at=NOW()
+                    RETURNING id
+                """, (name, payload.jefe_id, payload.activo))
+                office_id = cur.fetchone()["id"]
+
+            if payload.jefe_id is not None:
+                cur.execute("""
+                    INSERT INTO usuario_roles(usuario_id,rol_id)
+                    SELECT %s,id FROM roles WHERE codigo='JEFE'
+                    ON CONFLICT DO NOTHING
+                """, (payload.jefe_id,))
+            # Mantiene sincronizado el campo heredado sólo para integraciones antiguas.
+            cur.execute("UPDATE usuarios SET area=%s,updated_at=NOW() WHERE oficina_id=%s", (name, office_id))
+            conn.commit()
+    return {"status": "ok", "id": office_id}
+
+
 @app.get("/api/admin/usuarios")
 def list_users(user: dict = Depends(require_roles("ADMIN"))):
     with connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
               SELECT u.*,COALESCE(array_agg(DISTINCT r.codigo) FILTER (WHERE r.codigo IS NOT NULL),'{}') roles,
+                     o.nombre oficina,
                      trim(concat(jefe.nombre,' ',jefe.apellido)) jefe_nombre,jefe.email jefe_email
               FROM usuarios u
               LEFT JOIN usuario_roles ur ON ur.usuario_id=u.id
               LEFT JOIN roles r ON r.id=ur.rol_id
-              LEFT JOIN LATERAL (
-                SELECT jj.jefe_id FROM jefaturas jj
-                WHERE jj.usuario_id=u.id AND jj.fecha_desde<=CURRENT_DATE AND (jj.fecha_hasta IS NULL OR jj.fecha_hasta>=CURRENT_DATE)
-                ORDER BY jj.es_suplencia DESC,jj.fecha_desde DESC LIMIT 1
-              ) ja ON TRUE
-              LEFT JOIN usuarios jefe ON jefe.id=ja.jefe_id
-              GROUP BY u.id,jefe.nombre,jefe.apellido,jefe.email
+              LEFT JOIN oficinas o ON o.id=u.oficina_id
+              LEFT JOIN usuarios jefe ON jefe.id=o.jefe_id
+              GROUP BY u.id,o.nombre,jefe.nombre,jefe.apellido,jefe.email
               ORDER BY u.activo DESC,u.apellido,u.nombre
             """)
             return {"items": [_serialize_user(r) for r in cur.fetchall()]}
@@ -524,92 +855,76 @@ def upsert_user(payload: AdminUserIn, user: dict = Depends(require_roles("ADMIN"
 
     with connection() as conn:
         with conn.cursor() as cur:
+            office_name = (payload.area or "").strip() or None
+            office_id = payload.oficina_id
+            if office_id is not None:
+                cur.execute("SELECT id,nombre FROM oficinas WHERE id=%s AND activo=TRUE", (office_id,))
+                office = cur.fetchone()
+                if not office:
+                    raise HTTPException(status_code=422, detail="La Oficina seleccionada no existe o está inactiva.")
+                office_name = office["nombre"]
+
             cur.execute("SELECT * FROM usuarios WHERE email=%s", (email,))
             existing = cur.fetchone()
-
-            cur.execute(
-                "SELECT id FROM usuarios WHERE lower(username)=lower(%s) AND email<>%s",
-                (username, email),
-            )
-            conflict = cur.fetchone()
-            if conflict:
+            cur.execute("SELECT id FROM usuarios WHERE lower(username)=lower(%s) AND email<>%s", (username, email))
+            if cur.fetchone():
                 raise HTTPException(status_code=409, detail="Ese nombre de usuario ya está en uso.")
 
             if existing:
                 if payload.password:
-                    cur.execute(
-                        """
+                    cur.execute("""
                         UPDATE usuarios SET
-                            username=%s,password_hash=%s,nombre=%s,apellido=%s,legajo=%s,dni=%s,area=%s,
-                            jornada_desde=%s,jornada_hasta=%s,activo=TRUE,updated_at=NOW()
+                            username=%s,password_hash=%s,nombre=%s,apellido=%s,legajo=%s,dni=%s,
+                            area=%s,oficina_id=%s,jornada_desde=%s,jornada_hasta=%s,activo=TRUE,updated_at=NOW()
                         WHERE id=%s RETURNING *
-                        """,
-                        (
-                            username, hash_password(payload.password), payload.nombre, payload.apellido,
-                            payload.legajo, payload.dni, payload.area, work_start, work_end, existing["id"],
-                        ),
-                    )
+                    """, (
+                        username,hash_password(payload.password),payload.nombre,payload.apellido,payload.legajo,payload.dni,
+                        office_name,office_id,work_start,work_end,existing["id"],
+                    ))
                 else:
-                    cur.execute(
-                        """
+                    cur.execute("""
                         UPDATE usuarios SET
-                            username=%s,nombre=%s,apellido=%s,legajo=%s,dni=%s,area=%s,
-                            jornada_desde=%s,jornada_hasta=%s,activo=TRUE,updated_at=NOW()
+                            username=%s,nombre=%s,apellido=%s,legajo=%s,dni=%s,
+                            area=%s,oficina_id=%s,jornada_desde=%s,jornada_hasta=%s,activo=TRUE,updated_at=NOW()
                         WHERE id=%s RETURNING *
-                        """,
-                        (
-                            username, payload.nombre, payload.apellido, payload.legajo, payload.dni,
-                            payload.area, work_start, work_end, existing["id"],
-                        ),
-                    )
+                    """, (
+                        username,payload.nombre,payload.apellido,payload.legajo,payload.dni,
+                        office_name,office_id,work_start,work_end,existing["id"],
+                    ))
                 target = cur.fetchone()
             else:
                 if not payload.password:
-                    raise HTTPException(
-                        status_code=422,
-                        detail="Para crear un usuario nuevo debe indicar una clave inicial de al menos 6 caracteres.",
-                    )
-                cur.execute(
-                    """
+                    raise HTTPException(status_code=422, detail="Para crear un usuario nuevo debe indicar una clave inicial de al menos 6 caracteres.")
+                cur.execute("""
                     INSERT INTO usuarios(
-                        username,password_hash,email,nombre,apellido,legajo,dni,area,jornada_desde,jornada_hasta,activo
-                    )
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,TRUE)
-                    RETURNING *
-                    """,
-                    (
-                        username, hash_password(payload.password), email, payload.nombre, payload.apellido,
-                        payload.legajo, payload.dni, payload.area, work_start, work_end,
-                    ),
-                )
+                        username,password_hash,email,nombre,apellido,legajo,dni,area,oficina_id,jornada_desde,jornada_hasta,activo
+                    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,TRUE) RETURNING *
+                """, (
+                    username,hash_password(payload.password),email,payload.nombre,payload.apellido,payload.legajo,payload.dni,
+                    office_name,office_id,work_start,work_end,
+                ))
                 target = cur.fetchone()
 
             cur.execute("DELETE FROM usuario_roles WHERE usuario_id=%s", (target["id"],))
             roles = set(payload.roles or ["AGENTE"])
             for role in roles:
-                cur.execute(
-                    "INSERT INTO usuario_roles(usuario_id,rol_id) SELECT %s,id FROM roles WHERE codigo=%s ON CONFLICT DO NOTHING",
-                    (target["id"], role),
-                )
+                cur.execute("""
+                    INSERT INTO usuario_roles(usuario_id,rol_id)
+                    SELECT %s,id FROM roles WHERE codigo=%s ON CONFLICT DO NOTHING
+                """, (target["id"], role))
 
-            if payload.jefe_email:
-                cur.execute(
-                    "SELECT id FROM usuarios WHERE email=%s AND activo=TRUE",
-                    (payload.jefe_email.lower(),),
-                )
-                boss = cur.fetchone()
-                if not boss:
-                    raise HTTPException(status_code=422, detail="El email del jefe todavía no está creado como usuario activo.")
-                if boss["id"] == target["id"]:
-                    raise HTTPException(status_code=422, detail="Un usuario no puede ser su propio jefe.")
-                cur.execute(
-                    "UPDATE jefaturas SET fecha_hasta=CURRENT_DATE-1 WHERE usuario_id=%s AND fecha_hasta IS NULL",
-                    (target["id"],),
-                )
-                cur.execute(
-                    "INSERT INTO jefaturas(usuario_id,jefe_id,fecha_desde) VALUES (%s,%s,CURRENT_DATE)",
-                    (target["id"], boss["id"]),
-                )
+            # Si la persona está definida como jefatura de alguna Oficina, el rol
+            # JEFE es estructural y no puede perderse por una edición del usuario.
+            cur.execute("""
+                INSERT INTO usuario_roles(usuario_id,rol_id)
+                SELECT %s,r.id FROM roles r
+                WHERE r.codigo='JEFE'
+                  AND EXISTS (SELECT 1 FROM oficinas o WHERE o.jefe_id=%s AND o.activo=TRUE)
+                ON CONFLICT DO NOTHING
+            """, (target["id"], target["id"]))
+
+            # V6: no se crea ni actualiza una jefatura por agente. La jefatura
+            # se resuelve exclusivamente desde la Oficina asignada.
             conn.commit()
             return {"status": "ok", "id": target["id"]}
 
@@ -629,6 +944,7 @@ def set_user_status(target_id: int, payload: AdminUserStatusIn, user: dict = Dep
             cur.execute("UPDATE usuarios SET activo=%s,updated_at=NOW() WHERE id=%s", (payload.activo, target_id))
             if not payload.activo:
                 cur.execute("UPDATE jefaturas SET fecha_hasta=CURRENT_DATE-1 WHERE (usuario_id=%s OR jefe_id=%s) AND fecha_hasta IS NULL", (target_id, target_id))
+                cur.execute("UPDATE oficinas SET jefe_id=NULL,updated_at=NOW() WHERE jefe_id=%s", (target_id,))
             conn.commit()
     return {"status": "ok", "activo": payload.activo}
 

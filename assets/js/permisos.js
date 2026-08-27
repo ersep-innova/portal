@@ -3,17 +3,19 @@
 
   const $ = (sel, ctx = document) => ctx.querySelector(sel);
   const $$ = (sel, ctx = document) => [...ctx.querySelectorAll(sel)];
+  const RRHH_EMAIL = "ersep.capacitaciones@gmail.com";
+
   let currentUser = null;
-  let backendReady = false;
   let returnDeadline = null;
   let declaredTouched = false;
   let adminUsersCache = [];
+  let officesCache = [];
 
   function toast(message, type = "") {
     const el = document.createElement("div");
     el.className = `perm-toast ${type}`;
     el.textContent = message;
-    $("#toast_stack").appendChild(el);
+    $("#toast_stack")?.appendChild(el);
     setTimeout(() => el.remove(), 4600);
   }
 
@@ -26,13 +28,13 @@
       BORRADOR: "Borrador",
       PENDIENTE_JEFE: "Pendiente de Jefatura",
       PENDIENTE_RRHH: "Pendiente de RR.HH.",
-      VERIFICADO_RRHH: "Aprobado por RR.HH.",
-      RECHAZADO: "Rechazado (registro anterior)",
+      VERIFICADO_RRHH: "Verificado por RR.HH.",
+      RECHAZADO: "Rechazado",
       RECHAZADO_JEFE: "Rechazado por Jefatura",
       RECHAZADO_RRHH: "Rechazado por RR.HH.",
       CANCELADO_AGENTE: "Cancelado"
     };
-    return map[state] || state;
+    return map[state] || state || "—";
   }
 
   function badgeState(state) {
@@ -45,15 +47,16 @@
 
   function fmtDate(value) {
     if (!value) return "—";
-    const [y, m, d] = value.slice(0, 10).split("-");
-    return `${d}/${m}/${y}`;
+    const raw = String(value).slice(0, 10);
+    const [y, m, d] = raw.split("-");
+    return y && m && d ? `${d}/${m}/${y}` : raw;
   }
 
   function formatMinutes(minutes) {
     if (minutes === null || minutes === undefined || Number.isNaN(Number(minutes))) return "—";
-    minutes = Number(minutes);
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
+    const total = Number(minutes);
+    const h = Math.floor(total / 60);
+    const m = total % 60;
     if (h && m) return `${h} h ${m} min`;
     if (h) return `${h} h`;
     return `${m} min`;
@@ -61,7 +64,8 @@
 
   function minutesFromClock(value) {
     if (!value) return null;
-    const [h, m] = value.split(":").map(Number);
+    const [h, m] = String(value).split(":").map(Number);
+    if (Number.isNaN(h) || Number.isNaN(m)) return null;
     return h * 60 + m;
   }
 
@@ -72,43 +76,56 @@
     return b - a;
   }
 
-  function setConnection(state) {
-    const el = $("#connection_state");
-    el.className = `perm-connection ${state}`;
-    const text = state === "online" ? "Sistema conectado" : state === "offline" ? "Servicio no disponible" : "Conectando…";
-    el.innerHTML = `<span class="perm-dot"></span><span>${text}</span>`;
-    const backend = $("#status_backend");
-    if (backend) backend.textContent = state === "online" ? "● Render: conectado" : state === "offline" ? "● Render: sin conexión" : "○ Render: conectando";
+  async function copyRRHHEmail(button) {
+    try {
+      await navigator.clipboard.writeText(RRHH_EMAIL);
+      const old = button?.textContent;
+      if (button) button.textContent = "✓ Email copiado";
+      toast("Email de RR.HH. copiado al portapapeles.", "success");
+      if (button) setTimeout(() => button.textContent = old, 1600);
+    } catch (_) {
+      const input = document.createElement("input");
+      input.value = RRHH_EMAIL;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand("copy");
+      input.remove();
+      toast("Email de RR.HH. copiado al portapapeles.", "success");
+    }
   }
 
   function setView(name) {
     $$(".perm-view").forEach(v => v.classList.toggle("active", v.dataset.viewPanel === name));
     $$(".perm-nav button").forEach(b => b.classList.toggle("active", b.dataset.view === name));
     if (name === "mios") loadMyPermissions();
-    if (name === "jefatura") loadBossQueue();
+    if (name === "jefatura") loadBossPanel();
     if (name === "rrhh") loadRRHH();
-    if (name === "admin") loadUsers();
+    if (name === "admin") loadAdmin();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function applyRoles() {
+    const isAdmin = currentUser?.roles?.includes("ADMIN");
     $$(".role-only").forEach(el => {
-      const role = el.dataset.role;
-      el.style.display = currentUser?.roles?.includes(role) ? "flex" : "none";
+      el.style.display = (isAdmin || currentUser?.roles?.includes(el.dataset.role)) ? "flex" : "none";
     });
   }
 
   function fillUser() {
+    if (!currentUser) return;
     const fullName = [currentUser.nombre, currentUser.apellido].filter(Boolean).join(" ");
-    $("#user_name").textContent = fullName || currentUser.email;
-    $("#user_roles").textContent = currentUser.roles.join(" · ");
-    $("#user_avatar").textContent = (currentUser.nombre?.[0] || currentUser.email[0]).toUpperCase();
-    $("#dashboard_greeting").textContent = `Buen día, ${currentUser.nombre || ""}`.trim();
-    $("#form_agente").value = fullName;
-    $("#form_legajo").value = currentUser.legajo || "";
-    $("#form_dni").value = currentUser.dni || "";
-    $("#form_area").value = currentUser.area || "";
-    $("#form_jornada").textContent = `${currentUser.jornada_desde || "08:00"} → ${currentUser.jornada_hasta || "14:00"}`;
+    if ($("#user_name")) $("#user_name").textContent = fullName || currentUser.email;
+    if ($("#user_roles")) $("#user_roles").textContent = (currentUser.roles || []).join(" · ");
+    if ($("#user_avatar")) $("#user_avatar").textContent = (currentUser.nombre?.[0] || currentUser.email?.[0] || "U").toUpperCase();
+    if ($("#dashboard_greeting")) $("#dashboard_greeting").textContent = `Buen día, ${currentUser.nombre || ""}`.trim();
+
+    // Importante: se ejecuta también después de cada form.reset().
+    if ($("#form_agente")) $("#form_agente").value = fullName;
+    if ($("#form_legajo")) $("#form_legajo").value = currentUser.legajo || "";
+    if ($("#form_dni")) $("#form_dni").value = currentUser.dni || "";
+    if ($("#form_oficina")) $("#form_oficina").value = currentUser.oficina || currentUser.area || "Sin Oficina configurada";
+    if ($("#form_jefatura")) $("#form_jefatura").value = currentUser.jefe_nombre || "Sin jefatura configurada";
+    if ($("#form_jornada")) $("#form_jornada").textContent = `${currentUser.jornada_desde || "08:00"} → ${currentUser.jornada_hasta || "14:00"}`;
   }
 
   async function loadDashboard() {
@@ -123,35 +140,54 @@
         const d = new Date(`${x.fecha_salida}T00:00:00`);
         return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
       }).length;
-      renderPermissionList($("#recent_permissions"), rows.slice(0, 5), { actions: false });
+      renderPermissionList($("#recent_permissions"), rows.slice(0, 5), { compact: true });
     } catch (error) {
       toast(error.message, "error");
     }
   }
 
+  function compensationText(p) {
+    if (p.tipo !== "PARTICULAR") return "No corresponde";
+    const mode = p.reposicion_modalidad || p.modalidad_compensacion || "DEVOLVER_HORAS";
+    if (mode === "HORAS_EXTRAS_PREVIAS") {
+      return `Horas extra previas · ${fmtDate(p.fecha_horas_extra)} · ${p.hora_desde_horas_extra || "—"} → ${p.hora_hasta_horas_extra || "—"}`;
+    }
+    return `Devuelve · ${fmtDate(p.reposicion_fecha_prevista || p.fecha_devolucion)} · ${p.reposicion_hora_desde || "—"} → ${p.reposicion_hora_hasta || "—"}`;
+  }
+
+  function riskMarkup(p) {
+    const risks = p.riesgos || [];
+    if (!risks.length) return '<span class="perm-badge green">Sin alertas</span>';
+    if (p.riesgo_critico) return `<span class="perm-critical-flag">Revisión crítica</span><br><small>${escapeHtml(risks[0]?.mensaje || "Revisar")}</small>`;
+    return `<span class="perm-badge yellow">Atención</span><br><small>${escapeHtml(risks[0]?.mensaje || "Revisar")}</small>`;
+  }
+
   function renderPermissionList(target, rows, options = {}) {
+    if (!target) return;
     if (!rows?.length) {
-      target.innerHTML = '<div class="perm-empty"><strong>No hay registros.</strong><span>Cuando existan solicitudes aparecerán aquí.</span></div>';
+      target.innerHTML = '<div class="perm-empty"><strong>No hay registros para mostrar.</strong><span>Probá cambiar los filtros o creá una nueva solicitud.</span></div>';
       return;
     }
 
     target.innerHTML = `<div class="perm-table-wrap"><table class="perm-table perm-table-wide"><thead><tr>
-      <th>Número</th><th>Fecha</th><th>Agente</th><th>Jornada</th><th>Salida</th><th>Tiempo</th><th>Estado</th><th></th>
+      <th>Número</th><th>Fecha</th><th>Agente</th><th>Oficina</th><th>Salida</th><th>Tiempo</th><th>Compensación</th><th>Estado</th><th>Control</th><th></th>
     </tr></thead><tbody>${rows.map(p => {
       const agent = p.agente_nombre || [currentUser?.nombre, currentUser?.apellido].filter(Boolean).join(" ");
       const departure = `${p.hora_salida || "—"} → ${p.sin_regreso ? "Sin regreso" : (p.hora_regreso || "—")}`;
       const declared = p.minutos_declarados ?? p.minutos_autorizados;
       const auto = p.minutos_calculados;
       const diff = auto !== null && auto !== undefined && declared !== null && declared !== undefined && Number(auto) !== Number(declared);
-      const outside = p.fuera_plazo_reglamentario;
-      return `<tr class="${outside ? "perm-row-warning" : ""}">
-        <td><strong>${escapeHtml(p.numero_permiso || `#${p.id}`)}</strong>${outside ? '<br><span class="perm-mini-warning">Fuera de plazo</span>' : ""}</td>
+      const rowClass = p.riesgo_critico ? "perm-row-critical" : (p.fuera_plazo_reglamentario ? "perm-row-warning" : "");
+      return `<tr class="${rowClass}">
+        <td><strong>${escapeHtml(p.numero_permiso || `#${p.id}`)}</strong>${p.riesgo_critico ? '<br><span class="perm-critical-flag">Crítico</span>' : (p.fuera_plazo_reglamentario ? '<br><span class="perm-mini-warning">Fuera de plazo</span>' : '')}</td>
         <td>${fmtDate(p.fecha_salida)}</td>
-        <td>${escapeHtml(agent || "—")}</td>
-        <td>${escapeHtml(p.jornada_desde || "08:00")} → ${escapeHtml(p.jornada_hasta || "14:00")}</td>
+        <td><strong>${escapeHtml(agent || "—")}</strong>${p.legajo ? `<br><small>Legajo ${escapeHtml(p.legajo)}</small>` : ""}</td>
+        <td>${escapeHtml(p.oficina || currentUser?.oficina || "—")}</td>
         <td>${escapeHtml(departure)}</td>
-        <td><strong>${formatMinutes(declared)}</strong>${diff ? `<br><small>Auto: ${formatMinutes(auto)}</small>` : ""}</td>
-        <td>${badgeState(p.estado)}</td>
+        <td><strong>${formatMinutes(declared)}</strong>${diff ? `<br><small>Sistema: ${formatMinutes(auto)}</small>` : ""}</td>
+        <td>${escapeHtml(compensationText(p))}</td>
+        <td>${badgeState(p.estado)}${p.decision_jefatura ? `<br><small>Jefatura: ${p.decision_jefatura === "APROBADO" ? "Autorizado" : "Rechazado"}</small>` : ""}</td>
+        <td>${riskMarkup(p)}</td>
         <td class="perm-row-actions"><button data-detail="${p.id}">Ver</button>${options.bossActions && p.estado === "PENDIENTE_JEFE" ? ` <button data-authorize="${p.id}">Autorizar</button> <button class="danger-link" data-reject="${p.id}">Rechazar</button>` : ""}${options.rrhhActions && p.estado === "PENDIENTE_RRHH" ? ` <button data-verify="${p.id}">Aprobar</button> <button class="danger-link" data-reject-rrhh="${p.id}">Rechazar</button>` : ""}</td>
       </tr>`;
     }).join("")}</tbody></table></div>`;
@@ -170,29 +206,75 @@
     } catch (error) { toast(error.message, "error"); }
   }
 
-  async function loadBossQueue() {
+  function paramsFrom(prefix) {
+    const params = new URLSearchParams();
+    const fields = ["estado", "tipo", "agente", "desde", "hasta"];
+    fields.forEach(name => {
+      const el = $(`#${prefix}_${name}`);
+      if (!el?.value) return;
+      const key = name === "desde" ? "fecha_desde" : name === "hasta" ? "fecha_hasta" : name;
+      params.set(key, el.value.trim());
+    });
+    return params;
+  }
+
+  function renderBars(target, rows) {
+    if (!target) return;
+    if (!rows?.length) {
+      target.innerHTML = '<div class="perm-empty">Sin datos para este filtro.</div>';
+      return;
+    }
+    const max = Math.max(...rows.map(x => Number(x.valor || 0)), 1);
+    target.innerHTML = `<div class="perm-bar-list">${rows.map(x => `<div class="perm-bar-row">
+      <div class="perm-bar-label" title="${escapeHtml(x.label)}">${escapeHtml(x.label)}</div>
+      <div class="perm-bar-track"><div class="perm-bar-fill" style="width:${Math.max(3, (Number(x.valor || 0) / max) * 100)}%"></div></div>
+      <div class="perm-bar-value">${Number(x.valor || 0)}</div>
+    </div>`).join("")}</div>`;
+  }
+
+  async function loadBossPanel() {
     try {
-      const data = await PermisosAPI.request("/api/jefatura/pendientes");
+      const params = paramsFrom("boss_filter");
+      const query = params.toString();
+      const [data, dashboard] = await Promise.all([
+        PermisosAPI.request(`/api/jefatura/permisos${query ? `?${query}` : ""}`),
+        PermisosAPI.request(`/api/jefatura/dashboard${query ? `?${query}` : ""}`)
+      ]);
       renderPermissionList($("#boss_permissions"), data.items || [], { bossActions: true });
+      $("#boss_stat_total").textContent = dashboard.total ?? 0;
+      $("#boss_stat_pending").textContent = dashboard.pendientes ?? 0;
+      $("#boss_stat_approved").textContent = dashboard.autorizados ?? 0;
+      $("#boss_stat_rejected").textContent = dashboard.rechazados ?? 0;
+      $("#boss_stat_critical").textContent = dashboard.criticos ?? 0;
+      renderBars($("#boss_chart_agents"), dashboard.por_agente || []);
+      renderBars($("#boss_chart_hours"), dashboard.por_hora || []);
     } catch (error) { toast(error.message, "error"); }
+  }
+
+  function rrhhParams() {
+    const params = paramsFrom("rrhh_filter");
+    const office = $("#rrhh_filter_oficina")?.value;
+    if (office) params.set("oficina_id", office);
+    return params;
   }
 
   async function loadRRHH() {
     try {
-      const params = new URLSearchParams();
-      const estado = $("#rrhh_filter_estado").value;
-      const tipo = $("#rrhh_filter_tipo").value;
-      if (estado) params.set("estado", estado);
-      if (tipo) params.set("tipo", tipo);
+      const params = rrhhParams();
+      const query = params.toString();
       const [data, dashboard] = await Promise.all([
-        PermisosAPI.request(`/api/rrhh/permisos?${params}`),
-        PermisosAPI.request("/api/rrhh/dashboard")
+        PermisosAPI.request(`/api/rrhh/permisos${query ? `?${query}` : ""}`),
+        PermisosAPI.request(`/api/rrhh/dashboard${query ? `?${query}` : ""}`)
       ]);
       renderPermissionList($("#rrhh_permissions"), data.items || [], { rrhhActions: true });
-      $("#rrhh_total_mes").textContent = dashboard.total_mes ?? 0;
+      $("#rrhh_total_mes").textContent = dashboard.total ?? 0;
       $("#rrhh_pendientes").textContent = dashboard.pendientes_rrhh ?? 0;
-      $("#rrhh_particulares").textContent = dashboard.particulares_mes ?? 0;
-      $("#rrhh_minutos").textContent = dashboard.minutos_particulares_mes ?? 0;
+      $("#rrhh_particulares").textContent = dashboard.particulares ?? 0;
+      $("#rrhh_minutos").textContent = dashboard.minutos_particulares ?? 0;
+      $("#rrhh_criticos").textContent = dashboard.criticos ?? 0;
+      renderBars($("#rrhh_chart_offices"), dashboard.por_oficina || []);
+      renderBars($("#rrhh_chart_agents"), dashboard.agentes_recurrentes || []);
+      renderBars($("#rrhh_chart_hours"), dashboard.por_hora || []);
     } catch (error) { toast(error.message, "error"); }
   }
 
@@ -201,25 +283,32 @@
       const p = await PermisosAPI.request(`/api/permisos/${id}`);
       const declared = p.minutos_declarados ?? p.minutos_autorizados;
       const calculated = p.minutos_calculados;
+      const risks = p.riesgos || [];
       const modal = $("#modal_root");
+      const riskBox = risks.length ? `<div class="perm-alert ${p.riesgo_critico ? "danger" : "warning"}"><strong>${p.riesgo_critico ? "REVISIÓN CRÍTICA" : "Atención"}</strong><span>${risks.map(x => escapeHtml(x.mensaje)).join(" · ")}</span></div>` : "";
+      const compMode = p.reposicion_modalidad || p.modalidad_compensacion;
+      const compDetail = p.tipo !== "PARTICULAR" ? "No corresponde" : compMode === "HORAS_EXTRAS_PREVIAS"
+        ? `Usa horas extras previas del ${fmtDate(p.fecha_horas_extra)}, ${p.hora_desde_horas_extra || "—"} → ${p.hora_hasta_horas_extra || "—"} (${formatMinutes(p.minutos_horas_extra)})`
+        : `Devuelve el ${fmtDate(p.reposicion_fecha_prevista || p.fecha_devolucion)}, ${p.reposicion_hora_desde || "—"} → ${p.reposicion_hora_hasta || "—"}`;
+
       modal.innerHTML = `<div class="perm-modal-backdrop" id="detail_backdrop"><div class="perm-modal perm-modal-large">
         <div class="perm-modal-header"><div><h3>${escapeHtml(p.numero_permiso || `#${p.id}`)}</h3><small>${badgeState(p.estado)}</small></div><button class="perm-modal-close" id="detail_close">×</button></div>
         <div class="perm-card-body">
-          ${p.fuera_plazo_reglamentario ? `<div class="perm-alert warning"><strong>Devolución fuera del plazo reglamentario sugerido.</strong><span>Fecha límite: ${fmtDate(p.fecha_limite_devolucion)}. RR.HH. debe considerar la justificación informada.</span></div>` : ""}
+          ${riskBox}
           <div class="perm-detail-grid">
             <div><strong>Agente</strong><p>${escapeHtml(p.agente_nombre || "—")} · Legajo ${escapeHtml(p.legajo || "—")}</p></div>
-            <div><strong>Área</strong><p>${escapeHtml(p.area || "—")}</p></div>
-            <div><strong>Jornada aplicada</strong><p>${escapeHtml(p.jornada_desde || "08:00")} → ${escapeHtml(p.jornada_hasta || "14:00")}</p></div>
+            <div><strong>Oficina</strong><p>${escapeHtml(p.oficina || "—")}</p></div>
+            <div><strong>Jefatura</strong><p>${escapeHtml(p.jefe_nombre || "—")}</p></div>
+            <div><strong>Jornada habitual</strong><p>${escapeHtml(p.jornada_desde || "08:00")} → ${escapeHtml(p.jornada_hasta || "14:00")}</p></div>
             <div><strong>Tipo</strong><p>${escapeHtml(p.tipo)}</p></div>
             <div><strong>Fecha</strong><p>${fmtDate(p.fecha_salida)}</p></div>
-            <div><strong>Salida</strong><p>${escapeHtml(p.hora_salida || "—")} → ${p.sin_regreso ? "Sin regreso" : escapeHtml(p.hora_regreso || "—")}</p></div>
-            <div><strong>Cálculo automático</strong><p>${formatMinutes(calculated)}</p></div>
-            <div><strong>Tiempo declarado</strong><p>${formatMinutes(declared)}</p></div>
+            <div><strong>Hora de salida / regreso</strong><p>${escapeHtml(p.hora_salida || "—")} → ${p.sin_regreso ? "Sin regreso" : escapeHtml(p.hora_regreso || "—")}</p></div>
             <div><strong>Destino</strong><p>${escapeHtml(p.lugar_destino || "—")}</p></div>
-            <div><strong>Jefatura</strong><p>${escapeHtml(p.jefe_nombre || "—")}</p></div>
+            <div><strong>Tiempo calculado</strong><p>${formatMinutes(calculated)}</p></div>
+            <div><strong>Tiempo de salida declarado</strong><p>${formatMinutes(declared)}</p></div>
           </div>
           ${p.justificacion_minutos ? `<div class="perm-detail-note"><strong>Justificación de diferencia de tiempo</strong><p>${escapeHtml(p.justificacion_minutos)}</p></div>` : ""}
-          ${p.tipo === "PARTICULAR" ? `<div class="perm-detail-note"><strong>Reposición propuesta</strong><p>${fmtDate(p.reposicion_fecha_prevista || p.fecha_devolucion)} · ${escapeHtml(p.reposicion_hora_desde || "—")} → ${escapeHtml(p.reposicion_hora_hasta || "—")} · ${formatMinutes(p.reposicion_minutos ?? declared)}</p>${p.fecha_limite_devolucion ? `<small>Plazo sugerido: hasta ${fmtDate(p.fecha_limite_devolucion)}</small>` : ""}</div>` : ""}
+          ${p.tipo === "PARTICULAR" ? `<div class="perm-detail-note ${p.riesgo_critico ? "danger-note" : ""}"><strong>Compensación informada</strong><p>${escapeHtml(compDetail)}</p>${p.fecha_limite_devolucion ? `<small>Plazo sugerido: hasta ${fmtDate(p.fecha_limite_devolucion)}</small>` : ""}</div>` : ""}
           ${p.justificacion_fuera_plazo ? `<div class="perm-detail-note warning-note"><strong>Observación por devolución fuera de término</strong><p>${escapeHtml(p.justificacion_fuera_plazo)}</p></div>` : ""}
           <div class="perm-detail-note"><strong>Observaciones generales</strong><p>${escapeHtml(p.observaciones || "—")}</p></div>
           <hr class="perm-divider">
@@ -237,7 +326,7 @@
     try {
       await PermisosAPI.request(`/api/permisos/${id}/autorizar`, { method: "POST", body: JSON.stringify({ observacion: observation }) });
       toast("Permiso autorizado y enviado a RR.HH.", "success");
-      loadBossQueue();
+      loadBossPanel();
     } catch (error) { toast(error.message, "error"); }
   }
 
@@ -247,7 +336,7 @@
     try {
       await PermisosAPI.request(`/api/permisos/${id}/rechazar`, { method: "POST", body: JSON.stringify({ observacion: reason.trim() }) });
       toast("Solicitud rechazada por Jefatura.", "success");
-      loadBossQueue();
+      loadBossPanel();
     } catch (error) { toast(error.message, "error"); }
   }
 
@@ -256,7 +345,7 @@
     if (obs === null) return;
     try {
       await PermisosAPI.request(`/api/permisos/${id}/verificar-rrhh`, { method: "POST", body: JSON.stringify({ observacion: obs }) });
-      toast("Permiso aprobado por RR.HH.", "success");
+      toast("Permiso verificado por RR.HH.", "success");
       loadRRHH();
     } catch (error) { toast(error.message, "error"); }
   }
@@ -278,6 +367,10 @@
     return $('input[name="tipo"]:checked')?.value || "";
   }
 
+  function selectedCompensation() {
+    return $('input[name="compensacion_modo"]:checked')?.value || "DEVOLVER_HORAS";
+  }
+
   function updateFormRules() {
     const type = selectedType();
     const official = type === "OFICIAL";
@@ -285,15 +378,36 @@
     $("#field_destino").hidden = !official;
     $("#form_destino").required = official;
     $("#private_return_block").hidden = !privateOut;
-    $("#form_fecha_devolucion").required = privateOut;
-    $("#form_devolucion_desde").required = privateOut;
-    $("#form_devolucion_hasta").required = privateOut;
-    if (privateOut) loadReturnDeadline();
+    if (privateOut) updateCompensationRules();
     else {
       returnDeadline = null;
+      setCompRequired(false, false);
+    }
+  }
+
+  function setCompRequired(normal, extra) {
+    $("#form_fecha_devolucion").required = normal;
+    $("#form_devolucion_desde").required = normal;
+    $("#form_devolucion_hasta").required = normal;
+    $("#form_horas_extra_fecha").required = extra;
+    $("#form_horas_extra_desde").required = extra;
+    $("#form_horas_extra_hasta").required = extra;
+  }
+
+  function updateCompensationRules() {
+    const extra = selectedCompensation() === "HORAS_EXTRAS_PREVIAS";
+    $("#return_schedule_fields").hidden = extra;
+    $("#extra_hours_fields").hidden = !extra;
+    setCompRequired(!extra, extra);
+    if (extra) {
+      $("#form_justificacion_fuera_plazo").required = false;
       $("#deadline_warning").hidden = true;
       $("#field_deadline_reason").hidden = true;
-      $("#form_justificacion_fuera_plazo").required = false;
+      calculateExtraDuration();
+    } else {
+      loadReturnDeadline();
+      calculateReturnDuration();
+      updateDeadlineWarning();
     }
   }
 
@@ -302,8 +416,8 @@
     $("#field_hora_regreso").hidden = noReturn;
     $("#form_hora_regreso").required = !noReturn;
     $("#form_duracion_help").textContent = noReturn
-      ? `Sin regreso: fin de jornada (${currentUser?.jornada_hasta || "14:00"}) menos hora de salida.`
-      : "Con regreso: hora de regreso menos hora de salida.";
+      ? `Sin regreso: se calcula desde la salida hasta el fin de tu jornada (${currentUser?.jornada_hasta || "14:00"}).`
+      : "Con regreso: se calcula desde la hora de salida hasta la hora estimada de regreso.";
     calculateDuration();
   }
 
@@ -354,26 +468,51 @@
     $("#form_duracion").textContent = formatMinutes(auto);
     if (!declaredTouched) setDeclaredMinutes(auto);
     updateTimeDifference();
+    calculateReturnDuration();
+    calculateExtraDuration();
   }
 
   function calculateReturnDuration() {
+    if (selectedCompensation() !== "DEVOLVER_HORAS") return;
     const start = $("#form_devolucion_desde").value;
     const end = $("#form_devolucion_hasta").value;
     if (!start || !end) {
       $("#return_duration").textContent = "—";
+      $("#return_short_warning").hidden = true;
       return;
     }
     const mins = minutesBetweenClock(start, end);
     if (mins <= 0) {
       $("#return_duration").textContent = "Horario inválido";
+      $("#return_short_warning").hidden = true;
       return;
     }
     const declared = declaredMinutes();
-    $("#return_duration").textContent = `${formatMinutes(mins)}${mins !== declared ? ` · declarado: ${formatMinutes(declared)}` : ""}`;
+    $("#return_duration").textContent = `${formatMinutes(mins)}${mins !== declared ? ` · salida declarada: ${formatMinutes(declared)}` : ""}`;
+    $("#return_short_warning").hidden = !(mins < declared);
+  }
+
+  function calculateExtraDuration() {
+    if (selectedCompensation() !== "HORAS_EXTRAS_PREVIAS") return;
+    const start = $("#form_horas_extra_desde").value;
+    const end = $("#form_horas_extra_hasta").value;
+    if (!start || !end) {
+      $("#extra_hours_duration").textContent = "—";
+      $("#extra_short_warning").hidden = true;
+      return;
+    }
+    const mins = minutesBetweenClock(start, end);
+    if (mins <= 0) {
+      $("#extra_hours_duration").textContent = "Horario inválido";
+      $("#extra_short_warning").hidden = true;
+      return;
+    }
+    $("#extra_hours_duration").textContent = `${formatMinutes(mins)} · salida declarada: ${formatMinutes(declaredMinutes())}`;
+    $("#extra_short_warning").hidden = !(mins < declaredMinutes());
   }
 
   async function loadReturnDeadline() {
-    if (selectedType() !== "PARTICULAR") return;
+    if (selectedType() !== "PARTICULAR" || selectedCompensation() !== "DEVOLVER_HORAS") return;
     const date = $("#form_fecha").value;
     if (!date) {
       returnDeadline = null;
@@ -383,15 +522,16 @@
     try {
       const data = await PermisosAPI.request(`/api/reglas/plazo-devolucion?fecha_salida=${encodeURIComponent(date)}`);
       returnDeadline = data.fecha_limite;
-      $("#return_deadline").textContent = `Hasta ${fmtDate(returnDeadline)} (7 días hábiles)`;
+      $("#return_deadline").textContent = `Hasta ${fmtDate(returnDeadline)} · 7 días hábiles`;
       updateDeadlineWarning();
-    } catch (error) {
+    } catch (_) {
       returnDeadline = null;
       $("#return_deadline").textContent = "No fue posible calcular el plazo";
     }
   }
 
   function updateDeadlineWarning() {
+    if (selectedCompensation() !== "DEVOLVER_HORAS") return;
     const selected = $("#form_fecha_devolucion").value;
     const outside = !!(selected && returnDeadline && selected > returnDeadline);
     $("#deadline_warning").hidden = !outside;
@@ -399,7 +539,23 @@
     $("#form_justificacion_fuera_plazo").required = outside;
   }
 
+  function updateExtraDateLimit() {
+    const date = $("#form_fecha").value;
+    if (!date) {
+      $("#form_horas_extra_fecha").removeAttribute("max");
+      return;
+    }
+    const d = new Date(`${date}T12:00:00`);
+    d.setDate(d.getDate() - 1);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    $("#form_horas_extra_fecha").max = `${yyyy}-${mm}-${dd}`;
+  }
+
   function formPayload() {
+    const privateOut = selectedType() === "PARTICULAR";
+    const mode = selectedCompensation();
     return {
       tipo: selectedType(),
       fecha_salida: $("#form_fecha").value,
@@ -409,10 +565,14 @@
       sin_regreso: $("#form_regreso_tipo").value === "SIN_REGRESO",
       minutos_declarados: declaredMinutes(),
       justificacion_minutos: $("#form_justificacion_minutos").value.trim() || null,
-      fecha_devolucion: selectedType() === "PARTICULAR" ? $("#form_fecha_devolucion").value || null : null,
-      devolucion_hora_desde: selectedType() === "PARTICULAR" ? $("#form_devolucion_desde").value || null : null,
-      devolucion_hora_hasta: selectedType() === "PARTICULAR" ? $("#form_devolucion_hasta").value || null : null,
-      justificacion_fuera_plazo: $("#form_justificacion_fuera_plazo").value.trim() || null,
+      compensacion_modo: privateOut ? mode : "DEVOLVER_HORAS",
+      fecha_devolucion: privateOut && mode === "DEVOLVER_HORAS" ? $("#form_fecha_devolucion").value || null : null,
+      devolucion_hora_desde: privateOut && mode === "DEVOLVER_HORAS" ? $("#form_devolucion_desde").value || null : null,
+      devolucion_hora_hasta: privateOut && mode === "DEVOLVER_HORAS" ? $("#form_devolucion_hasta").value || null : null,
+      horas_extra_fecha: privateOut && mode === "HORAS_EXTRAS_PREVIAS" ? $("#form_horas_extra_fecha").value || null : null,
+      horas_extra_desde: privateOut && mode === "HORAS_EXTRAS_PREVIAS" ? $("#form_horas_extra_desde").value || null : null,
+      horas_extra_hasta: privateOut && mode === "HORAS_EXTRAS_PREVIAS" ? $("#form_horas_extra_hasta").value || null : null,
+      justificacion_fuera_plazo: privateOut && mode === "DEVOLVER_HORAS" ? $("#form_justificacion_fuera_plazo").value.trim() || null : null,
       observaciones: $("#form_observaciones").value.trim() || null
     };
   }
@@ -422,13 +582,21 @@
     form.reset();
     declaredTouched = false;
     returnDeadline = null;
-    $("#form_fecha").valueAsDate = new Date();
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+    $("#form_fecha").value = `${yyyy}-${mm}-${dd}`;
     $("#form_tiempo_horas").value = 0;
     $("#form_tiempo_minutos").value = 0;
     $("#return_deadline").textContent = "Seleccioná una salida particular";
     $("#return_duration").textContent = "—";
+    $("#extra_hours_duration").textContent = "—";
+    fillUser(); // corrige el bug histórico del autorrellenado visible
+    updateExtraDateLimit();
     updateFormRules();
     updateReturnRules();
+    updateCompensationRules();
     updateTimeDifference();
     updateDeadlineWarning();
   }
@@ -437,13 +605,14 @@
     const form = $("#permission_form");
     calculateDuration();
     calculateReturnDuration();
+    calculateExtraDuration();
     updateDeadlineWarning();
     if (!form.reportValidity()) return;
     try {
       const created = await PermisosAPI.request("/api/permisos", { method: "POST", body: JSON.stringify(formPayload()) });
       if (sendNow) {
         await PermisosAPI.request(`/api/permisos/${created.id}/enviar`, { method: "POST" });
-        toast(`${created.numero_permiso} enviado a autorización.`, "success");
+        toast(`${created.numero_permiso} enviado a la jefatura de tu Oficina.`, "success");
       } else {
         toast(`${created.numero_permiso} guardado como borrador.`, "success");
       }
@@ -451,6 +620,23 @@
       setView("mios");
       loadDashboard();
     } catch (error) { toast(error.message, "error"); }
+  }
+
+  async function loadOfficeCatalog() {
+    if (!currentUser) return;
+    try {
+      const data = await PermisosAPI.request("/api/catalogos/oficinas");
+      officesCache = data.items || [];
+      const selects = [$("#rrhh_filter_oficina"), $("#admin_oficina")].filter(Boolean);
+      selects.forEach(select => {
+        const previous = select.value;
+        const first = select.id === "rrhh_filter_oficina" ? "Todas las Oficinas" : "Sin Oficina";
+        select.innerHTML = `<option value="">${first}</option>` + officesCache.map(o => `<option value="${o.id}">${escapeHtml(o.nombre)}</option>`).join("");
+        select.value = previous;
+      });
+    } catch (error) {
+      if (currentUser.roles?.includes("RRHH") || currentUser.roles?.includes("ADMIN")) toast(error.message, "error");
+    }
   }
 
   function clearAdminForm() {
@@ -473,10 +659,9 @@
     $("#admin_apellido").value = u.apellido || "";
     $("#admin_legajo").value = u.legajo || "";
     $("#admin_dni").value = u.dni || "";
-    $("#admin_area").value = u.area || "";
+    $("#admin_oficina").value = u.oficina_id || "";
     $("#admin_jornada_desde").value = u.jornada_desde || "08:00";
     $("#admin_jornada_hasta").value = u.jornada_hasta || "14:00";
-    $("#admin_jefe_email").value = u.jefe_email || "";
     $$('input[name="admin_role"]').forEach(cb => cb.checked = (u.roles || []).includes(cb.value));
     $("#admin_user_form").scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -489,8 +674,17 @@
     try {
       await PermisosAPI.request(`/api/admin/usuarios/${id}/estado`, { method: "POST", body: JSON.stringify({ activo: active }) });
       toast(active ? "Usuario reactivado." : "Acceso del usuario deshabilitado.", "success");
-      loadUsers();
+      await loadUsers();
+      await loadOffices();
     } catch (error) { toast(error.message, "error"); }
+  }
+
+  function refreshOfficeBossOptions() {
+    const select = $("#admin_office_boss");
+    if (!select) return;
+    const previous = select.value;
+    select.innerHTML = '<option value="">Sin jefatura asignada</option>' + adminUsersCache.filter(u => u.activo).map(u => `<option value="${u.id}">${escapeHtml(`${u.apellido || ""}, ${u.nombre || ""}`.replace(/^,\s*/, ""))} · ${escapeHtml(u.email)}</option>`).join("");
+    select.value = previous;
   }
 
   async function loadUsers() {
@@ -498,17 +692,19 @@
       const data = await PermisosAPI.request("/api/admin/usuarios");
       const rows = data.items || [];
       adminUsersCache = rows;
+      refreshOfficeBossOptions();
       const target = $("#admin_users");
       if (!rows.length) {
         target.innerHTML = '<div class="perm-empty">No hay usuarios.</div>';
         return;
       }
-      target.innerHTML = `<div class="perm-table-wrap"><table class="perm-table perm-table-wide"><thead><tr><th>Usuario</th><th>Estado</th><th>Jornada</th><th>Roles</th><th>Jefe</th><th></th></tr></thead><tbody>${rows.map(u => `<tr class="${u.activo ? "" : "perm-row-disabled"}">
-        <td><strong>${escapeHtml(`${u.nombre || ""} ${u.apellido || ""}`.trim())}</strong><br><small>Usuario: ${escapeHtml(u.username || "—")}</small><br><small>${escapeHtml(u.email)}</small><br><small>Legajo ${escapeHtml(u.legajo || "—")}</small></td>
+      target.innerHTML = `<div class="perm-table-wrap"><table class="perm-table perm-table-wide"><thead><tr><th>Usuario</th><th>Oficina</th><th>Jefatura</th><th>Estado</th><th>Jornada</th><th>Roles</th><th></th></tr></thead><tbody>${rows.map(u => `<tr class="${u.activo ? "" : "perm-row-disabled"}">
+        <td><strong>${escapeHtml(`${u.nombre || ""} ${u.apellido || ""}`.trim())}</strong><br><small>${escapeHtml(u.email)}</small><br><small>Usuario: ${escapeHtml(u.username || "—")} · Legajo ${escapeHtml(u.legajo || "—")}</small></td>
+        <td>${escapeHtml(u.oficina || "Sin Oficina")}</td>
+        <td>${escapeHtml(u.jefe_nombre || "—")}</td>
         <td>${u.activo ? '<span class="perm-badge green">Activo</span>' : '<span class="perm-badge red">Sin acceso</span>'}</td>
         <td>${escapeHtml(u.jornada_desde || "08:00")} → ${escapeHtml(u.jornada_hasta || "14:00")}</td>
         <td>${escapeHtml((u.roles || []).join(", "))}</td>
-        <td>${escapeHtml(u.jefe_nombre || "—")}</td>
         <td class="perm-row-actions"><button data-edit-user="${u.id}">Editar</button>${u.activo ? `<button class="danger-link" data-disable-user="${u.id}">Quitar acceso</button>` : `<button data-enable-user="${u.id}">Reactivar</button>`}</td>
       </tr>`).join("")}</tbody></table></div>`;
       $$('[data-edit-user]', target).forEach(btn => btn.addEventListener('click', () => editAdminUser(btn.dataset.editUser)));
@@ -517,46 +713,65 @@
     } catch (error) { toast(error.message, "error"); }
   }
 
+  function clearOfficeForm() {
+    $("#admin_office_form").reset();
+    $("#admin_office_id").value = "";
+    $("#admin_office_active").checked = true;
+  }
+
+  function editOffice(id) {
+    const o = officesCache.find(x => Number(x.id) === Number(id));
+    if (!o) return;
+    $("#admin_office_id").value = o.id;
+    $("#admin_office_name").value = o.nombre || "";
+    $("#admin_office_boss").value = o.jefe_id || "";
+    $("#admin_office_active").checked = !!o.activo;
+    $("#admin_office_form").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  async function loadOffices() {
+    try {
+      const data = await PermisosAPI.request("/api/admin/oficinas");
+      officesCache = data.items || [];
+      const target = $("#admin_offices");
+      target.innerHTML = officesCache.length ? `<div class="perm-table-wrap"><table class="perm-table"><thead><tr><th>Oficina</th><th>Jefatura</th><th>Agentes</th><th>Estado</th><th></th></tr></thead><tbody>${officesCache.map(o => `<tr class="${o.activo ? "" : "perm-row-disabled"}">
+        <td><strong>${escapeHtml(o.nombre)}</strong></td><td>${escapeHtml(o.jefe_nombre || "Sin jefatura")}</td><td>${Number(o.agentes_activos || 0)}</td><td>${o.activo ? '<span class="perm-badge green">Activa</span>' : '<span class="perm-badge red">Inactiva</span>'}</td><td class="perm-row-actions"><button data-edit-office="${o.id}">Editar</button></td>
+      </tr>`).join("")}</tbody></table></div>` : '<div class="perm-empty">No hay Oficinas configuradas.</div>';
+      $$('[data-edit-office]', target).forEach(btn => btn.addEventListener('click', () => editOffice(btn.dataset.editOffice)));
+      const officeSelect = $("#admin_oficina");
+      if (officeSelect) {
+        const prev = officeSelect.value;
+        officeSelect.innerHTML = '<option value="">Sin Oficina</option>' + officesCache.filter(o => o.activo).map(o => `<option value="${o.id}">${escapeHtml(o.nombre)}</option>`).join("");
+        officeSelect.value = prev;
+      }
+    } catch (error) { toast(error.message, "error"); }
+  }
+
+  async function loadAdmin() {
+    if (!currentUser?.roles?.includes("ADMIN")) return;
+    await Promise.all([loadUsers(), loadOffices()]);
+  }
+
   async function loadSheetsStatus() {
     if (!currentUser || !(currentUser.roles.includes("RRHH") || currentUser.roles.includes("ADMIN"))) return;
     try {
       const status = await PermisosAPI.request("/api/sheets/status");
-      const label = $("#status_sheets");
       const link = $("#rrhh_sheet_link");
       const connect = $("#connect_sheets_btn");
       const sync = $("#sync_sheets_btn");
       const disconnect = $("#disconnect_sheets_btn");
-
+      if (!link || !connect || !sync || !disconnect) return;
       if (!status.base_configured) {
-        label.textContent = "○ Google Sheets: falta configuración en Render";
-        connect.hidden = true;
-        sync.hidden = true;
-        disconnect.hidden = true;
-        link.hidden = true;
+        connect.hidden = true; sync.hidden = true; disconnect.hidden = true; link.hidden = true;
         return;
       }
-
       if (status.authorized && status.enabled) {
-        label.textContent = status.authorized_email
-          ? `● Google Sheets: conectado · ${status.authorized_email}`
-          : "● Google Sheets: conectado";
-        connect.hidden = true;
-        sync.hidden = false;
-        disconnect.hidden = false;
-        if (status.sheet_url) {
-          link.href = status.sheet_url;
-          link.hidden = false;
-        }
+        connect.hidden = true; sync.hidden = false; disconnect.hidden = false;
+        if (status.sheet_url) { link.href = status.sheet_url; link.hidden = false; }
       } else {
-        label.textContent = "○ Google Sheets: cuenta Google no conectada";
-        connect.hidden = false;
-        sync.hidden = true;
-        disconnect.hidden = true;
-        link.hidden = true;
+        connect.hidden = false; sync.hidden = true; disconnect.hidden = true; link.hidden = true;
       }
-    } catch (_) {
-      $("#status_sheets").textContent = "○ Google Sheets: sin verificar";
-    }
+    } catch (_) {}
   }
 
   async function connectSheets() {
@@ -584,20 +799,30 @@
     } catch (error) { toast(error.message, "error"); }
   }
 
+  function debounce(fn, delay = 350) {
+    let timer;
+    return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), delay); };
+  }
+
   function bindEvents() {
     $$("[data-view]").forEach(btn => btn.addEventListener("click", () => setView(btn.dataset.view)));
     $$("[data-go]").forEach(btn => btn.addEventListener("click", () => setView(btn.dataset.go)));
+    $$('[data-copy-rrhh]').forEach(btn => btn.addEventListener('click', () => copyRRHHEmail(btn)));
     $("#logout_btn").addEventListener("click", () => PermisosAuth.logout());
+
     $$('input[name="tipo"]').forEach(el => el.addEventListener("change", updateFormRules));
+    $$('input[name="compensacion_modo"]').forEach(el => el.addEventListener("change", updateCompensationRules));
     $("#form_regreso_tipo").addEventListener("change", updateReturnRules);
     $("#form_hora_salida").addEventListener("input", calculateDuration);
     $("#form_hora_regreso").addEventListener("input", calculateDuration);
-    $("#form_fecha").addEventListener("change", loadReturnDeadline);
+    $("#form_fecha").addEventListener("change", () => { loadReturnDeadline(); updateExtraDateLimit(); });
     $("#form_fecha_devolucion").addEventListener("change", updateDeadlineWarning);
     $("#form_devolucion_desde").addEventListener("input", calculateReturnDuration);
     $("#form_devolucion_hasta").addEventListener("input", calculateReturnDuration);
-    $("#form_tiempo_horas").addEventListener("input", () => { declaredTouched = true; updateTimeDifference(); calculateReturnDuration(); });
-    $("#form_tiempo_minutos").addEventListener("input", () => { declaredTouched = true; updateTimeDifference(); calculateReturnDuration(); });
+    $("#form_horas_extra_desde").addEventListener("input", calculateExtraDuration);
+    $("#form_horas_extra_hasta").addEventListener("input", calculateExtraDuration);
+    $("#form_tiempo_horas").addEventListener("input", () => { declaredTouched = true; updateTimeDifference(); calculateReturnDuration(); calculateExtraDuration(); });
+    $("#form_tiempo_minutos").addEventListener("input", () => { declaredTouched = true; updateTimeDifference(); calculateReturnDuration(); calculateExtraDuration(); });
     $("#use_auto_time").addEventListener("click", () => {
       const auto = autoMinutes();
       if (auto === null) return toast("Primero completá el horario de salida/regreso.", "error");
@@ -606,18 +831,43 @@
       $("#form_justificacion_minutos").value = "";
       updateTimeDifference();
       calculateReturnDuration();
+      calculateExtraDuration();
     });
     $("#permission_form").addEventListener("submit", e => { e.preventDefault(); createPermission(true); });
     $("#save_draft_btn").addEventListener("click", () => createPermission(false));
-    $("#refresh_jefatura").addEventListener("click", loadBossQueue);
+
+    $("#refresh_jefatura").addEventListener("click", loadBossPanel);
+    ["boss_filter_estado","boss_filter_tipo","boss_filter_desde","boss_filter_hasta"].forEach(id => $("#" + id).addEventListener("change", loadBossPanel));
+    $("#boss_filter_agente").addEventListener("input", debounce(loadBossPanel));
+
     $("#refresh_rrhh").addEventListener("click", loadRRHH);
-    $("#rrhh_filter_estado").addEventListener("change", loadRRHH);
-    $("#rrhh_filter_tipo").addEventListener("change", loadRRHH);
+    ["rrhh_filter_oficina","rrhh_filter_estado","rrhh_filter_tipo","rrhh_filter_desde","rrhh_filter_hasta"].forEach(id => $("#" + id).addEventListener("change", loadRRHH));
+    $("#rrhh_filter_agente").addEventListener("input", debounce(loadRRHH));
+
     $("#connect_sheets_btn").addEventListener("click", connectSheets);
     $("#sync_sheets_btn").addEventListener("click", syncSheets);
     $("#disconnect_sheets_btn").addEventListener("click", disconnectSheets);
+
     $("#refresh_users").addEventListener("click", loadUsers);
+    $("#refresh_offices").addEventListener("click", loadOffices);
     $("#admin_clear_form").addEventListener("click", clearAdminForm);
+    $("#admin_clear_office").addEventListener("click", clearOfficeForm);
+
+    $("#admin_office_form").addEventListener("submit", async e => {
+      e.preventDefault();
+      try {
+        await PermisosAPI.request("/api/admin/oficinas", { method: "POST", body: JSON.stringify({
+          id: $("#admin_office_id").value ? Number($("#admin_office_id").value) : null,
+          nombre: $("#admin_office_name").value.trim(),
+          jefe_id: $("#admin_office_boss").value ? Number($("#admin_office_boss").value) : null,
+          activo: $("#admin_office_active").checked
+        }) });
+        toast("Oficina guardada. La jefatura se aplicará automáticamente a sus agentes.", "success");
+        clearOfficeForm();
+        await Promise.all([loadOffices(), loadUsers(), loadOfficeCatalog()]);
+      } catch (error) { toast(error.message, "error"); }
+    });
+
     $("#admin_user_form").addEventListener("submit", async e => {
       e.preventDefault();
       const roles = $$('input[name="admin_role"]:checked').map(x => x.value);
@@ -630,15 +880,16 @@
           apellido: $("#admin_apellido").value.trim(),
           legajo: $("#admin_legajo").value.trim(),
           dni: $("#admin_dni").value.trim() || null,
-          area: $("#admin_area").value.trim() || null,
+          area: null,
+          oficina_id: $("#admin_oficina").value ? Number($("#admin_oficina").value) : null,
           jornada_desde: $("#admin_jornada_desde").value || "08:00",
           jornada_hasta: $("#admin_jornada_hasta").value || "14:00",
           roles,
-          jefe_email: $("#admin_jefe_email").value.trim() || null
+          jefe_email: null
         }) });
-        toast("Usuario guardado.", "success");
+        toast("Usuario guardado y asignado a su Oficina.", "success");
         clearAdminForm();
-        loadUsers();
+        await Promise.all([loadUsers(), loadOffices()]);
       } catch (error) { toast(error.message, "error"); }
     });
   }
@@ -652,8 +903,7 @@
     fillUser();
     applyRoles();
     resetPermissionForm();
-    await loadDashboard();
-    await loadSheetsStatus();
+    await Promise.all([loadDashboard(), loadOfficeCatalog(), loadSheetsStatus()]);
   }
 
   function onLoggedOut() {
@@ -677,24 +927,21 @@
       setTimeout(() => toast(`Google Sheets: ${msg}`, "error"), 300);
       history.replaceState({}, document.title, window.location.pathname);
     }
+
     bindEvents();
     PermisosAuth.bindLoginForm();
     updateFormRules();
     updateReturnRules();
+    updateCompensationRules();
     window.addEventListener("permisos:error", e => toast(e.detail, "error"));
     window.addEventListener("permisos:auth", e => e.detail ? onAuthenticated(e.detail) : onLoggedOut());
 
-    // El login se muestra inmediatamente. Render se despierta en paralelo y ya no bloquea la interfaz.
-    setConnection("connecting");
-    PermisosAPI.wakeBackend((state, health) => {
-      backendReady = state === "online";
-      setConnection(state);
-      const db = $("#status_database");
-      if (db) db.textContent = backendReady ? "● PostgreSQL: conectado" : state === "offline" ? "○ PostgreSQL: sin conexión" : "○ PostgreSQL: verificando";
-      if (health?.auth === "local") {
-        const loginStatus = $("#login_status");
-        if (loginStatus && !PermisosAPI.getToken()) loginStatus.textContent = "Servicio disponible · acceso local listo";
-      }
+    // El servicio se verifica en segundo plano, sin exponer detalles técnicos en la UI.
+    PermisosAPI.wakeBackend((state) => {
+      const loginStatus = $("#login_status");
+      if (!loginStatus || PermisosAPI.getToken()) return;
+      if (state === "online") loginStatus.textContent = "Servicio disponible · listo para ingresar";
+      else if (state === "offline") loginStatus.textContent = "El servicio está iniciando. Si no podés ingresar, reintentá en unos segundos.";
     });
 
     if (PermisosAPI.getToken()) {
