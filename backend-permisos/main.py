@@ -1,11 +1,16 @@
 from contextlib import asynccontextmanager
-from datetime import date, time
+from datetime import date, datetime, time
+from io import BytesIO
+import re
+import unicodedata
 from typing import Literal
+from zoneinfo import ZoneInfo
 
-from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Header, HTTPException, Query, UploadFile
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ValidationError
+from openpyxl import load_workbook
 
 from app.auth import (
     ensure_bootstrap_admin,
@@ -44,7 +49,7 @@ async def lifespan(app: FastAPI):
     close_pool()
 
 
-app = FastAPI(title="ERSeP · Permisos de Salida API", version="0.6.0", lifespan=lifespan)
+app = FastAPI(title="ERSeP · Permisos de Salida API", version="0.7.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(settings.frontend_origins),
@@ -108,6 +113,10 @@ class AdminOfficeIn(BaseModel):
 
 class AdminUserStatusIn(BaseModel):
     activo: bool
+
+
+class CleanupIn(BaseModel):
+    confirmacion: str = Field(min_length=1, max_length=80)
 
 
 def _parse_time(value: str | None):
@@ -249,6 +258,8 @@ def return_deadline(fecha_salida: date = Query(...), user: dict = Depends(requir
 
 @app.post("/api/permisos")
 def create_permission(payload: PermissionIn, bg: BackgroundTasks, user: dict = Depends(require_roles("AGENTE"))):
+    if payload.fecha_salida < datetime.now(ZoneInfo("America/Argentina/Cordoba")).date():
+        raise HTTPException(status_code=422, detail="La fecha de salida no puede ser anterior al día de hoy.")
     if payload.tipo == "OFICIAL" and not (payload.lugar_destino or "").strip():
         raise HTTPException(status_code=422, detail="Las salidas oficiales requieren lugar de destino.")
 
@@ -341,6 +352,8 @@ def create_permission(payload: PermissionIn, bg: BackgroundTasks, user: dict = D
             ]
             if declared != calculated:
                 details.append(f"Justificación: {(payload.justificacion_minutos or '').strip()}")
+            if payload.tipo == "OFICIAL":
+                details.append("Salida oficial: no corresponde devolución ni compensación de horas; requiere aprobación final de RR.HH.")
             if mode == "DEVOLVER_HORAS":
                 details.append(f"Compensación: devolución el {return_date.strftime('%d/%m/%Y')} de {str(return_from)[:5]} a {str(return_to)[:5]} ({return_minutes} min)")
             elif mode == "HORAS_EXTRAS_PREVIAS":
@@ -428,7 +441,7 @@ def permission_detail(permission_id: int, user: dict = Depends(get_current_user)
 
 
 def _jefatura_rows(user_id: int, estado: str | None = None, tipo: str | None = None,
-                    agente: str | None = None, fecha_desde: date | None = None,
+                    agente_id: int | None = None, fecha_desde: date | None = None,
                     fecha_hasta: date | None = None, limit: int = 2000):
     clauses = ["(p.jefe_asignado_id=%s OR EXISTS (SELECT 1 FROM oficinas oj WHERE oj.id=p.oficina_id AND oj.jefe_id=%s))"]
     params: list = [user_id, user_id]
@@ -436,9 +449,8 @@ def _jefatura_rows(user_id: int, estado: str | None = None, tipo: str | None = N
         clauses.append("p.estado=%s"); params.append(estado)
     if tipo:
         clauses.append("p.tipo=%s"); params.append(tipo)
-    if agente:
-        clauses.append("(lower(concat(a.nombre,' ',a.apellido)) LIKE %s OR lower(a.legajo) LIKE %s)")
-        q = f"%{agente.lower()}%"; params.extend([q, q])
+    if agente_id:
+        clauses.append("p.agente_id=%s"); params.append(agente_id)
     if fecha_desde:
         clauses.append("p.fecha_salida >= %s"); params.append(fecha_desde)
     if fecha_hasta:
@@ -475,6 +487,25 @@ def _jefatura_rows(user_id: int, estado: str | None = None, tipo: str | None = N
             return [_serialize_permission(r) for r in cur.fetchall()]
 
 
+@app.get("/api/jefatura/agentes")
+def boss_agents(user: dict = Depends(require_roles("JEFE"))):
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT DISTINCT u.id,u.nombre,u.apellido,u.legajo,u.dni,u.email,
+                       to_char(u.jornada_desde,'HH24:MI') jornada_desde,to_char(u.jornada_hasta,'HH24:MI') jornada_hasta,o.id oficina_id,o.nombre oficina
+                FROM usuarios u
+                JOIN oficinas o ON o.id=u.oficina_id
+                WHERE u.activo=TRUE AND o.activo=TRUE AND o.jefe_id=%s
+                  AND EXISTS (
+                    SELECT 1 FROM usuario_roles ur JOIN roles r ON r.id=ur.rol_id
+                    WHERE ur.usuario_id=u.id AND r.codigo='AGENTE'
+                  )
+                ORDER BY u.apellido,u.nombre,u.legajo
+            """, (user["id"],))
+            return {"items": cur.fetchall()}
+
+
 @app.get("/api/jefatura/pendientes")
 def boss_queue(user: dict = Depends(require_roles("JEFE"))):
     return {"items": _jefatura_rows(user["id"], estado="PENDIENTE_JEFE")}
@@ -484,24 +515,24 @@ def boss_queue(user: dict = Depends(require_roles("JEFE"))):
 def boss_permissions(
     estado: str | None = Query(default=None),
     tipo: str | None = Query(default=None),
-    agente: str | None = Query(default=None),
+    agente_id: int | None = Query(default=None),
     fecha_desde: date | None = Query(default=None),
     fecha_hasta: date | None = Query(default=None),
     user: dict = Depends(require_roles("JEFE")),
 ):
-    return {"items": _jefatura_rows(user["id"], estado, tipo, agente, fecha_desde, fecha_hasta)}
+    return {"items": _jefatura_rows(user["id"], estado, tipo, agente_id, fecha_desde, fecha_hasta)}
 
 
 @app.get("/api/jefatura/dashboard")
 def boss_dashboard(
     estado: str | None = Query(default=None),
     tipo: str | None = Query(default=None),
-    agente: str | None = Query(default=None),
+    agente_id: int | None = Query(default=None),
     fecha_desde: date | None = Query(default=None),
     fecha_hasta: date | None = Query(default=None),
     user: dict = Depends(require_roles("JEFE")),
 ):
-    rows = _jefatura_rows(user["id"], estado, tipo, agente, fecha_desde, fecha_hasta)
+    rows = _jefatura_rows(user["id"], estado, tipo, agente_id, fecha_desde, fecha_hasta)
     total = len(rows)
     by_agent = {}
     by_hour = {}
@@ -589,7 +620,7 @@ def _rrhh_rows(
     estado: str | None = None,
     tipo: str | None = None,
     oficina_id: int | None = None,
-    agente: str | None = None,
+    agente_id: int | None = None,
     fecha_desde: date | None = None,
     fecha_hasta: date | None = None,
     limit: int = 3000,
@@ -602,9 +633,8 @@ def _rrhh_rows(
         clauses.append("p.tipo=%s"); params.append(tipo)
     if oficina_id:
         clauses.append("COALESCE(p.oficina_id,a.oficina_id)=%s"); params.append(oficina_id)
-    if agente:
-        clauses.append("(lower(concat(a.nombre,' ',a.apellido)) LIKE %s OR lower(a.legajo) LIKE %s)")
-        q = f"%{agente.lower()}%"; params.extend([q, q])
+    if agente_id:
+        clauses.append("p.agente_id=%s"); params.append(agente_id)
     if fecha_desde:
         clauses.append("p.fecha_salida >= %s"); params.append(fecha_desde)
     if fecha_hasta:
@@ -634,17 +664,43 @@ def _rrhh_rows(
             return [_serialize_permission(r) for r in cur.fetchall()]
 
 
+@app.get("/api/rrhh/agentes")
+def rrhh_agents(
+    oficina_id: int | None = Query(default=None),
+    user: dict = Depends(require_roles("RRHH")),
+):
+    params = []
+    where = ["u.activo=TRUE"]
+    if oficina_id:
+        where.append("u.oficina_id=%s"); params.append(oficina_id)
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(f"""
+                SELECT u.id,u.nombre,u.apellido,u.legajo,u.dni,u.email,
+                       to_char(u.jornada_desde,'HH24:MI') jornada_desde,to_char(u.jornada_hasta,'HH24:MI') jornada_hasta,u.oficina_id,o.nombre oficina
+                FROM usuarios u
+                LEFT JOIN oficinas o ON o.id=u.oficina_id
+                WHERE {' AND '.join(where)}
+                  AND EXISTS (
+                    SELECT 1 FROM usuario_roles ur JOIN roles r ON r.id=ur.rol_id
+                    WHERE ur.usuario_id=u.id AND r.codigo='AGENTE'
+                  )
+                ORDER BY o.nombre NULLS LAST,u.apellido,u.nombre
+            """, params)
+            return {"items": cur.fetchall()}
+
+
 @app.get("/api/rrhh/permisos")
 def rrhh_permissions(
     estado: str | None = Query(default=None),
     tipo: str | None = Query(default=None),
     oficina_id: int | None = Query(default=None),
-    agente: str | None = Query(default=None),
+    agente_id: int | None = Query(default=None),
     fecha_desde: date | None = Query(default=None),
     fecha_hasta: date | None = Query(default=None),
     user: dict = Depends(require_roles("RRHH")),
 ):
-    return {"items": _rrhh_rows(estado, tipo, oficina_id, agente, fecha_desde, fecha_hasta)}
+    return {"items": _rrhh_rows(estado, tipo, oficina_id, agente_id, fecha_desde, fecha_hasta)}
 
 
 @app.get("/api/rrhh/dashboard")
@@ -652,12 +708,12 @@ def rrhh_dashboard(
     estado: str | None = Query(default=None),
     tipo: str | None = Query(default=None),
     oficina_id: int | None = Query(default=None),
-    agente: str | None = Query(default=None),
+    agente_id: int | None = Query(default=None),
     fecha_desde: date | None = Query(default=None),
     fecha_hasta: date | None = Query(default=None),
     user: dict = Depends(require_roles("RRHH")),
 ):
-    rows = _rrhh_rows(estado, tipo, oficina_id, agente, fecha_desde, fecha_hasta)
+    rows = _rrhh_rows(estado, tipo, oficina_id, agente_id, fecha_desde, fecha_hasta)
     by_office = {}
     by_agent = {}
     by_hour = {}
@@ -947,6 +1003,255 @@ def set_user_status(target_id: int, payload: AdminUserStatusIn, user: dict = Dep
                 cur.execute("UPDATE oficinas SET jefe_id=NULL,updated_at=NOW() WHERE jefe_id=%s", (target_id,))
             conn.commit()
     return {"status": "ok", "activo": payload.activo}
+
+
+def _norm_header(value) -> str:
+    text = unicodedata.normalize("NFKD", str(value or "")).encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"[^a-z0-9]+", "_", text.strip().lower()).strip("_")
+
+
+def _excel_bool(value, default=True) -> bool:
+    if value is None or str(value).strip() == "":
+        return default
+    return str(value).strip().lower() in {"1", "si", "sí", "true", "verdadero", "activo", "x", "yes"}
+
+
+def _excel_time(value, default: str) -> str:
+    if value is None or str(value).strip() == "":
+        return default
+    if hasattr(value, "strftime"):
+        return value.strftime("%H:%M")
+    text = str(value).strip()
+    match = re.match(r"^(\d{1,2}):(\d{2})", text)
+    if not match:
+        raise ValueError(f"Horario inválido: {text}")
+    hh, mm = int(match.group(1)), int(match.group(2))
+    if hh > 23 or mm > 59:
+        raise ValueError(f"Horario inválido: {text}")
+    return f"{hh:02d}:{mm:02d}"
+
+
+def _parse_roles(value) -> list[str]:
+    if value is None or str(value).strip() == "":
+        return ["AGENTE"]
+    parts = [x.strip().upper().replace("RR.HH.", "RRHH").replace("RRHH.", "RRHH") for x in re.split(r"[,;|]", str(value)) if x.strip()]
+    allowed = {"AGENTE", "JEFE", "RRHH", "ADMIN"}
+    invalid = [x for x in parts if x not in allowed]
+    if invalid:
+        raise ValueError(f"Roles inválidos: {', '.join(invalid)}")
+    return sorted(set(parts)) or ["AGENTE"]
+
+
+def _read_users_xlsx(content: bytes) -> list[dict]:
+    try:
+        wb = load_workbook(BytesIO(content), read_only=True, data_only=True)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"No fue posible leer el archivo Excel: {exc}")
+    ws = wb.active
+    rows = list(ws.iter_rows(values_only=True))
+    if not rows:
+        raise HTTPException(status_code=422, detail="El Excel está vacío.")
+    aliases = {
+        "usuario": "username", "username": "username", "user": "username",
+        "clave": "password", "password": "password", "contrasena": "password",
+        "email": "email", "correo": "email",
+        "nombre": "nombre", "apellido": "apellido", "legajo": "legajo", "dni": "dni",
+        "oficina": "oficina", "area": "oficina",
+        "jornada_desde": "jornada_desde", "desde": "jornada_desde",
+        "jornada_hasta": "jornada_hasta", "hasta": "jornada_hasta",
+        "roles": "roles", "rol": "roles", "activo": "activo",
+    }
+    headers = []
+    for h in rows[0]:
+        key = _norm_header(h)
+        headers.append(aliases.get(key, key))
+    required = {"username", "email", "nombre", "apellido", "legajo"}
+    missing = sorted(required - set(headers))
+    if missing:
+        raise HTTPException(status_code=422, detail="Faltan columnas obligatorias: " + ", ".join(missing))
+    result = []
+    for excel_row, values in enumerate(rows[1:], start=2):
+        raw = {headers[i]: values[i] for i in range(min(len(headers), len(values)))}
+        if not any(v not in (None, "") for v in raw.values()):
+            continue
+        result.append({"fila": excel_row, **raw})
+    if not result:
+        raise HTTPException(status_code=422, detail="No se encontraron filas de usuarios para procesar.")
+    return result
+
+
+def _validate_import_rows(rows: list[dict]) -> tuple[list[dict], list[dict]]:
+    valid, errors = [], []
+    seen: dict[tuple[str, str], int] = {}
+    with connection() as conn:
+        with conn.cursor() as cur:
+            for raw in rows:
+                rownum = raw.get("fila")
+                try:
+                    username = str(raw.get("username") or "").strip().lower()
+                    email = str(raw.get("email") or "").strip().lower()
+                    legajo = str(raw.get("legajo") or "").strip()
+                    password = str(raw.get("password") or "").strip() or None
+                    roles = _parse_roles(raw.get("roles"))
+                    jornada_desde = _excel_time(raw.get("jornada_desde"), "08:00")
+                    jornada_hasta = _excel_time(raw.get("jornada_hasta"), "14:00")
+                    office_name = str(raw.get("oficina") or "").strip() or None
+                    item = AdminUserIn(
+                        username=username, password=password, email=email,
+                        nombre=str(raw.get("nombre") or "").strip(), apellido=str(raw.get("apellido") or "").strip(),
+                        legajo=legajo, dni=str(raw.get("dni") or "").strip() or None, area=office_name,
+                        oficina_id=None, jornada_desde=jornada_desde, jornada_hasta=jornada_hasta, roles=roles, jefe_email=None,
+                    )
+                    if _parse_time(jornada_desde) >= _parse_time(jornada_hasta):
+                        raise ValueError("El fin de la jornada debe ser posterior al inicio.")
+
+                    # Evita que un mismo Excel intente crear/actualizar dos veces la misma persona.
+                    duplicate_refs = []
+                    for kind, value in (("usuario", username), ("email", email), ("legajo", legajo)):
+                        key = (kind, value.lower())
+                        if key in seen:
+                            duplicate_refs.append(f"{kind} repetido respecto de la fila {seen[key]}")
+                        else:
+                            seen[key] = rownum
+                    if duplicate_refs:
+                        raise ValueError("; ".join(duplicate_refs) + ".")
+
+                    # Los tres identificadores deben resolver, si existen, a una única cuenta.
+                    cur.execute("""
+                        SELECT id,email,legajo,username
+                        FROM usuarios
+                        WHERE lower(email)=lower(%s) OR legajo=%s OR lower(username)=lower(%s)
+                        ORDER BY id
+                    """, (email, legajo, username))
+                    matches = cur.fetchall()
+                    distinct_ids = {m["id"] for m in matches}
+                    if len(distinct_ids) > 1:
+                        raise ValueError("Usuario, email y/o legajo pertenecen a cuentas distintas en la base actual.")
+                    existing = matches[0] if matches else None
+                    if not existing and not password:
+                        raise ValueError("Usuario nuevo sin clave inicial (mínimo 6 caracteres).")
+                    valid.append({
+                        "fila": rownum, "payload": item.model_dump(), "oficina": office_name,
+                        "activo": _excel_bool(raw.get("activo"), True), "existente_id": existing["id"] if existing else None,
+                    })
+                except (ValidationError, ValueError, HTTPException) as exc:
+                    msg = exc.detail if isinstance(exc, HTTPException) else str(exc)
+                    errors.append({"fila": rownum, "error": msg})
+    return valid, errors
+
+
+def _apply_import_item(cur, item: dict):
+    data = item["payload"]
+    office_id = None
+    office_name = item.get("oficina")
+    if office_name:
+        cur.execute("SELECT id FROM oficinas WHERE lower(trim(nombre))=lower(trim(%s)) ORDER BY activo DESC,id LIMIT 1", (office_name,))
+        office = cur.fetchone()
+        if office:
+            office_id = office["id"]
+            cur.execute("UPDATE oficinas SET activo=TRUE,updated_at=NOW() WHERE id=%s", (office_id,))
+        else:
+            cur.execute("INSERT INTO oficinas(nombre,activo) VALUES (%s,TRUE) RETURNING id", (office_name,))
+            office_id = cur.fetchone()["id"]
+    work_start = _parse_time(data["jornada_desde"]); work_end = _parse_time(data["jornada_hasta"])
+    existing_id = item.get("existente_id")
+    if existing_id:
+        if data.get("password"):
+            cur.execute("""
+                UPDATE usuarios SET username=%s,password_hash=%s,email=%s,nombre=%s,apellido=%s,legajo=%s,dni=%s,
+                    area=%s,oficina_id=%s,jornada_desde=%s,jornada_hasta=%s,activo=%s,updated_at=NOW()
+                WHERE id=%s RETURNING id
+            """, (data["username"],hash_password(data["password"]),data["email"],data["nombre"],data["apellido"],data["legajo"],data.get("dni"),office_name,office_id,work_start,work_end,item["activo"],existing_id))
+        else:
+            cur.execute("""
+                UPDATE usuarios SET username=%s,email=%s,nombre=%s,apellido=%s,legajo=%s,dni=%s,
+                    area=%s,oficina_id=%s,jornada_desde=%s,jornada_hasta=%s,activo=%s,updated_at=NOW()
+                WHERE id=%s RETURNING id
+            """, (data["username"],data["email"],data["nombre"],data["apellido"],data["legajo"],data.get("dni"),office_name,office_id,work_start,work_end,item["activo"],existing_id))
+        user_id = cur.fetchone()["id"]
+    else:
+        cur.execute("""
+            INSERT INTO usuarios(username,password_hash,email,nombre,apellido,legajo,dni,area,oficina_id,jornada_desde,jornada_hasta,activo)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
+        """, (data["username"],hash_password(data["password"]),data["email"],data["nombre"],data["apellido"],data["legajo"],data.get("dni"),office_name,office_id,work_start,work_end,item["activo"]))
+        user_id = cur.fetchone()["id"]
+    cur.execute("DELETE FROM usuario_roles WHERE usuario_id=%s", (user_id,))
+    for role in data.get("roles") or ["AGENTE"]:
+        cur.execute("INSERT INTO usuario_roles(usuario_id,rol_id) SELECT %s,id FROM roles WHERE codigo=%s ON CONFLICT DO NOTHING", (user_id, role))
+    # La condición de jefatura pertenece a la Oficina: una importación no debe quitar ese acceso.
+    cur.execute("""
+        INSERT INTO usuario_roles(usuario_id,rol_id)
+        SELECT %s,r.id FROM roles r
+        WHERE r.codigo='JEFE' AND EXISTS (SELECT 1 FROM oficinas o WHERE o.jefe_id=%s AND o.activo=TRUE)
+        ON CONFLICT DO NOTHING
+    """, (user_id, user_id))
+    return user_id
+
+
+@app.post("/api/admin/importar-usuarios/validar")
+async def validate_users_excel(file: UploadFile = File(...), user: dict = Depends(require_roles("ADMIN"))):
+    if not (file.filename or "").lower().endswith(".xlsx"):
+        raise HTTPException(status_code=422, detail="El archivo debe estar en formato .xlsx.")
+    rows = _read_users_xlsx(await file.read())
+    valid, errors = _validate_import_rows(rows)
+    return {
+        "status": "ok" if not errors else "con_errores", "total": len(rows),
+        "validos": len(valid), "errores": len(errors), "detalle_errores": errors[:100],
+        "puede_importar": bool(valid) and not errors,
+    }
+
+
+@app.post("/api/admin/importar-usuarios/aplicar")
+async def apply_users_excel(file: UploadFile = File(...), user: dict = Depends(require_roles("ADMIN"))):
+    if not (file.filename or "").lower().endswith(".xlsx"):
+        raise HTTPException(status_code=422, detail="El archivo debe estar en formato .xlsx.")
+    rows = _read_users_xlsx(await file.read())
+    valid, errors = _validate_import_rows(rows)
+    if errors:
+        raise HTTPException(status_code=422, detail=f"El Excel tiene {len(errors)} fila(s) con errores. Validalo nuevamente antes de importar.")
+    with connection() as conn:
+        with conn.cursor() as cur:
+            for item in valid:
+                _apply_import_item(cur, item)
+        conn.commit()
+    return {"status": "ok", "importados": len(valid), "message": f"Se procesaron {len(valid)} usuarios correctamente."}
+
+
+@app.post("/api/admin/limpieza/permisos")
+def clear_permissions(payload: CleanupIn, user: dict = Depends(require_roles("ADMIN"))):
+    if payload.confirmacion.strip().upper() != "LIMPIAR PERMISOS":
+        raise HTTPException(status_code=422, detail="Confirmación inválida. Escribí LIMPIAR PERMISOS.")
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) cantidad FROM permisos_salida")
+            count = cur.fetchone()["cantidad"]
+            cur.execute("DELETE FROM permisos_salida")
+        conn.commit()
+    return {"status": "ok", "eliminados": count, "message": f"Se eliminaron {count} permisos y sus movimientos asociados."}
+
+
+@app.post("/api/admin/limpieza/maestros")
+def reset_master_data(payload: CleanupIn, user: dict = Depends(require_roles("ADMIN"))):
+    if payload.confirmacion.strip().upper() != "REINICIAR MAESTROS":
+        raise HTTPException(status_code=422, detail="Confirmación inválida. Escribí REINICIAR MAESTROS.")
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM usuarios WHERE id=%s OR lower(username)=lower(%s)", (user["id"], settings.bootstrap_admin_username))
+            preserve = [r["id"] for r in cur.fetchall()] or [user["id"]]
+            cur.execute("DELETE FROM permisos_salida")
+            cur.execute("DELETE FROM jefaturas")
+            cur.execute("UPDATE oficinas SET jefe_id=NULL")
+            cur.execute("UPDATE usuarios SET oficina_id=NULL,area=NULL WHERE id=ANY(%s)", (preserve,))
+            cur.execute("DELETE FROM oficinas")
+            cur.execute("DELETE FROM google_sheets_oauth_states WHERE usuario_id <> ALL(%s)", (preserve,))
+            cur.execute("DELETE FROM usuarios WHERE id <> ALL(%s)", (preserve,))
+            cur.execute("DELETE FROM usuario_roles WHERE usuario_id=ANY(%s)", (preserve,))
+            for preserved_id in preserve:
+                cur.execute("INSERT INTO usuario_roles(usuario_id,rol_id) SELECT %s,id FROM roles WHERE codigo='ADMIN' ON CONFLICT DO NOTHING", (preserved_id,))
+                cur.execute("INSERT INTO usuario_roles(usuario_id,rol_id) SELECT %s,id FROM roles WHERE codigo='RRHH' ON CONFLICT DO NOTHING", (preserved_id,))
+                cur.execute("UPDATE usuarios SET activo=TRUE,updated_at=NOW() WHERE id=%s", (preserved_id,))
+        conn.commit()
+    return {"status": "ok", "message": "Maestros reiniciados. Se conservaron las cuentas administradoras protegidas."}
 
 
 @app.get("/api/sheets/status")

@@ -10,6 +10,13 @@
   let declaredTouched = false;
   let adminUsersCache = [];
   let officesCache = [];
+  let bossAgentsCache = [];
+  let rrhhAgentsCache = [];
+  let bossCalendarRows = [];
+  let rrhhCalendarRows = [];
+  let bossCalendarCursor = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  let rrhhCalendarCursor = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  let validatedImportKey = null;
 
   function toast(message, type = "") {
     const el = document.createElement("div");
@@ -105,10 +112,14 @@
   }
 
   function applyRoles() {
-    const isAdmin = currentUser?.roles?.includes("ADMIN");
+    const roles = currentUser?.roles || [];
+    const isAdmin = roles.includes("ADMIN");
+    const isAgent = roles.includes("AGENTE") && !isAdmin;
     $$(".role-only").forEach(el => {
-      el.style.display = (isAdmin || currentUser?.roles?.includes(el.dataset.role)) ? "flex" : "none";
+      el.style.display = (isAdmin ? el.dataset.role === "ADMIN" : roles.includes(el.dataset.role)) ? "flex" : "none";
     });
+    $$(".agent-only-nav").forEach(el => { el.style.display = isAgent ? "flex" : "none"; });
+    $$(".agent-only-ui").forEach(el => { el.style.display = isAgent ? "grid" : "none"; });
   }
 
   function fillUser() {
@@ -208,7 +219,7 @@
 
   function paramsFrom(prefix) {
     const params = new URLSearchParams();
-    const fields = ["estado", "tipo", "agente", "desde", "hasta"];
+    const fields = ["estado", "tipo", "agente_id", "desde", "hasta"];
     fields.forEach(name => {
       const el = $(`#${prefix}_${name}`);
       if (!el?.value) return;
@@ -232,15 +243,117 @@
     </div>`).join("")}</div>`;
   }
 
+  function agentOptionLabel(a) {
+    const name = `${a.apellido || ""}, ${a.nombre || ""}`.replace(/^,\s*/, "").trim();
+    return `${name || "Sin nombre"}${a.legajo ? ` · Legajo ${a.legajo}` : ""}`;
+  }
+
+  async function loadBossAgentCatalog() {
+    if (!currentUser?.roles?.includes("JEFE") && !currentUser?.roles?.includes("ADMIN")) return;
+    try {
+      const data = await PermisosAPI.request("/api/jefatura/agentes");
+      bossAgentsCache = data.items || [];
+      const select = $("#boss_filter_agente_id");
+      if (!select) return;
+      const previous = select.value;
+      select.innerHTML = '<option value="">Todos los agentes asignados</option>' + bossAgentsCache.map(a => `<option value="${a.id}">${escapeHtml(agentOptionLabel(a))}</option>`).join("");
+      select.value = bossAgentsCache.some(a => String(a.id) === previous) ? previous : "";
+    } catch (error) { toast(error.message, "error"); }
+  }
+
+  async function loadRRHHAgentCatalog(preserve = true) {
+    if (!currentUser?.roles?.includes("RRHH") && !currentUser?.roles?.includes("ADMIN")) return;
+    try {
+      const office = $("#rrhh_filter_oficina")?.value || "";
+      const data = await PermisosAPI.request(`/api/rrhh/agentes${office ? `?oficina_id=${encodeURIComponent(office)}` : ""}`);
+      rrhhAgentsCache = data.items || [];
+      const select = $("#rrhh_filter_agente_id");
+      if (!select) return;
+      const previous = preserve ? select.value : "";
+      select.innerHTML = '<option value="">Todos los agentes</option>' + rrhhAgentsCache.map(a => `<option value="${a.id}">${escapeHtml(agentOptionLabel(a))}${!office && a.oficina ? ` · ${escapeHtml(a.oficina)}` : ""}</option>`).join("");
+      select.value = rrhhAgentsCache.some(a => String(a.id) === previous) ? previous : "";
+    } catch (error) { toast(error.message, "error"); }
+  }
+
+  function renderAgentProfile(target, selectedId, agents, rows, label = "agente") {
+    if (!target) return;
+    if (!selectedId) {
+      target.innerHTML = `<div class="perm-empty"><strong>Elegí un ${label}.</strong><span>La ficha mostrará volumen, estados, tipos y tiempo particular acumulado según los filtros activos.</span></div>`;
+      return;
+    }
+    const a = agents.find(x => String(x.id) === String(selectedId));
+    if (!a) { target.innerHTML = '<div class="perm-empty">No se encontró el agente seleccionado.</div>'; return; }
+    const pending = rows.filter(x => ["PENDIENTE_JEFE","PENDIENTE_RRHH"].includes(x.estado)).length;
+    const approved = rows.filter(x => x.estado === "VERIFICADO_RRHH").length;
+    const official = rows.filter(x => x.tipo === "OFICIAL").length;
+    const particular = rows.filter(x => x.tipo === "PARTICULAR").length;
+    const mins = rows.filter(x => x.tipo === "PARTICULAR").reduce((acc,x) => acc + Number(x.minutos_declarados ?? x.minutos_autorizados ?? 0), 0);
+    const last = rows[0];
+    const jornada = `${a.jornada_desde || "08:00"} → ${a.jornada_hasta || "14:00"}`;
+    target.innerHTML = `<div class="perm-profile-head"><div class="perm-profile-avatar">${escapeHtml((a.nombre?.[0] || a.apellido?.[0] || "A").toUpperCase())}</div><div><strong>${escapeHtml(`${a.nombre || ""} ${a.apellido || ""}`.trim())}</strong><span>Legajo ${escapeHtml(a.legajo || "—")} · ${escapeHtml(a.oficina || "Sin Oficina")}</span></div></div>
+      <div class="perm-profile-data"><div><span>DNI</span><strong>${escapeHtml(a.dni || "—")}</strong></div><div><span>Email</span><strong>${escapeHtml(a.email || "—")}</strong></div><div><span>Jornada</span><strong>${escapeHtml(jornada)}</strong></div></div>
+      <div class="perm-profile-metrics"><div><b>${rows.length}</b><span>Permisos</span></div><div><b>${pending}</b><span>Pendientes</span></div><div><b>${approved}</b><span>Verificados</span></div><div><b>${official}</b><span>Oficiales</span></div><div><b>${particular}</b><span>Particulares</span></div><div><b>${formatMinutes(mins)}</b><span>Tiempo particular</span></div></div>
+      <div class="perm-profile-last"><strong>Último registro</strong><span>${last ? `${fmtDate(last.fecha_salida)} · ${last.tipo} · ${prettyState(last.estado)}` : "Sin registros con los filtros actuales"}</span></div>`;
+  }
+
+  function shiftMonth(cursor, delta) {
+    return new Date(cursor.getFullYear(), cursor.getMonth() + delta, 1);
+  }
+
+  function renderCalendar(target, rows, cursor, scope) {
+    if (!target) return;
+    const year = cursor.getFullYear();
+    const month = cursor.getMonth();
+    const first = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    const startOffset = (first.getDay() + 6) % 7;
+    const monthLabel = first.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
+    const map = new Map();
+    rows.forEach(p => {
+      const key = String(p.fecha_salida || "").slice(0,10);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(p);
+    });
+    let cells = Array.from({length:startOffset}, () => '<div class="perm-calendar-day perm-calendar-empty"></div>');
+    for (let day = 1; day <= lastDay; day++) {
+      const key = `${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+      const events = map.get(key) || [];
+      const today = new Date();
+      const isToday = today.getFullYear()===year && today.getMonth()===month && today.getDate()===day;
+      const eventMarkup = events.slice(0,3).map(p => `<button type="button" class="perm-calendar-event ${p.tipo === "OFICIAL" ? "official" : "particular"}" data-calendar-permission="${p.id}" title="${escapeHtml(`${p.agente_nombre || ""} · ${p.tipo} · ${prettyState(p.estado)}`)}"><b>${escapeHtml(p.hora_salida || "—")}</b><span>${escapeHtml((p.agente_nombre || p.numero_permiso || "Permiso").split(" ").slice(0,2).join(" "))}</span></button>`).join("");
+      cells.push(`<div class="perm-calendar-day ${events.length ? "has-events" : ""} ${isToday ? "is-today" : ""}"><div class="perm-calendar-date"><span>${day}</span>${events.length ? `<b>${events.length}</b>` : ""}</div>${eventMarkup}${events.length > 3 ? `<small class="perm-calendar-more">+${events.length-3} más</small>` : ""}</div>`);
+    }
+    target.innerHTML = `<div class="perm-calendar-toolbar"><button type="button" data-cal-prev>‹</button><strong>${escapeHtml(monthLabel.charAt(0).toUpperCase()+monthLabel.slice(1))}</strong><div><button type="button" data-cal-today>Hoy</button><button type="button" data-cal-next>›</button></div></div><div class="perm-calendar-weekdays">${["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(x=>`<span>${x}</span>`).join("")}</div><div class="perm-calendar-grid">${cells.join("")}</div>`;
+    target.querySelector('[data-cal-prev]').onclick = () => {
+      if (scope === "boss") { bossCalendarCursor = shiftMonth(bossCalendarCursor,-1); renderCalendar(target,bossCalendarRows,bossCalendarCursor,scope); }
+      else { rrhhCalendarCursor = shiftMonth(rrhhCalendarCursor,-1); renderCalendar(target,rrhhCalendarRows,rrhhCalendarCursor,scope); }
+    };
+    target.querySelector('[data-cal-next]').onclick = () => {
+      if (scope === "boss") { bossCalendarCursor = shiftMonth(bossCalendarCursor,1); renderCalendar(target,bossCalendarRows,bossCalendarCursor,scope); }
+      else { rrhhCalendarCursor = shiftMonth(rrhhCalendarCursor,1); renderCalendar(target,rrhhCalendarRows,rrhhCalendarCursor,scope); }
+    };
+    target.querySelector('[data-cal-today]').onclick = () => {
+      const d = new Date();
+      if (scope === "boss") { bossCalendarCursor = new Date(d.getFullYear(),d.getMonth(),1); renderCalendar(target,bossCalendarRows,bossCalendarCursor,scope); }
+      else { rrhhCalendarCursor = new Date(d.getFullYear(),d.getMonth(),1); renderCalendar(target,rrhhCalendarRows,rrhhCalendarCursor,scope); }
+    };
+    $$('[data-calendar-permission]', target).forEach(btn => btn.addEventListener('click', () => openDetail(btn.dataset.calendarPermission)));
+  }
+
   async function loadBossPanel() {
     try {
+      if (!bossAgentsCache.length) await loadBossAgentCatalog();
       const params = paramsFrom("boss_filter");
       const query = params.toString();
       const [data, dashboard] = await Promise.all([
         PermisosAPI.request(`/api/jefatura/permisos${query ? `?${query}` : ""}`),
         PermisosAPI.request(`/api/jefatura/dashboard${query ? `?${query}` : ""}`)
       ]);
-      renderPermissionList($("#boss_permissions"), data.items || [], { bossActions: true });
+      const rows = data.items || [];
+      bossCalendarRows = rows;
+      renderPermissionList($("#boss_permissions"), rows, { bossActions: true });
+      renderCalendar($("#boss_calendar"), rows, bossCalendarCursor, "boss");
+      renderAgentProfile($("#boss_agent_profile"), $("#boss_filter_agente_id")?.value, bossAgentsCache, rows, "agente de la Oficina");
       $("#boss_stat_total").textContent = dashboard.total ?? 0;
       $("#boss_stat_pending").textContent = dashboard.pendientes ?? 0;
       $("#boss_stat_approved").textContent = dashboard.autorizados ?? 0;
@@ -260,13 +373,18 @@
 
   async function loadRRHH() {
     try {
+      if (!rrhhAgentsCache.length) await loadRRHHAgentCatalog();
       const params = rrhhParams();
       const query = params.toString();
       const [data, dashboard] = await Promise.all([
         PermisosAPI.request(`/api/rrhh/permisos${query ? `?${query}` : ""}`),
         PermisosAPI.request(`/api/rrhh/dashboard${query ? `?${query}` : ""}`)
       ]);
-      renderPermissionList($("#rrhh_permissions"), data.items || [], { rrhhActions: true });
+      const rows = data.items || [];
+      rrhhCalendarRows = rows;
+      renderPermissionList($("#rrhh_permissions"), rows, { rrhhActions: true });
+      renderCalendar($("#rrhh_calendar"), rows, rrhhCalendarCursor, "rrhh");
+      renderAgentProfile($("#rrhh_agent_profile"), $("#rrhh_filter_agente_id")?.value, rrhhAgentsCache, rows, "agente");
       $("#rrhh_total_mes").textContent = dashboard.total ?? 0;
       $("#rrhh_pendientes").textContent = dashboard.pendientes_rrhh ?? 0;
       $("#rrhh_particulares").textContent = dashboard.particulares ?? 0;
@@ -377,6 +495,7 @@
     const privateOut = type === "PARTICULAR";
     $("#field_destino").hidden = !official;
     $("#form_destino").required = official;
+    $("#official_policy_note").hidden = !official;
     $("#private_return_block").hidden = !privateOut;
     if (privateOut) updateCompensationRules();
     else {
@@ -586,7 +705,9 @@
     const yyyy = today.getFullYear();
     const mm = String(today.getMonth() + 1).padStart(2, "0");
     const dd = String(today.getDate()).padStart(2, "0");
-    $("#form_fecha").value = `${yyyy}-${mm}-${dd}`;
+    const todayIso = `${yyyy}-${mm}-${dd}`;
+    $("#form_fecha").value = todayIso;
+    $("#form_fecha").min = todayIso;
     $("#form_tiempo_horas").value = 0;
     $("#form_tiempo_minutos").value = 0;
     $("#return_deadline").textContent = "Seleccioná una salida particular";
@@ -608,6 +729,8 @@
     calculateExtraDuration();
     updateDeadlineWarning();
     if (!form.reportValidity()) return;
+    const todayIso = $("#form_fecha").min;
+    if (todayIso && $("#form_fecha").value < todayIso) return toast("La fecha de salida no puede ser anterior al día de hoy.", "error");
     try {
       const created = await PermisosAPI.request("/api/permisos", { method: "POST", body: JSON.stringify(formPayload()) });
       if (sendNow) {
@@ -693,6 +816,7 @@
       const rows = data.items || [];
       adminUsersCache = rows;
       refreshOfficeBossOptions();
+      refreshAdminOverview();
       const target = $("#admin_users");
       if (!rows.length) {
         target.innerHTML = '<div class="perm-empty">No hay usuarios.</div>';
@@ -733,6 +857,7 @@
     try {
       const data = await PermisosAPI.request("/api/admin/oficinas");
       officesCache = data.items || [];
+      refreshAdminOverview();
       const target = $("#admin_offices");
       target.innerHTML = officesCache.length ? `<div class="perm-table-wrap"><table class="perm-table"><thead><tr><th>Oficina</th><th>Jefatura</th><th>Agentes</th><th>Estado</th><th></th></tr></thead><tbody>${officesCache.map(o => `<tr class="${o.activo ? "" : "perm-row-disabled"}">
         <td><strong>${escapeHtml(o.nombre)}</strong></td><td>${escapeHtml(o.jefe_nombre || "Sin jefatura")}</td><td>${Number(o.agentes_activos || 0)}</td><td>${o.activo ? '<span class="perm-badge green">Activa</span>' : '<span class="perm-badge red">Inactiva</span>'}</td><td class="perm-row-actions"><button data-edit-office="${o.id}">Editar</button></td>
@@ -747,9 +872,85 @@
     } catch (error) { toast(error.message, "error"); }
   }
 
+  function refreshAdminOverview() {
+    const activeUsers = adminUsersCache.filter(u => u.activo);
+    const activeOffices = officesCache.filter(o => o.activo);
+    const agents = activeUsers.filter(u => (u.roles || []).includes("AGENTE"));
+    const missingBoss = activeOffices.filter(o => !o.jefe_id);
+    if ($("#admin_stat_users")) $("#admin_stat_users").textContent = activeUsers.length;
+    if ($("#admin_stat_offices")) $("#admin_stat_offices").textContent = activeOffices.length;
+    if ($("#admin_stat_agents")) $("#admin_stat_agents").textContent = agents.length;
+    if ($("#admin_stat_missing_boss")) $("#admin_stat_missing_boss").textContent = missingBoss.length;
+    const message = $("#admin_health_message");
+    if (message) {
+      message.className = `perm-admin-health-message ${missingBoss.length ? "warning" : "ok"}`;
+      message.textContent = missingBoss.length ? `Revisar: ${missingBoss.length} Oficina(s) activa(s) no tienen Jefatura asignada.` : "La estructura activa tiene Jefatura definida en todas las Oficinas.";
+    }
+  }
+
+  function importFileKey(file) {
+    return file ? `${file.name}|${file.size}|${file.lastModified}` : null;
+  }
+
+  function renderImportResult(result) {
+    const target = $("#admin_import_result");
+    if (!target) return;
+    const errors = result.detalle_errores || [];
+    target.innerHTML = `<div class="perm-import-summary ${result.errores ? "has-errors" : "ok"}"><strong>${result.validos || 0} válidos · ${result.errores || 0} con errores</strong><span>Total de filas procesadas: ${result.total || 0}</span></div>${errors.length ? `<div class="perm-import-errors">${errors.map(e => `<div><b>Fila ${e.fila}</b><span>${escapeHtml(e.error)}</span></div>`).join("")}</div>` : ""}`;
+  }
+
+  async function validateExcelImport() {
+    const file = $("#admin_excel_file")?.files?.[0];
+    if (!file) return toast("Seleccioná un archivo .xlsx.", "error");
+    const form = new FormData(); form.append("file", file);
+    try {
+      $("#admin_validate_excel").disabled = true;
+      const result = await PermisosAPI.request("/api/admin/importar-usuarios/validar", { method: "POST", body: form });
+      renderImportResult(result);
+      validatedImportKey = result.puede_importar ? importFileKey(file) : null;
+      $("#admin_import_excel").disabled = !result.puede_importar;
+      toast(result.puede_importar ? "Excel validado. Ya podés importarlo." : "El Excel tiene errores que deben corregirse.", result.puede_importar ? "success" : "error");
+    } catch (error) {
+      validatedImportKey = null; $("#admin_import_excel").disabled = true; toast(error.message, "error");
+    } finally { $("#admin_validate_excel").disabled = false; }
+  }
+
+  async function applyExcelImport() {
+    const file = $("#admin_excel_file")?.files?.[0];
+    if (!file || validatedImportKey !== importFileKey(file)) return toast("Validá este mismo Excel antes de importarlo.", "error");
+    if (!confirm("¿Importar/actualizar los usuarios validados del Excel?")) return;
+    const form = new FormData(); form.append("file", file);
+    try {
+      $("#admin_import_excel").disabled = true;
+      const result = await PermisosAPI.request("/api/admin/importar-usuarios/aplicar", { method: "POST", body: form });
+      toast(result.message || "Usuarios importados.", "success");
+      validatedImportKey = null;
+      $("#admin_excel_file").value = "";
+      $("#admin_import_result").innerHTML = "";
+      await Promise.all([loadUsers(), loadOffices(), loadOfficeCatalog()]);
+      refreshAdminOverview();
+    } catch (error) { toast(error.message, "error"); }
+  }
+
+  async function cleanAdminData(kind) {
+    const master = kind === "maestros";
+    const phrase = master ? "REINICIAR MAESTROS" : "LIMPIAR PERMISOS";
+    const warning = master ? "Esto eliminará permisos, Oficinas y usuarios, conservando sólo las cuentas administradoras protegidas." : "Esto eliminará todos los permisos y movimientos asociados, pero conservará usuarios y Oficinas.";
+    const typed = prompt(`${warning}\n\nPara confirmar, escribí exactamente: ${phrase}`);
+    if (typed === null) return;
+    if (typed.trim().toUpperCase() !== phrase) return toast("La frase de confirmación no coincide. No se eliminó nada.", "error");
+    try {
+      const result = await PermisosAPI.request(`/api/admin/limpieza/${kind === "maestros" ? "maestros" : "permisos"}`, { method: "POST", body: JSON.stringify({ confirmacion: typed }) });
+      toast(result.message || "Limpieza completada.", "success");
+      await Promise.all([loadUsers(), loadOffices(), loadOfficeCatalog()]);
+      refreshAdminOverview();
+    } catch (error) { toast(error.message, "error"); }
+  }
+
   async function loadAdmin() {
     if (!currentUser?.roles?.includes("ADMIN")) return;
     await Promise.all([loadUsers(), loadOffices()]);
+    refreshAdminOverview();
   }
 
   async function loadSheetsStatus() {
@@ -836,13 +1037,12 @@
     $("#permission_form").addEventListener("submit", e => { e.preventDefault(); createPermission(true); });
     $("#save_draft_btn").addEventListener("click", () => createPermission(false));
 
-    $("#refresh_jefatura").addEventListener("click", loadBossPanel);
-    ["boss_filter_estado","boss_filter_tipo","boss_filter_desde","boss_filter_hasta"].forEach(id => $("#" + id).addEventListener("change", loadBossPanel));
-    $("#boss_filter_agente").addEventListener("input", debounce(loadBossPanel));
+    $("#refresh_jefatura").addEventListener("click", async () => { await loadBossAgentCatalog(); await loadBossPanel(); });
+    ["boss_filter_agente_id","boss_filter_estado","boss_filter_tipo","boss_filter_desde","boss_filter_hasta"].forEach(id => $("#" + id).addEventListener("change", loadBossPanel));
 
-    $("#refresh_rrhh").addEventListener("click", loadRRHH);
-    ["rrhh_filter_oficina","rrhh_filter_estado","rrhh_filter_tipo","rrhh_filter_desde","rrhh_filter_hasta"].forEach(id => $("#" + id).addEventListener("change", loadRRHH));
-    $("#rrhh_filter_agente").addEventListener("input", debounce(loadRRHH));
+    $("#refresh_rrhh").addEventListener("click", async () => { await loadRRHHAgentCatalog(); await loadRRHH(); });
+    $("#rrhh_filter_oficina").addEventListener("change", async () => { await loadRRHHAgentCatalog(false); await loadRRHH(); });
+    ["rrhh_filter_agente_id","rrhh_filter_estado","rrhh_filter_tipo","rrhh_filter_desde","rrhh_filter_hasta"].forEach(id => $("#" + id).addEventListener("change", loadRRHH));
 
     $("#connect_sheets_btn").addEventListener("click", connectSheets);
     $("#sync_sheets_btn").addEventListener("click", syncSheets);
@@ -852,6 +1052,11 @@
     $("#refresh_offices").addEventListener("click", loadOffices);
     $("#admin_clear_form").addEventListener("click", clearAdminForm);
     $("#admin_clear_office").addEventListener("click", clearOfficeForm);
+    $("#admin_validate_excel").addEventListener("click", validateExcelImport);
+    $("#admin_import_excel").addEventListener("click", applyExcelImport);
+    $("#admin_excel_file").addEventListener("change", () => { validatedImportKey = null; $("#admin_import_excel").disabled = true; $("#admin_import_result").innerHTML = ""; });
+    $("#admin_clear_permissions").addEventListener("click", () => cleanAdminData("permisos"));
+    $("#admin_reset_master").addEventListener("click", () => cleanAdminData("maestros"));
 
     $("#admin_office_form").addEventListener("submit", async e => {
       e.preventDefault();
@@ -902,8 +1107,15 @@
     $("#user_widget").hidden = false;
     fillUser();
     applyRoles();
-    resetPermissionForm();
-    await Promise.all([loadDashboard(), loadOfficeCatalog(), loadSheetsStatus()]);
+    const roles = currentUser.roles || [];
+    const isAdmin = roles.includes("ADMIN");
+    const isAgent = roles.includes("AGENTE") && !isAdmin;
+    if (isAgent) resetPermissionForm();
+    await Promise.all([loadOfficeCatalog(), loadSheetsStatus()]);
+    if (isAdmin) { setView("admin"); await loadAdmin(); }
+    else if (roles.includes("RRHH")) { await loadRRHHAgentCatalog(); setView("rrhh"); }
+    else if (roles.includes("JEFE")) { await loadBossAgentCatalog(); setView("jefatura"); }
+    else { setView("dashboard"); await loadDashboard(); }
   }
 
   function onLoggedOut() {

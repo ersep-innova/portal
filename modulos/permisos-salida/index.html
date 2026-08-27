@@ -16,9 +16,9 @@
         <div><strong>Permisos de Salida</strong><span>Gestión interna · RR.HH.</span></div>
       </div>
       <nav class="perm-nav" aria-label="Módulos">
-        <button class="active" data-view="dashboard"><span>⌂</span> Inicio</button>
-        <button data-view="nuevo"><span>＋</span> Nuevo permiso</button>
-        <button data-view="mios"><span>▤</span> Mis permisos</button>
+        <button class="active agent-only-nav" data-view="dashboard"><span>⌂</span> Inicio</button>
+        <button class="agent-only-nav" data-view="nuevo"><span>＋</span> Nuevo permiso</button>
+        <button class="agent-only-nav" data-view="mios"><span>▤</span> Mis permisos</button>
         <button class="role-only" data-role="JEFE" data-view="jefatura"><span>✓</span> Panel de Jefatura</button>
         <button class="role-only" data-role="RRHH" data-view="rrhh"><span>◎</span> Panel RR.HH.</button>
         <button class="role-only" data-role="ADMIN" data-view="admin"><span>⚙</span> Administración</button>
@@ -79,6 +79,10 @@
       </section>
 
       <section class="perm-content" id="app_content" hidden>
+        <div class="perm-owner-banner agent-only-ui" id="rrhh_owner_banner">
+          <div><span>ÁREA RESPONSABLE</span><strong>GESTIÓN DE RECURSOS HUMANOS</strong><p>Este módulo, sus datos y la gestión de los permisos dependen de Recursos Humanos.</p></div>
+          <div class="perm-owner-contact"><small>Consultas, correcciones o inconvenientes</small><b>ersep.capacitaciones@gmail.com</b><button class="perm-copy-email" data-copy-rrhh>Copiar email de RR.HH.</button></div>
+        </div>
         <div class="perm-view active" data-view-panel="dashboard">
           <div class="perm-hero">
             <div class="perm-hero-card">
@@ -161,6 +165,8 @@
                   <div class="perm-field full" id="field_time_reason" hidden><label>Motivo de la diferencia *</label><textarea id="form_justificacion_minutos" maxlength="1000" placeholder="Ej.: jornada extendida, situación excepcional, horario especial..."></textarea></div>
                 </div>
 
+                <div class="perm-alert info full" id="official_policy_note" hidden><strong>Salida oficial · no corresponde devolución de horas</strong><span>Las salidas oficiales no generan compensación ni devolución de tiempo. Luego de la autorización de Jefatura, la solicitud debe ser aprobada por Recursos Humanos.</span></div>
+
                 <div id="private_return_block" hidden>
                   <div class="perm-section-title">4 · ¿Cómo compensará el tiempo? · salida particular</div>
                   <div class="perm-explainer">Elegí una sola opción. RR.HH. verá en forma destacada cualquier diferencia entre el tiempo de salida y el tiempo informado para compensarlo.</div>
@@ -225,12 +231,20 @@
           <div class="perm-card perm-filter-card">
             <div class="perm-card-header"><div><h3>Filtros</h3><p>Buscá por persona, estado, tipo o período.</p></div><button class="perm-secondary" id="refresh_jefatura">Actualizar</button></div>
             <div class="perm-card-body perm-filter-grid">
-              <div class="perm-field"><label>Agente / legajo</label><input id="boss_filter_agente" placeholder="Buscar agente..."></div>
+              <div class="perm-field"><label>Agente de la Oficina</label><select id="boss_filter_agente_id"><option value="">Todos los agentes asignados</option></select></div>
               <div class="perm-field"><label>Estado</label><select id="boss_filter_estado"><option value="">Todos</option><option value="PENDIENTE_JEFE">Pendiente de Jefatura</option><option value="PENDIENTE_RRHH">Autorizado · en RR.HH.</option><option value="VERIFICADO_RRHH">Verificado RR.HH.</option><option value="RECHAZADO_JEFE">Rechazado por Jefatura</option><option value="RECHAZADO_RRHH">Rechazado por RR.HH.</option></select></div>
               <div class="perm-field"><label>Tipo</label><select id="boss_filter_tipo"><option value="">Todos</option><option value="OFICIAL">Oficial</option><option value="PARTICULAR">Particular</option></select></div>
               <div class="perm-field"><label>Desde</label><input id="boss_filter_desde" type="date"></div>
               <div class="perm-field"><label>Hasta</label><input id="boss_filter_hasta" type="date"></div>
             </div>
+          </div>
+          <div class="perm-card perm-agent-profile-card" id="boss_agent_profile_card">
+            <div class="perm-card-header"><div><h3>Ficha del agente seleccionado</h3><p>Trazabilidad resumida del agente dentro de la Oficina.</p></div></div>
+            <div class="perm-card-body" id="boss_agent_profile"></div>
+          </div>
+          <div class="perm-card perm-calendar-card">
+            <div class="perm-card-header"><div><h3>Calendario de permisos</h3><p>Cada día muestra las salidas registradas. Seleccioná una ficha para abrir su trazabilidad.</p></div></div>
+            <div class="perm-card-body" id="boss_calendar"></div>
           </div>
           <div class="perm-insight-grid">
             <div class="perm-card"><div class="perm-card-header"><div><h3>Permisos por agente</h3><p>Quiénes concentran más solicitudes.</p></div></div><div class="perm-card-body" id="boss_chart_agents"></div></div>
@@ -266,12 +280,20 @@
             </div>
             <div class="perm-card-body perm-filter-grid">
               <div class="perm-field"><label>Oficina</label><select id="rrhh_filter_oficina"><option value="">Todas las Oficinas</option></select></div>
-              <div class="perm-field"><label>Agente / legajo</label><input id="rrhh_filter_agente" placeholder="Buscar persona..."></div>
+              <div class="perm-field"><label>Agente</label><select id="rrhh_filter_agente_id"><option value="">Todos los agentes</option></select></div>
               <div class="perm-field"><label>Estado</label><select id="rrhh_filter_estado"><option value="">Todos</option><option value="PENDIENTE_JEFE">Pendiente Jefatura</option><option value="PENDIENTE_RRHH">Pendiente RR.HH.</option><option value="VERIFICADO_RRHH">Verificado RR.HH.</option><option value="RECHAZADO_JEFE">Rechazado Jefatura</option><option value="RECHAZADO_RRHH">Rechazado RR.HH.</option><option value="CANCELADO_AGENTE">Cancelado</option></select></div>
               <div class="perm-field"><label>Tipo</label><select id="rrhh_filter_tipo"><option value="">Todos</option><option value="OFICIAL">Oficial</option><option value="PARTICULAR">Particular</option></select></div>
               <div class="perm-field"><label>Desde</label><input id="rrhh_filter_desde" type="date"></div>
               <div class="perm-field"><label>Hasta</label><input id="rrhh_filter_hasta" type="date"></div>
             </div>
+          </div>
+          <div class="perm-card perm-agent-profile-card" id="rrhh_agent_profile_card">
+            <div class="perm-card-header"><div><h3>Ficha del agente</h3><p>Elegí una persona para ver su trazabilidad resumida; también podés acotar primero por Oficina.</p></div></div>
+            <div class="perm-card-body" id="rrhh_agent_profile"></div>
+          </div>
+          <div class="perm-card perm-calendar-card">
+            <div class="perm-card-header"><div><h3>Calendario general de permisos</h3><p>Vista temporal por Oficina, agente o filtros activos.</p></div></div>
+            <div class="perm-card-body" id="rrhh_calendar"></div>
           </div>
           <div class="perm-insight-grid perm-insight-grid-3">
             <div class="perm-card"><div class="perm-card-header"><div><h3>Por Oficina</h3><p>Volumen de permisos.</p></div></div><div class="perm-card-body" id="rrhh_chart_offices"></div></div>
@@ -285,7 +307,25 @@
         </div>
 
         <div class="perm-view" data-view-panel="admin">
-          <div class="perm-page-heading"><div><span class="perm-kicker">Configuración</span><h2>Administración</h2><p>Primero definí Oficinas y sus jefaturas. Después asigná cada agente a una Oficina.</p></div></div>
+          <div class="perm-page-heading"><div><span class="perm-kicker">Configuración y estructura</span><h2>Administración del sistema</h2><p>Este panel describe la organización del circuito y concentra la gestión de Oficinas, usuarios, importaciones y limpieza de datos.</p></div></div>
+          <div class="perm-admin-overview">
+            <div class="perm-admin-process">
+              <span class="perm-kicker">Cómo está organizado</span>
+              <h3>Agente → Jefatura de Oficina → Recursos Humanos</h3>
+              <p>El agente registra la salida. La Jefatura autoriza o rechaza. Toda autorización pasa luego a RR.HH., que realiza la aprobación final. Las salidas oficiales no generan devolución de horas.</p>
+              <div class="perm-process-flow"><div><b>1</b><strong>Agente</strong><small>Crea y envía</small></div><span>→</span><div><b>2</b><strong>Jefatura</strong><small>Autoriza</small></div><span>→</span><div><b>3</b><strong>RR.HH.</strong><small>Aprueba y controla</small></div></div>
+            </div>
+            <div class="perm-admin-health">
+              <span class="perm-kicker">Estado organizacional</span>
+              <div class="perm-admin-health-grid">
+                <div><strong id="admin_stat_users">—</strong><span>Usuarios activos</span></div>
+                <div><strong id="admin_stat_offices">—</strong><span>Oficinas activas</span></div>
+                <div><strong id="admin_stat_agents">—</strong><span>Agentes</span></div>
+                <div><strong id="admin_stat_missing_boss">—</strong><span>Oficinas sin Jefatura</span></div>
+              </div>
+              <div id="admin_health_message" class="perm-admin-health-message"></div>
+            </div>
+          </div>
           <div class="perm-grid-2 perm-admin-top-grid">
             <div class="perm-card">
               <div class="perm-card-header"><div><h3>Oficina → Jefatura</h3><p>La jefatura se configura una sola vez para toda la Oficina.</p></div></div>
@@ -302,6 +342,24 @@
             <div class="perm-card">
               <div class="perm-card-header"><div><h3>Oficinas configuradas</h3><p>Jefatura y cantidad de agentes activos.</p></div><button class="perm-secondary" id="refresh_offices">Actualizar</button></div>
               <div class="perm-card-body"><div id="admin_offices"></div></div>
+            </div>
+          </div>
+
+          <div class="perm-grid-2 perm-admin-tools-grid">
+            <div class="perm-card">
+              <div class="perm-card-header"><div><h3>Importación masiva de usuarios</h3><p>Subí un Excel .xlsx. Primero se valida; después se habilita la importación.</p></div></div>
+              <div class="perm-card-body">
+                <div class="perm-import-guide"><strong>Columnas admitidas</strong><span>usuario, clave, email, nombre, apellido, legajo, dni, oficina, jornada_desde, jornada_hasta, roles, activo</span><small>Para usuarios nuevos, la clave debe tener al menos 6 caracteres. Roles separados por coma o punto y coma.</small></div>
+                <div class="perm-upload-row"><input id="admin_excel_file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"><button class="perm-secondary" id="admin_validate_excel" type="button">Validar Excel</button><button class="perm-primary" id="admin_import_excel" type="button" disabled>Importar usuarios</button></div>
+                <div id="admin_import_result" class="perm-import-result"></div>
+              </div>
+            </div>
+            <div class="perm-card perm-danger-zone">
+              <div class="perm-card-header"><div><h3>Limpieza de datos</h3><p>Herramientas para retirar datos de prueba sin tocar accidentalmente la configuración que quieras conservar.</p></div></div>
+              <div class="perm-card-body">
+                <div class="perm-clean-action"><div><strong>Limpiar permisos y movimientos</strong><p>Elimina permisos, aprobaciones, reposiciones, historial y auditoría asociada. Conserva usuarios y Oficinas.</p></div><button class="perm-danger-btn" id="admin_clear_permissions" type="button">Limpiar movimientos</button></div>
+                <div class="perm-clean-action"><div><strong>Reiniciar usuarios y Oficinas</strong><p>Elimina movimientos, Oficinas y usuarios excepto la cuenta administradora inicial y el administrador que ejecuta la acción.</p></div><button class="perm-danger-btn" id="admin_reset_master" type="button">Reiniciar maestros</button></div>
+              </div>
             </div>
           </div>
 

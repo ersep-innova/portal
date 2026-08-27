@@ -297,3 +297,117 @@ button { cursor: pointer; }
   .perm-user .perm-avatar { display: none; }
   .perm-portal-btn { max-width: 130px; white-space: normal; line-height: 1.2; }
 }
+
+/* ============================================================
+   V7 · RR.HH. ownership, calendar traceability and admin tools
+   ============================================================ */
+.perm-owner-banner { margin: 0 0 20px; padding: 18px 20px; border-radius: 16px; background: linear-gradient(105deg,#850921 0%,#a20d2c 58%,#25282a 100%); color: #fff; display: grid; grid-template-columns: minmax(0,1.2fr) minmax(280px,.8fr); gap: 22px; align-items: center; box-shadow: 0 14px 32px rgba(76,10,24,.16); }
+.perm-owner-banner > div:first-child > span { display: block; font-size: 9px; font-weight: 900; letter-spacing: 1.4px; opacity: .75; }
+.perm-owner-banner > div:first-child > strong { display: block; margin-top: 4px; font-size: clamp(22px,3vw,34px); line-height: 1.08; letter-spacing: -.8px; }
+.perm-owner-banner p { margin: 7px 0 0; color: #f3dce2; font-size: 11px; line-height: 1.5; }
+.perm-owner-contact { justify-self: end; min-width: 260px; padding: 13px 15px; border: 1px solid rgba(255,255,255,.2); border-radius: 12px; background: rgba(255,255,255,.09); display: grid; gap: 4px; }
+.perm-owner-contact small { color: #f1d6dc; font-size: 9px; }
+.perm-owner-contact b { overflow-wrap: anywhere; font-size: 11px; }
+.perm-owner-contact .perm-copy-email { margin-top: 5px; background: #fff; color: #2d3032; border-color: #fff; }
+
+.perm-agent-profile-card, .perm-calendar-card { margin-bottom: 18px; }
+.perm-profile-head { display: flex; gap: 11px; align-items: center; margin-bottom: 16px; }
+.perm-profile-avatar { width: 43px; height: 43px; border-radius: 50%; background: #f3e5e8; color: var(--perm-red); display: grid; place-items: center; font-weight: 900; font-size: 15px; }
+.perm-profile-head strong { display: block; font-size: 13px; }
+.perm-profile-head span { display: block; margin-top: 3px; color: var(--perm-muted); font-size: 10px; }
+.perm-profile-metrics { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); border: 1px solid var(--perm-border-soft); border-radius: 12px; overflow: hidden; }
+.perm-profile-metrics > div { min-height: 74px; padding: 13px 10px; display: grid; place-content: center; text-align: center; border-right: 1px solid var(--perm-border-soft); background: #fafbfb; }
+.perm-profile-metrics > div:last-child { border-right: 0; }
+.perm-profile-metrics b { font-size: 16px; color: #34393c; }
+.perm-profile-metrics span { color: var(--perm-muted); font-size: 8.8px; font-weight: 700; margin-top: 2px; }
+.perm-profile-last { margin-top: 11px; display: flex; justify-content: space-between; gap: 14px; padding: 10px 12px; background: #f7f8f8; border-radius: 9px; font-size: 10px; }
+.perm-profile-last span { color: var(--perm-muted); text-align: right; }
+
+.perm-calendar-toolbar { display: grid; grid-template-columns: 42px 1fr auto; gap: 8px; align-items: center; margin-bottom: 12px; }
+.perm-calendar-toolbar > strong { text-align: center; font-size: 13px; }
+.perm-calendar-toolbar > div { display: flex; gap: 6px; }
+.perm-calendar-toolbar button { min-width: 36px; min-height: 34px; border-radius: 8px; border: 1px solid #dce0e2; background: #fff; color: #3d4346; font-weight: 900; font-size: 11px; }
+.perm-calendar-toolbar button:hover { background: #f4f6f7; }
+.perm-calendar-weekdays, .perm-calendar-grid { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); gap: 6px; }
+.perm-calendar-weekdays { margin-bottom: 6px; }
+.perm-calendar-weekdays span { text-align: center; color: var(--perm-muted); font-size: 8.5px; font-weight: 900; text-transform: uppercase; letter-spacing: .5px; }
+.perm-calendar-day { min-height: 112px; padding: 7px; border: 1px solid #e4e7e9; border-radius: 10px; background: #fff; overflow: hidden; }
+.perm-calendar-day.has-events { background: #fcfcfd; border-color: #d7dcdf; }
+.perm-calendar-day.is-today { box-shadow: inset 0 0 0 2px var(--perm-red); }
+.perm-calendar-empty { background: #f5f6f6; border-style: dashed; opacity: .45; }
+.perm-calendar-date { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.perm-calendar-date span { width: 23px; height: 23px; border-radius: 50%; display: grid; place-items: center; font-size: 9px; font-weight: 900; }
+.perm-calendar-day.is-today .perm-calendar-date span { background: var(--perm-red); color: #fff; }
+.perm-calendar-date b { min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; display: grid; place-items: center; background: #e9ecee; color: #4e5559; font-size: 8px; }
+.perm-calendar-event { width: 100%; min-height: 26px; margin-bottom: 4px; padding: 4px 5px; border: 0; border-left: 3px solid #777; border-radius: 5px; display: grid; grid-template-columns: auto minmax(0,1fr); gap: 5px; align-items: center; text-align: left; background: #f5f6f7; }
+.perm-calendar-event.official { border-left-color: #145da0; background: #edf5fd; }
+.perm-calendar-event.particular { border-left-color: var(--perm-red-bright); background: #fff0f3; }
+.perm-calendar-event b { font-size: 8px; }
+.perm-calendar-event span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 7.8px; color: #555d61; }
+.perm-calendar-more { display: block; text-align: center; color: var(--perm-muted); font-size: 8px; margin-top: 3px; }
+
+.perm-admin-overview { display: grid; grid-template-columns: minmax(0,1.25fr) minmax(320px,.75fr); gap: 18px; margin-bottom: 18px; }
+.perm-admin-process, .perm-admin-health { border: 1px solid var(--perm-border); border-radius: 16px; background: #fff; box-shadow: var(--shadow-sm); padding: 22px; }
+.perm-admin-process h3 { margin: 7px 0 6px; font-size: 18px; letter-spacing: -.4px; }
+.perm-admin-process > p { margin: 0; color: var(--perm-muted); font-size: 10.5px; line-height: 1.6; }
+.perm-process-flow { margin-top: 18px; display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 8px; align-items: center; }
+.perm-process-flow > div { min-height: 82px; padding: 11px; border-radius: 11px; background: #f7f8f9; display: grid; justify-items: center; align-content: center; text-align: center; }
+.perm-process-flow > div b { width: 25px; height: 25px; display: grid; place-items: center; border-radius: 50%; background: var(--perm-red); color: #fff; font-size: 9px; }
+.perm-process-flow > div strong { margin-top: 5px; font-size: 10px; }
+.perm-process-flow > div small { color: var(--perm-muted); font-size: 8.5px; margin-top: 2px; }
+.perm-process-flow > span { color: #93999c; font-weight: 900; }
+.perm-admin-health-grid { margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.perm-admin-health-grid > div { padding: 12px; border-radius: 10px; background: #f7f8f8; }
+.perm-admin-health-grid strong { display: block; font-size: 18px; }
+.perm-admin-health-grid span { display: block; color: var(--perm-muted); font-size: 8.7px; margin-top: 2px; }
+.perm-admin-health-message { margin-top: 10px; padding: 10px; border-radius: 9px; font-size: 9.5px; font-weight: 700; }
+.perm-admin-health-message.ok { background: #e9f7f2; color: #087f5b; }
+.perm-admin-health-message.warning { background: #fff4d9; color: #8c5b00; }
+.perm-admin-tools-grid { margin-bottom: 18px; }
+.perm-import-guide { padding: 12px; border-radius: 10px; background: #f7f8f9; display: grid; gap: 4px; font-size: 10px; }
+.perm-import-guide span { color: #4f575b; line-height: 1.45; overflow-wrap: anywhere; }
+.perm-import-guide small { color: var(--perm-muted); }
+.perm-upload-row { margin-top: 13px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.perm-upload-row input[type="file"] { flex: 1 1 260px; min-width: 0; padding: 8px; border: 1px solid #dfe3e5; border-radius: 9px; background: #fff; font-size: 10px; }
+.perm-import-result { margin-top: 12px; }
+.perm-import-summary { padding: 10px 11px; border-radius: 9px; display: flex; justify-content: space-between; gap: 10px; font-size: 9.5px; }
+.perm-import-summary.ok { background: #e9f7f2; color: #087f5b; }
+.perm-import-summary.has-errors { background: #fff0ef; color: var(--perm-danger); }
+.perm-import-errors { margin-top: 7px; max-height: 180px; overflow: auto; border: 1px solid #eceff1; border-radius: 9px; }
+.perm-import-errors > div { display: grid; grid-template-columns: 68px 1fr; gap: 8px; padding: 8px 10px; border-bottom: 1px solid #eceff1; font-size: 9px; }
+.perm-import-errors > div:last-child { border-bottom: 0; }
+.perm-danger-zone { border-color: #efcfcc; }
+.perm-clean-action { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; padding: 12px 0; border-bottom: 1px solid #eceff1; }
+.perm-clean-action:last-child { border-bottom: 0; padding-bottom: 0; }
+.perm-clean-action:first-child { padding-top: 0; }
+.perm-clean-action strong { font-size: 10.5px; }
+.perm-clean-action p { margin: 4px 0 0; color: var(--perm-muted); font-size: 9.5px; line-height: 1.5; }
+
+@media (max-width: 1100px) {
+  .perm-profile-metrics { grid-template-columns: repeat(3,1fr); }
+  .perm-profile-metrics > div:nth-child(3) { border-right: 0; }
+  .perm-profile-metrics > div:nth-child(-n+3) { border-bottom: 1px solid var(--perm-border-soft); }
+  .perm-admin-overview { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 760px) {
+  .perm-owner-banner { grid-template-columns: 1fr; }
+  .perm-owner-contact { justify-self: stretch; min-width: 0; }
+  .perm-calendar-card .perm-card-body { overflow-x: auto; }
+  .perm-calendar-weekdays, .perm-calendar-grid { min-width: 720px; }
+  .perm-profile-metrics { grid-template-columns: 1fr 1fr; }
+  .perm-profile-metrics > div { border-bottom: 1px solid var(--perm-border-soft); }
+  .perm-profile-metrics > div:nth-child(2n) { border-right: 0; }
+  .perm-profile-metrics > div:nth-last-child(-n+2) { border-bottom: 0; }
+  .perm-profile-last { flex-direction: column; }
+  .perm-profile-last span { text-align: left; }
+  .perm-process-flow { grid-template-columns: 1fr; }
+  .perm-process-flow > span { transform: rotate(90deg); text-align: center; }
+  .perm-clean-action { grid-template-columns: 1fr; }
+  .perm-clean-action .perm-danger-btn { width: 100%; }
+}
+.perm-profile-data { display: grid; grid-template-columns: .7fr 1.5fr .8fr; gap: 8px; margin: -4px 0 12px; }
+.perm-profile-data > div { padding: 10px 12px; border: 1px solid var(--perm-border-soft); border-radius: 9px; background: #fff; min-width: 0; }
+.perm-profile-data span { display: block; color: var(--perm-muted); font-size: 8.3px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; }
+.perm-profile-data strong { display: block; margin-top: 3px; font-size: 9.5px; overflow-wrap: anywhere; }
+@media (max-width: 760px) { .perm-profile-data { grid-template-columns: 1fr; } }
