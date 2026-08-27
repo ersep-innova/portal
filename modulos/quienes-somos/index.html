@@ -148,6 +148,77 @@
     color:var(--text-muted);
 }
 
+.employee-photo{
+    width:150px;
+    height:150px;
+    margin:0 auto 20px;
+    border-radius:50%;
+    overflow:hidden;
+    border:4px solid var(--card);
+    outline:2px solid var(--accent-mid);
+    background:
+        radial-gradient(circle at 50% 34%, color-mix(in srgb,var(--accent-mid) 18%,var(--card)) 0 22%, transparent 23%),
+        radial-gradient(circle at 50% 115%, color-mix(in srgb,var(--accent-mid) 18%,var(--card)) 0 48%, transparent 49%),
+        var(--card);
+    box-shadow:0 8px 20px rgba(0,0,0,.12);
+}
+
+.employee-photo img{
+    width:100%;
+    height:100%;
+    display:block;
+    object-fit:cover;
+    object-position:center top;
+}
+
+.employee-photo img[style*="display: none"]{
+    display:none !important;
+}
+
+.profile-link{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    margin-top:18px;
+    padding:9px 14px;
+    border:1px solid var(--accent-mid);
+    border-radius:999px;
+    color:var(--accent-mid);
+    text-decoration:none;
+    font-size:14px;
+    font-weight:700;
+    transition:background .2s ease,color .2s ease,transform .2s ease,box-shadow .2s ease;
+}
+
+.profile-link:hover{
+    background:var(--accent-mid);
+    color:#fff;
+    transform:translateY(-1px);
+    box-shadow:0 6px 14px rgba(0,0,0,.10);
+}
+
+.profile-link svg{
+    width:17px;
+    height:17px;
+    fill:currentColor;
+    flex:0 0 auto;
+}
+
+.org-lead-profile{
+    text-align:center;
+}
+
+.org-lead-profile .employee-photo{
+    width:140px;
+    height:140px;
+    margin-bottom:18px;
+}
+
+.org-lead-profile .profile-link{
+    margin-top:14px;
+}
+
 @media(max-width:1200px){
 
 .org-employees{
@@ -249,13 +320,20 @@ Subdirección de J. de Costos y Tarifas del ERSeP
 </div>
 </div>
 <div class="org-line"></div>
-<div class="org-box">
+<div class="org-box org-lead-profile">
+<div class="employee-photo">
+<img src="../../assets/img/equipo/lucas-gonzalez-etienot.jpg" alt="Contador Lucas S. González Etienot" onerror="this.style.display='none'">
+</div>
 <div class="org-title">
 Contador Lucas S. González Etienot
 </div>
 <div class="org-subtitle">
 Subdirector de J. de Costos y Tarifas del ERSeP
 </div>
+<a class="profile-link" href="https://www.linkedin.com/in/lucas-s-gonz%C3%A1lez-etienot-a98b721a4/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn de Lucas S. González Etienot">
+<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.03-3.04-1.86-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.33V8.98h3.42v1.57h.05c.48-.9 1.64-1.86 3.37-1.86 3.6 0 4.27 2.37 4.27 5.46v6.3zM5.31 7.41a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.09 20.45H3.53V8.98h3.56v11.47z"/></svg>
+<span>LinkedIn</span>
+</a>
 </div>
 <div class="org-line"></div>
 <div class="org-box blue">
@@ -266,20 +344,37 @@ Innovación y Análisis de Datos
 <div class="org-line"></div>
 <div class="org-employees">
 <div class="employee">
+<div class="employee-photo">
+<img src="../../assets/img/equipo/marcos-nanini.jpg" alt="Lic. Marcos Nanini" onerror="this.style.display='none'">
+</div>
 <h4>Lic. Marcos Nanini</h4>
 <hr/>
 <div class="puesto">Coordinador</div>
 <hr/>
 <div class="area">Subdirección de J. de Costos y Tarifas</div>
+<a class="profile-link" href="https://www.linkedin.com/in/marcosnanini/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn de Marcos Nanini">
+<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.03-3.04-1.86-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.33V8.98h3.42v1.57h.05c.48-.9 1.64-1.86 3.37-1.86 3.6 0 4.27 2.37 4.27 5.46v6.3zM5.31 7.41a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.09 20.45H3.53V8.98h3.56v11.47z"/></svg>
+<span>LinkedIn</span>
+</a>
 </div>
 <div class="employee">
+<div class="employee-photo">
+<img src="../../assets/img/equipo/rodrigo-san-martin-bustos.jpg" alt="Rodrigo San Martín Bustos" onerror="this.style.display='none'">
+</div>
 <h4>Rodrigo San Martín Bustos</h4>
 <hr/>
 <div class="puesto">Analista</div>
 <hr/>
 <div class="area">Subdirección de J. de Costos y Tarifas</div>
+<a class="profile-link" href="https://www.linkedin.com/in/rodrigo-e-san-martin-bustos/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn de Rodrigo San Martín Bustos">
+<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.03-3.04-1.86-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.33V8.98h3.42v1.57h.05c.48-.9 1.64-1.86 3.37-1.86 3.6 0 4.27 2.37 4.27 5.46v6.3zM5.31 7.41a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.09 20.45H3.53V8.98h3.56v11.47z"/></svg>
+<span>LinkedIn</span>
+</a>
 </div>
 <div class="employee">
+<div class="employee-photo">
+<img src="../../assets/img/equipo/leandro-gabriel-ramallo.jpg" alt="Leandro Gabriel Ramallo" onerror="this.style.display='none'">
+</div>
 <h4>Leandro Gabriel Ramallo</h4>
 <hr/>
 <div class="puesto">Analista</div>
