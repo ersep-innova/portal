@@ -1,0 +1,1721 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Plan maestro de mejoras MOVILIS — Implementación MVP">
+<title>Plan maestro de mejoras MOVILIS — Implementación MVP</title>
+<style>
+:root {
+  --bg: #f5f7fa;
+  --surface: #ffffff;
+  --surface-2: #f0f4f8;
+  --ink: #18212f;
+  --muted: #5e6b7a;
+  --line: #d9e1ea;
+  --brand: #174a7e;
+  --brand-2: #0d6d9f;
+  --accent: #0f8a87;
+  --warn: #a45c00;
+  --danger: #a33434;
+  --shadow: 0 10px 30px rgba(24, 33, 47, .08);
+  --radius: 14px;
+  --sidebar: 330px;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  line-height: 1.62;
+}
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 18px;
+  color: #fff;
+  background: linear-gradient(120deg, #10395f, #17588f 58%, #0e7381);
+  box-shadow: 0 2px 18px rgba(0,0,0,.16);
+}
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.brand-mark {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: grid; place-items: center;
+  font-weight: 800; letter-spacing: .02em;
+  background: rgba(255,255,255,.16);
+  border: 1px solid rgba(255,255,255,.25);
+}
+.brand-text { min-width: 0; }
+.brand-text strong { display:block; font-size: .95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand-text span { display:block; font-size: .74rem; opacity:.82; }
+.actions { display:flex; gap:8px; }
+.btn {
+  border: 1px solid rgba(255,255,255,.3);
+  background: rgba(255,255,255,.12);
+  color:#fff;
+  border-radius: 9px;
+  padding: 8px 11px;
+  font-weight: 650;
+  cursor:pointer;
+}
+.btn:hover { background: rgba(255,255,255,.2); }
+.layout { display:grid; grid-template-columns: var(--sidebar) minmax(0,1fr); max-width: 1600px; margin:0 auto; }
+.sidebar {
+  position: sticky;
+  top: 58px;
+  height: calc(100vh - 58px);
+  overflow:auto;
+  padding: 22px 16px 28px;
+  border-right:1px solid var(--line);
+  background: #eef3f7;
+}
+.sidebar h2 { margin:0 0 12px; font-size:.78rem; text-transform:uppercase; letter-spacing:.09em; color:var(--muted); }
+.toc-link {
+  display:block;
+  color:#29465f;
+  text-decoration:none;
+  border-radius:8px;
+  padding:6px 9px;
+  margin:1px 0;
+  font-size:.84rem;
+  line-height:1.35;
+}
+.toc-link:hover { background:#dfe9f1; color:#0f4f7d; }
+.toc-l1 { font-weight:750; margin-top:7px; }
+.toc-l2 { padding-left:18px; }
+.toc-l3 { padding-left:30px; font-size:.79rem; color:#617181; }
+.main { min-width:0; padding: 30px clamp(18px, 4vw, 62px) 72px; }
+.document {
+  max-width: 1050px;
+  margin:0 auto;
+  background:var(--surface);
+  border:1px solid #e1e6ec;
+  border-radius:18px;
+  box-shadow:var(--shadow);
+  padding: clamp(24px, 5vw, 64px);
+}
+h1,h2,h3,h4 { color:#153a5b; line-height:1.24; scroll-margin-top:78px; }
+h1 { font-size:clamp(2rem,4vw,3.1rem); margin:0 0 34px; letter-spacing:-.025em; }
+h2 { font-size:1.55rem; margin:48px 0 18px; padding-top:6px; border-top:1px solid var(--line); }
+h3 { font-size:1.16rem; margin:30px 0 12px; }
+h4 { font-size:1rem; margin:22px 0 8px; }
+p { margin: 10px 0 14px; }
+strong { color:#112f48; }
+a { color:var(--brand-2); }
+hr { border:0; border-top:1px solid var(--line); margin:34px 0; }
+blockquote {
+  margin:18px 0;
+  padding:12px 18px;
+  border-left:4px solid var(--accent);
+  background:#f1f8f8;
+  border-radius:0 10px 10px 0;
+  color:#314953;
+}
+ul,ol { padding-left:1.55rem; }
+li { margin:.28rem 0; }
+code {
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font-size:.89em;
+  background:#edf2f6;
+  color:#183f5f;
+  padding:.12em .36em;
+  border-radius:5px;
+}
+pre {
+  position:relative;
+  overflow:auto;
+  margin:18px 0 22px;
+  padding:18px;
+  background:#111c27;
+  color:#eaf2f8;
+  border-radius:12px;
+  border:1px solid #24384b;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+}
+pre[data-language]::before {
+  content:attr(data-language);
+  position:absolute;
+  top:7px; right:10px;
+  font-size:.66rem; letter-spacing:.08em; color:#96afc4;
+}
+pre code { background:transparent; color:inherit; padding:0; border-radius:0; font-size:.84rem; white-space:pre; }
+.table-wrap { overflow-x:auto; margin:18px 0 26px; border:1px solid var(--line); border-radius:11px; }
+table { width:100%; border-collapse:collapse; min-width:620px; font-size:.91rem; background:#fff; }
+th,td { border-bottom:1px solid var(--line); border-right:1px solid var(--line); padding:11px 12px; text-align:left; vertical-align:top; }
+th:last-child,td:last-child { border-right:0; }
+tr:last-child td { border-bottom:0; }
+th { position:sticky; top:0; background:#eaf1f7; color:#173d5d; font-weight:750; }
+tbody tr:nth-child(even) { background:#fbfcfd; }
+.task-list-item { list-style:none; margin-left:-1.25rem; }
+.task-checkbox { width:1.05rem; height:1.05rem; margin:0 .55rem 0 0; vertical-align:-.15rem; accent-color:var(--accent); cursor:pointer; }
+.document > h2[id*="error"], .document > h1[id*="error"] { color:#8f3030; }
+.backtop {
+  position:fixed; right:20px; bottom:20px; z-index:10;
+  width:42px;height:42px;border-radius:50%;border:0;
+  background:#174a7e;color:#fff;cursor:pointer;box-shadow:0 7px 18px rgba(24,33,47,.2);
+}
+.mobile-toc { display:none; }
+.footer-note { max-width:1050px; margin:16px auto 0; padding:0 8px; color:var(--muted); font-size:.8rem; text-align:center; }
+@media (max-width: 1050px) {
+  .layout { grid-template-columns:1fr; }
+  .sidebar { display:none; position:fixed; inset:58px 0 0 0; height:auto; z-index:30; border-right:0; }
+  .sidebar.open { display:block; }
+  .mobile-toc { display:inline-block; }
+  .main { padding:18px 12px 55px; }
+  .document { border-radius:12px; padding:24px 20px 40px; }
+}
+@media (max-width: 640px) {
+  .brand-text span { display:none; }
+  .btn.print-btn { display:none; }
+  h1 { font-size:1.8rem; }
+  h2 { font-size:1.32rem; }
+  pre { padding:16px 12px; }
+}
+@media print {
+  body { background:#fff; color:#000; font-size:10.5pt; }
+  .topbar,.sidebar,.backtop,.footer-note { display:none !important; }
+  .layout { display:block; }
+  .main { padding:0; }
+  .document { max-width:none; box-shadow:none; border:0; padding:0; }
+  h1,h2,h3,h4 { color:#000; break-after:avoid; }
+  h2 { border-top:1px solid #aaa; }
+  table, pre, blockquote { break-inside:avoid; }
+  pre { white-space:pre-wrap; background:#f4f4f4; color:#000; border:1px solid #bbb; }
+  code { color:#000; background:#f1f1f1; }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">M</div>
+    <div class="brand-text"><strong>Plan maestro de mejoras MOVILIS</strong><span>Implementación MVP · Documento de trabajo</span></div>
+  </div>
+  <div class="actions">
+    <button class="btn mobile-toc" type="button" onclick="toggleTOC()">Índice</button>
+    <button class="btn print-btn" type="button" onclick="window.print()">Imprimir / PDF</button>
+  </div>
+</header>
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <h2>Índice del documento</h2>
+    <a class="toc-link toc-l2" href="#1-que-se-analizo">1. Qué se analizó</a><a class="toc-link toc-l1" href="#2-diagnostico-general">2. Diagnóstico general</a><a class="toc-link toc-l1" href="#3-regla-fundamental-para-que-trabajen-dos-personas">3. Regla fundamental para que trabajen dos personas</a><a class="toc-link toc-l2" href="#turno-a-persona-1-dentro-de-power-apps">TURNO A — Persona 1 dentro de Power Apps</a><a class="toc-link toc-l2" href="#turno-b-persona-2-dentro-de-power-automate">TURNO B — Persona 2 dentro de Power Automate</a><a class="toc-link toc-l2" href="#turno-c-persona-1-vuelve-a-power-apps">TURNO C — Persona 1 vuelve a Power Apps</a><a class="toc-link toc-l3" href="#regla-de-oro">Regla de oro</a><a class="toc-link toc-l1" href="#4-que-no-tocar-para-llegar-al-mvp">4. Qué NO tocar para llegar al MVP</a><a class="toc-link toc-l3" href="#no-dedicar-tiempo-ahora-a">NO dedicar tiempo ahora a:</a><a class="toc-link toc-l1" href="#5-error-1-ver-acta-abre-otra-acta">5. ERROR 1 — &quot;Ver Acta&quot; abre otra acta</a><a class="toc-link toc-l2" href="#ubicacion-exacta">Ubicación exacta</a><a class="toc-link toc-l3" href="#power-apps">Power Apps</a><a class="toc-link toc-l2" href="#que-esta-haciendo-actualmente">Qué está haciendo actualmente</a><a class="toc-link toc-l2" href="#diagnostico">Diagnóstico</a><a class="toc-link toc-l2" href="#solucion-recomendada">Solución recomendada</a><a class="toc-link toc-l3" href="#resultado-esperado">Resultado esperado</a><a class="toc-link toc-l3" href="#prioridad">Prioridad</a><a class="toc-link toc-l1" href="#6-error-2-hay-actas-que-directamente-no-estan-en-onedrive">6. ERROR 2 — Hay actas que directamente no están en OneDrive</a><a class="toc-link toc-l2" href="#para-el-mvp">Para el MVP</a><a class="toc-link toc-l3" href="#prioridad-2">Prioridad</a><a class="toc-link toc-l1" href="#7-error-3-decreto-y-cedula-sin-cita-normativa">7. ERROR 3 — Decreto y Cédula sin cita normativa</a><a class="toc-link toc-l2" href="#flujo-exacto">Flujo exacto</a><a class="toc-link toc-l2" href="#plantillas-involucradas">Plantillas involucradas</a><a class="toc-link toc-l2" href="#causa-encontrada">Causa encontrada</a><a class="toc-link toc-l2" href="#como-corregirlo">Cómo corregirlo</a><a class="toc-link toc-l2" href="#cambio-adicional-obligatorio">Cambio adicional obligatorio</a><a class="toc-link toc-l3" href="#prioridad-3">Prioridad</a><a class="toc-link toc-l1" href="#8-firma-sello-desactualizado-de-nico">8. Firma/sello desactualizado de Nico</a><a class="toc-link toc-l2" href="#donde-esta">Dónde está</a><a class="toc-link toc-l2" href="#modificacion">Modificación</a><a class="toc-link toc-l3" href="#prioridad-4">Prioridad</a><a class="toc-link toc-l1" href="#9-error-muy-importante-dictamen-con-descargo-esta-conectado-a-un-flujo-viejo">9. ERROR MUY IMPORTANTE — Dictamen con Descargo está conectado a un flujo viejo</a><a class="toc-link toc-l3" href="#boton-dictamen">Botón &quot;Dictamen&quot;</a><a class="toc-link toc-l3" href="#boton-dictamen-con-descargo">Botón &quot;Dictamen con Descargo&quot;</a><a class="toc-link toc-l2" href="#la-solucion-no-es-arreglar-el-flujo-viejo">La solución NO es arreglar el flujo viejo</a><a class="toc-link toc-l2" href="#cambio-en-navegador">Cambio en Navegador</a><a class="toc-link toc-l3" href="#generar-dictamen">GENERAR DICTAMEN</a><a class="toc-link toc-l3" href="#prioridad-5">Prioridad</a><a class="toc-link toc-l1" href="#10-error-numero-de-dictamen-duplicado">10. ERROR — Número de Dictamen duplicado</a><a class="toc-link toc-l2" href="#causa">Causa</a><a class="toc-link toc-l2" href="#solucion">Solución</a><a class="toc-link toc-l3" href="#numero-de-dictamen-ingresar-solo-el-numero-sin-ano">Número de Dictamen — ingresar sólo el número, sin año</a><a class="toc-link toc-l3" href="#resultado">Resultado</a><a class="toc-link toc-l3" href="#prioridad-6">Prioridad</a><a class="toc-link toc-l1" href="#11-dato-que-hoy-se-pierde-numero-de-dictamen">11. DATO QUE HOY SE PIERDE — Número de Dictamen</a><a class="toc-link toc-l2" href="#solucion-2">Solución</a><a class="toc-link toc-l3" href="#n-dictamen">N_Dictamen</a><a class="toc-link toc-l3" href="#estado-descargo">Estado_Descargo</a><a class="toc-link toc-l3" href="#tipo-dictamen">Tipo_Dictamen</a><a class="toc-link toc-l2" href="#patch-de-dictamich">Patch de Dictamich</a><a class="toc-link toc-l3" href="#ventaja">Ventaja</a><a class="toc-link toc-l3" href="#prioridad-7">Prioridad</a><a class="toc-link toc-l1" href="#12-dictamen-empresa-empresa-el-quebrachal">12. Dictamen — &quot;EMPRESA EMPRESA EL QUEBRACHAL...&quot;</a><a class="toc-link toc-l2" href="#origen">Origen</a><a class="toc-link toc-l2" href="#solucion-3">Solución</a><a class="toc-link toc-l3" href="#prioridad-8">Prioridad</a><a class="toc-link toc-l1" href="#13-dictamen-tipificacion-debajo-del-punto-a">13. Dictamen — Tipificación debajo del punto a)</a><a class="toc-link toc-l2" href="#la-solucion-tiene-dos-partes">La solución tiene dos partes</a><a class="toc-link toc-l3" href="#plantilla">PLANTILLA</a><a class="toc-link toc-l3" href="#power-automate">POWER AUTOMATE</a><a class="toc-link toc-l3" href="#prioridad-9">Prioridad</a><a class="toc-link toc-l1" href="#14-dictamen-hecho-unico-hecho-1-hecho-2">14. Dictamen — Hecho Único / Hecho 1 / Hecho 2</a><a class="toc-link toc-l2" href="#accion">Acción</a><a class="toc-link toc-l3" href="#si-hay-1-infraccion">Si hay 1 infracción</a><a class="toc-link toc-l3" href="#si-hay-mas">Si hay más</a><a class="toc-link toc-l3" href="#prioridad-10">Prioridad</a><a class="toc-link toc-l1" href="#15-dictamen-y-resolucion-deben-usar-exactamente-la-misma-tipificacion">15. Dictamen y Resolución deben usar exactamente la misma tipificación</a><a class="toc-link toc-l3" href="#prioridad-11">Prioridad</a><a class="toc-link toc-l1" href="#16-dictamen-iv-conclusiones">16. Dictamen — IV. CONCLUSIONES</a><a class="toc-link toc-l2" href="#ubicacion-tecnica">Ubicación técnica</a><a class="toc-link toc-l3" href="#prioridad-12">Prioridad</a><a class="toc-link toc-l1" href="#17-error-estructural-expedientes-con-varias-actas">17. ERROR estructural — Expedientes con varias actas</a><a class="toc-link toc-l2" href="#pantalla">Pantalla</a><a class="toc-link toc-l2" href="#ademas">Además</a><a class="toc-link toc-l2" href="#cambio-requerido">Cambio requerido</a><a class="toc-link toc-l3" href="#prioridad-13">Prioridad</a><a class="toc-link toc-l1" href="#18-asignacion-de-um-otro-punto-a-reforzar">18. Asignación de UM — otro punto a reforzar</a><a class="toc-link toc-l2" href="#diseno-recomendado">Diseño recomendado</a><a class="toc-link toc-l3" href="#a-minima-modificacion">A. Mínima modificación</a><a class="toc-link toc-l3" href="#b-correcta-a-mediano-plazo">B. Correcta a mediano plazo</a><a class="toc-link toc-l3" href="#prioridad-14">Prioridad</a><a class="toc-link toc-l1" href="#19-resolucion-dominio-y-chapa-mop">19. Resolución — dominio y Chapa MOP</a><a class="toc-link toc-l2" href="#cambio">Cambio</a><a class="toc-link toc-l3" href="#prioridad-15">Prioridad</a><a class="toc-link toc-l1" href="#20-resolucion-fuera-de-servicio">20. Resolución — &quot;Fuera de Servicio&quot;</a><a class="toc-link toc-l2" href="#cambio-2">Cambio</a><a class="toc-link toc-l3" href="#regla">Regla</a><a class="toc-link toc-l3" href="#prioridad-16">Prioridad</a><a class="toc-link toc-l1" href="#21-resolucion-notificacion-y-presentacion-del-descargo">21. Resolución — notificación y presentación del Descargo</a><a class="toc-link toc-l2" href="#solucion-4">Solución</a><a class="toc-link toc-l3" href="#sin-descargo">SIN_DESCARGO</a><a class="toc-link toc-l3" href="#en-termino">EN_TERMINO</a><a class="toc-link toc-l3" href="#fuera-de-plazo">FUERA_DE_PLAZO</a><a class="toc-link toc-l3" href="#medida-preventiva">MEDIDA PREVENTIVA</a><a class="toc-link toc-l3" href="#prioridad-17">Prioridad</a><a class="toc-link toc-l1" href="#22-resolucion-cita-normativa-y-maximo-aplicable-en-hechos">22. Resolución — cita normativa y máximo aplicable en HECHOS</a><a class="toc-link toc-l2" href="#trabajo-de-persona-2">Trabajo de Persona 2</a><a class="toc-link toc-l3" href="#prioridad-18">Prioridad</a><a class="toc-link toc-l1" href="#23-resolucion-citar-n-o-de-dictamen-antes-del-resuelve">23. Resolución — citar N.º de Dictamen antes del RESUELVE</a><a class="toc-link toc-l3" href="#prioridad-19">Prioridad</a><a class="toc-link toc-l1" href="#24-resolucion-articulo-1-sin-cita-normativa">24. Resolución — Artículo 1 sin cita normativa</a><a class="toc-link toc-l2" href="#cambio-3">Cambio</a><a class="toc-link toc-l3" href="#prioridad-20">Prioridad</a><a class="toc-link toc-l1" href="#25-resolucion-eliminar-confeccionada">25. Resolución — eliminar &quot;confeccionada&quot;</a><a class="toc-link toc-l2" href="#cambio-4">Cambio</a><a class="toc-link toc-l3" href="#prioridad-21">Prioridad</a><a class="toc-link toc-l1" href="#26-resolucion-falta-cbu">26. Resolución — falta CBU</a><a class="toc-link toc-l2" href="#solucion-5">Solución</a><a class="toc-link toc-l3" href="#mejor-practica-posterior">Mejor práctica posterior</a><a class="toc-link toc-l3" href="#prioridad-22">Prioridad</a><a class="toc-link toc-l1" href="#27-descargo-pequena-inconsistencia-detectada">27. Descargo — pequeña inconsistencia detectada</a><a class="toc-link toc-l3" href="#prioridad-23">Prioridad</a><a class="toc-link toc-l1" href="#28-cedula-actas-anexadas-en-un-solo-archivo">28. Cédula + actas anexadas en un solo archivo</a><a class="toc-link toc-l2" href="#mvp">MVP</a><a class="toc-link toc-l2" href="#fase-2">Fase 2</a><a class="toc-link toc-l3" href="#prioridad-24">Prioridad</a><a class="toc-link toc-l1" href="#29-matriz-final-que-toca-cada-correccion">29. Matriz final: qué toca cada corrección</a><a class="toc-link toc-l1" href="#30-orden-exacto-de-implementacion">30. Orden exacto de implementación</a><a class="toc-link toc-l2" href="#fase-0-congelar-estado-actual">FASE 0 — Congelar estado actual</a><a class="toc-link toc-l1" href="#fase-1-persona-1-sharepoint-power-apps">FASE 1 — Persona 1: SharePoint + Power Apps</a><a class="toc-link toc-l2" href="#paso-1-crear-columnas">Paso 1. Crear columnas</a><a class="toc-link toc-l2" href="#paso-2-dictamich">Paso 2. Dictamich</a><a class="toc-link toc-l2" href="#paso-3-navegador">Paso 3. Navegador</a><a class="toc-link toc-l2" href="#paso-4-ver-acta">Paso 4. Ver Acta</a><a class="toc-link toc-l2" href="#paso-5-cargar-acta-expediente">Paso 5. Cargar Acta/Expediente</a><a class="toc-link toc-l2" href="#paso-6-descargo">Paso 6. Descargo</a><a class="toc-link toc-l2" href="#paso-7-publicar-version-app-mvp-01">Paso 7. Publicar versión APP-MVP-01</a><a class="toc-link toc-l1" href="#fase-2-mientras-persona-1-trabaja-persona-2-solo-prepara-word">FASE 2 — Mientras Persona 1 trabaja: Persona 2 sólo prepara Word</a><a class="toc-link toc-l1" href="#fase-3-persona-2-power-automate">FASE 3 — Persona 2: Power Automate</a><a class="toc-link toc-l2" href="#flujo-a-decreto-inicial-c-notificacion">Flujo A — Decreto Inicial + C. Notificación</a><a class="toc-link toc-l2" href="#flujo-b-dictamen-v2">Flujo B — Dictamen_V2</a><a class="toc-link toc-l2" href="#flujo-c-resolucion">Flujo C — Resolución</a><a class="toc-link toc-l1" href="#fase-4-pruebas-de-power-automate-antes-de-volver-a-power-apps">FASE 4 — Pruebas de Power Automate antes de volver a Power Apps</a><a class="toc-link toc-l2" href="#caso-a">Caso A</a><a class="toc-link toc-l2" href="#caso-b">Caso B</a><a class="toc-link toc-l2" href="#caso-c">Caso C</a><a class="toc-link toc-l2" href="#caso-d">Caso D</a><a class="toc-link toc-l2" href="#caso-e">Caso E</a><a class="toc-link toc-l2" href="#caso-f">Caso F</a><a class="toc-link toc-l2" href="#caso-g">Caso G</a><a class="toc-link toc-l1" href="#fase-5-integracion-final-en-power-apps">FASE 5 — Integración final en Power Apps</a><a class="toc-link toc-l1" href="#31-que-considero-el-mvp-terminado">31. Qué considero el MVP terminado</a><a class="toc-link toc-l1" href="#32-reparto-concreto-entre-las-dos-personas">32. Reparto concreto entre las dos personas</a><a class="toc-link toc-l1" href="#33-orden-de-prioridad-resumido">33. Orden de prioridad resumido</a><a class="toc-link toc-l3" href="#primero-imprescindible">Primero — imprescindible</a><a class="toc-link toc-l3" href="#despues-del-mvp">Después del MVP</a><a class="toc-link toc-l1" href="#34-punto-de-partida-cuando-retomen">34. Punto de partida cuando retomen</a>
+  </aside>
+  <main class="main">
+    <article class="document">
+      <h1 id="plan-maestro-de-mejoras-movilis-implementacion-mvp">Plan maestro de mejoras MOVILIS — Implementación MVP</h1>
+<h2 id="1-que-se-analizo">1. Qué se analizó</h2>
+<p>Se revisaron los siguientes componentes entregados:</p>
+<ul>
+<li>Paquete <code>Paratrabajar_20260827174306.zip</code>.</li>
+<li>Solución <code>DocumentacinMovilis_1_13_managed.zip</code>.</li>
+<li>Código fuente YAML interno de la aplicación Power Apps.</li>
+<li>Definiciones JSON de los flujos de Power Automate.</li>
+<li>Esquemas de las listas SharePoint utilizadas por MOVILIS.</li>
+<li>Resultado del App Checker incluido dentro de la aplicación.</li>
+<li>Las cuatro fotografías con las observaciones efectuadas sobre:<ul>
+<li>Decreto.</li>
+<li>Cédula de Notificación.</li>
+<li>Dictamen.</li>
+<li>Resolución.</li>
+<li>Consulta de actas.</li>
+</ul>
+</li>
+</ul>
+<p>La solución <code>Documentación Movilis</code> es efectivamente la <strong>versión 1.13</strong> y está exportada como <strong>Managed</strong>.</p>
+<hr/>
+<h1 id="2-diagnostico-general">2. Diagnóstico general</h1>
+<p>El circuito principal que hoy interesa estabilizar es:</p>
+<p><strong>Actas → Expediente → Decreto/Cédula → Descargo → Dictamen → Asignación de UM → Resolución → Pase Contable</strong></p>
+<p>La aplicación ya tiene gran parte de esa arquitectura. No corresponde reconstruir MOVILIS ni reemplazar todo.</p>
+<p>Los problemas relevados se concentran en cinco grupos:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Grupo</th>
+<th>Situación</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Asociación de actas</td>
+<td>Se abre una búsqueda de OneDrive, no el archivo exacto</td>
+</tr>
+<tr>
+<td>Parametrización jurídica</td>
+<td>Algunos flujos buscan la infracción sólo por detalle y no por categoría + detalle</td>
+</tr>
+<tr>
+<td>Persistencia de datos</td>
+<td>Dictamen genera información que después no queda guardada para que Resolución la use</td>
+</tr>
+<tr>
+<td>Construcción documental</td>
+<td>Faltan párrafos, citas, CBU y condiciones en Resolución/Dictamen</td>
+</tr>
+<tr>
+<td>Código legado</td>
+<td>Hay pantallas y conexiones viejas que ya no deberían participar del MVP</td>
+</tr>
+</tbody>
+</table></div>
+<p>La buena noticia es que <strong>la arquitectura nueva de <code>Dictamen_V2</code> está bastante mejor construida que los flujos anteriores</strong>. Conviene tomarla como patrón para corregir Decreto y Resolución.</p>
+<hr/>
+<h1 id="3-regla-fundamental-para-que-trabajen-dos-personas">3. Regla fundamental para que trabajen dos personas</h1>
+<p>Dado que no pueden estar ambos trabajando simultáneamente dentro de Power Apps o Power Automate, no recomiendo que se dividan como:</p>
+<blockquote>
+<p>Persona 1 Power Apps / Persona 2 Power Automate al mismo tiempo.</p>
+</blockquote>
+<p>Aunque técnicamente sean aplicaciones distintas, en este proyecto las conexiones y componentes están demasiado vinculados.</p>
+<p>La modalidad segura es trabajar por <strong>turnos de plataforma</strong>.</p>
+<h2 id="turno-a-persona-1-dentro-de-power-apps">TURNO A — Persona 1 dentro de Power Apps</h2>
+<p>Persona 1:</p>
+<ul>
+<li>modifica Power Apps;</li>
+<li>modifica, si es necesario, columnas SharePoint;</li>
+<li>publica una versión;</li>
+<li>sale completamente del editor.</li>
+</ul>
+<p>Mientras tanto Persona 2:</p>
+<ul>
+<li>NO entra a Power Apps;</li>
+<li>NO modifica los flujos;</li>
+<li>puede trabajar sobre <strong>copias locales de las plantillas Word</strong>;</li>
+<li>puede preparar textos jurídicos;</li>
+<li>puede comparar PDFs/documentos de prueba;</li>
+<li>puede preparar la matriz de casos de prueba.</li>
+</ul>
+<h2 id="turno-b-persona-2-dentro-de-power-automate">TURNO B — Persona 2 dentro de Power Automate</h2>
+<p>Persona 2:</p>
+<ul>
+<li>modifica los flujos;</li>
+<li>reconecta las copias DEV de plantillas;</li>
+<li>hace las pruebas individuales de cada flujo;</li>
+<li>termina y sale de Power Automate.</li>
+</ul>
+<p>Mientras tanto Persona 1:</p>
+<ul>
+<li>NO modifica Power Apps;</li>
+<li>NO modifica los flujos;</li>
+<li>prueba documentos ya generados;</li>
+<li>revisa registros SharePoint;</li>
+<li>prepara expedientes de prueba.</li>
+</ul>
+<h2 id="turno-c-persona-1-vuelve-a-power-apps">TURNO C — Persona 1 vuelve a Power Apps</h2>
+<p>Sólo para:</p>
+<ul>
+<li>conectar algún flujo nuevo que se haya agregado;</li>
+<li>refrescar SharePoint si se crearon columnas;</li>
+<li>prueba integral;</li>
+<li>publicación final.</li>
+</ul>
+<h3 id="regla-de-oro">Regla de oro</h3>
+<p><strong>Nunca importar nuevamente el ZIP completo <code>Paratrabajar...</code> después de haber corregido los flujos</strong>, porque ese paquete también contiene versiones de Power Automate y puede terminar restaurando componentes anteriores.</p>
+<p>Ese ZIP debe quedar como <strong>backup/referencia de origen</strong>, no como mecanismo de despliegue final.</p>
+<hr/>
+<h1 id="4-que-no-tocar-para-llegar-al-mvp">4. Qué NO tocar para llegar al MVP</h1>
+<p>Hay componentes viejos o experimentales que no vale la pena arreglar ahora.</p>
+<p>El App Checker contiene <strong>959 observaciones</strong>, pero eso es engañoso: 812 aproximadamente son advertencias de accesibilidad como labels y TabIndex.</p>
+<p>Existen <strong>91 errores de fórmula</strong>, y <strong>85 están concentrados en una sola pantalla experimental:</strong></p>
+<p><code>Flujo_Expediente_Detalle</code></p>
+<p>Por lo tanto:</p>
+<h3 id="no-dedicar-tiempo-ahora-a">NO dedicar tiempo ahora a:</h3>
+<ul>
+<li><code>Flujo_Expediente_Detalle</code></li>
+<li><code>Dictamen (DJ) OLD</code></li>
+<li>antiguo <code>Flujo_words</code></li>
+<li>antiguo <code>DocLeg</code></li>
+<li>limpieza general de los 959 avisos</li>
+<li>mejoras estéticas secundarias</li>
+<li>unión automática de PDFs de Cédula + actas</li>
+<li>cambios sobre Etapa Recursiva que no estén relacionados con estos documentos</li>
+</ul>
+<p>Además existen:</p>
+<ul>
+<li>2 errores en <code>Menú Legales (J)</code></li>
+<li>1 en <code>Menú Técnica (T)</code></li>
+<li>1 en <code>Expediente a valor multa (J)</code></li>
+<li>1 en <code>Dictamen_CDescargo (DJ)</code></li>
+<li>1 en <code>Dictamen (DJ) OLD</code></li>
+</ul>
+<p>En cambio, las pantallas importantes del circuito nuevo como <code>Dictamich</code>, <code>Resolución (DJ)</code>, <code>Decreto + Cédula Not (DJ)</code>, <code>Trabajar Expdte (J)</code> y <code>Asignacion_UM_Expediente (J)</code> no presentan errores de fórmula del App Checker.</p>
+<hr/>
+<h1 id="5-error-1-ver-acta-abre-otra-acta">5. ERROR 1 — "Ver Acta" abre otra acta</h1>
+<h2 id="ubicacion-exacta">Ubicación exacta</h2>
+<h3 id="power-apps">Power Apps</h3>
+<p>Pantalla:</p>
+<p><code>Trabajar Expdte (J)</code></p>
+<p>Control:</p>
+<p><code>Btn_Ver_Infraccion</code></p>
+<p>También aparece la misma lógica en:</p>
+<ul>
+<li><code>Selector Actas (T)</code></li>
+<li><code>Cargar Acta_Expdte (T)</code></li>
+</ul>
+<h2 id="que-esta-haciendo-actualmente">Qué está haciendo actualmente</h2>
+<p>El botón no abre el PDF concreto.</p>
+<p>Hace esto conceptualmente:</p>
+<pre data-language="POWERFX"><code class="language-powerfx">Launch(
+    "https://institucionalersep-my.sharepoint.com/query?q=" &amp;
+    Text(ThisItem.'N° de Acta') &amp;
+    "...Actas de Transporte..."
+)
+</code></pre>
+<p>Es decir:</p>
+<blockquote>
+<p>Busca el número de acta en la carpeta.</p>
+</blockquote>
+<p>OneDrive/SharePoint decide qué resultado mostrar.</p>
+<p>Por eso es perfectamente posible pedir un acta y terminar viendo otra.</p>
+<h2 id="diagnostico">Diagnóstico</h2>
+<p><strong>No es un problema de navegación entre pantallas.</strong></p>
+<p>Es un problema de diseño del vínculo documental.</p>
+<h2 id="solucion-recomendada">Solución recomendada</h2>
+<p>Crear en la lista maestra del acta una columna:</p>
+<p><code>Url_Acta_PDF</code></p>
+<p>Tipo:</p>
+<p><strong>Hipervínculo o texto de una línea.</strong></p>
+<p>Cada acta debe tener la URL exacta de su PDF.</p>
+<p>Luego reemplazar los tres <code>Launch()</code> de búsqueda por una búsqueda exacta.</p>
+<p>Ejemplo conceptual:</p>
+<pre data-language="POWERFX"><code class="language-powerfx">With(
+    {
+        varUrlActa:
+            LookUp(
+                'Acta de Transporte',
+                'N° de Acta' = Text(ThisItem.'N° de Acta'),
+                Url_Acta_PDF
+            )
+    },
+    If(
+        IsBlank(varUrlActa),
+        Notify(
+            "No se encontró el archivo PDF correspondiente al acta.",
+            NotificationType.Error
+        ),
+        Launch(varUrlActa)
+    )
+)
+</code></pre>
+<h3 id="resultado-esperado">Resultado esperado</h3>
+<ul>
+<li>Si existe el acta → abre ESA acta.</li>
+<li>Si no existe → informa que falta.</li>
+<li>Nunca vuelve a mostrar una acta diferente sólo porque SharePoint la consideró un buen resultado de búsqueda.</li>
+</ul>
+<h3 id="prioridad">Prioridad</h3>
+<p><strong>P0 — MVP</strong></p>
+<hr/>
+<h1 id="6-error-2-hay-actas-que-directamente-no-estan-en-onedrive">6. ERROR 2 — Hay actas que directamente no están en OneDrive</h1>
+<p>Este punto es distinto del anterior.</p>
+<p>Revisé los flujos incluidos y <strong>no existe dentro de los flujos entregados un proceso general que cargue todas las actas PDF a la carpeta <code>Actas de Transporte</code></strong>.</p>
+<p>Por lo tanto no corresponde atribuir automáticamente este problema al flujo de Decreto, Dictamen o Resolución.</p>
+<p>Puede provenir de:</p>
+<ul>
+<li>proceso externo que genera las actas;</li>
+<li>actas históricas no migradas;</li>
+<li>archivos con nombre inconsistente;</li>
+<li>carga manual incompleta;</li>
+<li>otra automatización no incluida en estas soluciones.</li>
+</ul>
+<h2 id="para-el-mvp">Para el MVP</h2>
+<p>No hace falta resolver inmediatamente toda la historia documental.</p>
+<p>Primero:</p>
+<ol>
+<li>Implementar URL exacta.</li>
+<li>Detectar cuáles están.</li>
+<li>Detectar cuáles faltan.</li>
+<li>Mostrar un error si no existe archivo.</li>
+<li>Nunca reemplazar el faltante por un resultado parecido.</li>
+</ol>
+<p>Después puede hacerse una conciliación:</p>
+<p><strong>N.º Acta SharePoint ↔ archivo existente en OneDrive ↔ URL exacta.</strong></p>
+<h3 id="prioridad-2">Prioridad</h3>
+<ul>
+<li>Evitar abrir la incorrecta: <strong>P0</strong></li>
+<li>Recuperar todos los históricos faltantes: <strong>P2</strong></li>
+</ul>
+<hr/>
+<h1 id="7-error-3-decreto-y-cedula-sin-cita-normativa">7. ERROR 3 — Decreto y Cédula sin cita normativa</h1>
+<h2 id="flujo-exacto">Flujo exacto</h2>
+<p><code>Decreto Inicial + C. Notificación</code></p>
+<h2 id="plantillas-involucradas">Plantillas involucradas</h2>
+<p>El flujo referencia:</p>
+<p><code>/Juzgado-multas/Modelos_documentos NO MODIFCAR/1 - Decreto Inicial new.docx</code></p>
+<p>y</p>
+<p><code>/Juzgado-multas/Modelos_documentos NO MODIFCAR/2 - Cédula de Notificación new.docx</code></p>
+<h2 id="causa-encontrada">Causa encontrada</h2>
+<p>La lista:</p>
+<p><code>INFRACCIONES PARAMETRIZACION</code></p>
+<p>contiene:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Significado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Title</code></td>
+<td>Categoría</td>
+</tr>
+<tr>
+<td><code>field_2</code></td>
+<td>NOMBRE / detalle</td>
+</tr>
+<tr>
+<td><code>field_3</code></td>
+<td>Norma infracción</td>
+</tr>
+<tr>
+<td><code>field_4</code></td>
+<td>Norma sanción</td>
+</tr>
+<tr>
+<td><code>field_5</code></td>
+<td>MIN-MAX</td>
+</tr>
+<tr>
+<td><code>field_6</code></td>
+<td>ACTUAL</td>
+</tr>
+<tr>
+<td><code>field_7</code></td>
+<td>SUGERIDA</td>
+</tr>
+</tbody>
+</table></div>
+<p>Pero el flujo de Decreto actualmente busca una norma comparando solamente:</p>
+<p><strong>Detalle de infracción = NOMBRE</strong></p>
+<p>y omite la categoría.</p>
+<p>Además, cuando no encuentra coincidencia, hace esto:</p>
+<pre data-language="TEXT"><code class="language-text">Nor_Legal = ''
+</code></pre>
+<p>Ese comportamiento explica exactamente los documentos observados:</p>
+<blockquote>
+<p>la infracción aparece, pero la norma queda vacía.</p>
+</blockquote>
+<h2 id="como-corregirlo">Cómo corregirlo</h2>
+<p>Debe copiarse el criterio que ya usa correctamente <code>Dictamen_V2</code>.</p>
+<p>Comparar simultáneamente:</p>
+<p><strong>Categoría + Detalle</strong></p>
+<p>La condición conceptual debe quedar:</p>
+<pre data-language="TEXT"><code class="language-text">Parámetro.Title = Infracción.Categoría
+Y
+Parámetro.field_2 = Infracción.Detalle
+</code></pre>
+<p>No:</p>
+<pre data-language="TEXT"><code class="language-text">Parámetro.field_2 = Infracción.Detalle
+</code></pre>
+<p>solamente.</p>
+<h2 id="cambio-adicional-obligatorio">Cambio adicional obligatorio</h2>
+<p>No debe tolerarse silenciosamente una parametrización faltante.</p>
+<p>Si:</p>
+<ul>
+<li>encuentra 1 → continuar;</li>
+<li>encuentra 0 → ERROR;</li>
+<li>encuentra más de 1 → ERROR.</li>
+</ul>
+<p>El documento no debería emitirse como definitivo con una cita vacía.</p>
+<p>Mensaje sugerido:</p>
+<blockquote>
+<p>No se pudo generar el documento: la infracción “Categoría — Detalle” no posee una parametrización normativa única.</p>
+</blockquote>
+<h3 id="prioridad-3">Prioridad</h3>
+<p><strong>P0 — MVP</strong></p>
+<hr/>
+<h1 id="8-firma-sello-desactualizado-de-nico">8. Firma/sello desactualizado de Nico</h1>
+<h2 id="donde-esta">Dónde está</h2>
+<p>No surge del Power Apps.</p>
+<p>Tampoco es un dato calculado por Power Automate.</p>
+<p>La firma/sello forma parte de:</p>
+<p><code>1 - Decreto Inicial new.docx</code></p>
+<h2 id="modificacion">Modificación</h2>
+<p>Persona 2 debe:</p>
+<ol>
+<li>Duplicar la plantilla.</li>
+<li>Nombrarla, por ejemplo:</li>
+</ol>
+<p><code>1 - Decreto Inicial new_DEV.docx</code></p>
+<ol start="3">
+<li>Reemplazar firma/sello/cargo.</li>
+<li>No modificar todavía la plantilla productiva.</li>
+<li>Hacer que el flujo DEV apunte a la copia.</li>
+<li>Probar.</li>
+<li>Recién después promoverla.</li>
+</ol>
+<h3 id="prioridad-4">Prioridad</h3>
+<p><strong>P0 — muy simple</strong></p>
+<hr/>
+<h1 id="9-error-muy-importante-dictamen-con-descargo-esta-conectado-a-un-flujo-viejo">9. ERROR MUY IMPORTANTE — Dictamen con Descargo está conectado a un flujo viejo</h1>
+<p>En el Navegador actual existen dos caminos:</p>
+<h3 id="boton-dictamen">Botón "Dictamen"</h3>
+<p>Navega a:</p>
+<p><code>Dictamich</code></p>
+<p>Correcto.</p>
+<h3 id="boton-dictamen-con-descargo">Botón "Dictamen con Descargo"</h3>
+<p>Navega a:</p>
+<p><code>Dictamen_CDescargo (DJ)</code></p>
+<p>Esa pantalla intenta ejecutar:</p>
+<pre data-language="POWERFX"><code class="language-powerfx">Dictamen.Run(...)
+</code></pre>
+<p>Pero esa conexión ya no existe correctamente en la aplicación.</p>
+<p>El App Checker lo marca:</p>
+<p><code>app-ErrUnknownNamespaceFunction</code></p>
+<h2 id="la-solucion-no-es-arreglar-el-flujo-viejo">La solución NO es arreglar el flujo viejo</h2>
+<p><code>Dictamich</code> ya está preparado para recibir:</p>
+<ul>
+<li><code>SIN_DESCARGO</code></li>
+<li><code>EN_TERMINO</code></li>
+<li><code>FUERA_DE_PLAZO</code></li>
+</ul>
+<p>y ejecuta:</p>
+<p><code>Dictamen_V2</code></p>
+<p>Por lo tanto, el nuevo diseño debería tener <strong>un único generador de Dictamen</strong>.</p>
+<h2 id="cambio-en-navegador">Cambio en Navegador</h2>
+<p>Botón:</p>
+<p><code>Dictamen con Descargo</code></p>
+<p>Debe:</p>
+<ul>
+<li>eliminarse; o</li>
+<li>navegar también a <code>Dictamich</code>.</li>
+</ul>
+<p>Recomiendo directamente eliminar la duplicidad visual y dejar:</p>
+<h3 id="generar-dictamen"><code>GENERAR DICTAMEN</code></h3>
+<p>Dentro de <code>Dictamich</code> se elige el estado.</p>
+<h3 id="prioridad-5">Prioridad</h3>
+<p><strong>P0</strong></p>
+<hr/>
+<h1 id="10-error-numero-de-dictamen-duplicado">10. ERROR — Número de Dictamen duplicado</h1>
+<p>En la fotografía aparece:</p>
+<p><code>DICTAMEN N.º 1010/2026/2026.-</code></p>
+<h2 id="causa">Causa</h2>
+<p><code>Dictamich</code> envía literalmente:</p>
+<pre data-language="POWERFX"><code class="language-powerfx">Trim(Input_Numero_Dictamen_Integral.Value)
+</code></pre>
+<p>como <code>NumeroDictamen</code>.</p>
+<p>El flujo/plantilla agrega además el año.</p>
+<p>Si el operador escribe:</p>
+<p><code>1010/2026</code></p>
+<p>el documento termina:</p>
+<p><code>1010/2026/2026</code></p>
+<h2 id="solucion">Solución</h2>
+<p>En Power Apps, cambiar el rótulo a:</p>
+<h3 id="numero-de-dictamen-ingresar-solo-el-numero-sin-ano">Número de Dictamen — ingresar sólo el número, sin año</h3>
+<p>Ejemplo válido:</p>
+<p><code>1010</code></p>
+<p>No:</p>
+<p><code>1010/2026</code></p>
+<p>Y validar:</p>
+<pre data-language="POWERFX"><code class="language-powerfx">IsMatch(
+    Trim(Input_Numero_Dictamen_Integral.Value),
+    "^\d+$"
+)
+</code></pre>
+<p>El botón Generar deberá quedar deshabilitado si no cumple.</p>
+<h3 id="resultado">Resultado</h3>
+<p>El operador pone:</p>
+<p><code>1010</code></p>
+<p>Documento:</p>
+<p><code>1010/2026</code></p>
+<h3 id="prioridad-6">Prioridad</h3>
+<p><strong>P0</strong></p>
+<hr/>
+<h1 id="11-dato-que-hoy-se-pierde-numero-de-dictamen">11. DATO QUE HOY SE PIERDE — Número de Dictamen</h1>
+<p>Este es uno de los hallazgos estructurales más importantes.</p>
+<p><code>Dictamich</code> llama a:</p>
+<pre data-language="POWERFX"><code class="language-powerfx">Dictamen_V2.Run(
+    Expediente,
+    NumeroDictamen,
+    TipoDictamen,
+    EstadoDescargo,
+    MedidaPreventiva,
+    TextoManual
+)
+</code></pre>
+<p>Pero después sólo guarda en <code>Base-Expedientes</code>:</p>
+<pre data-language="POWERFX"><code class="language-powerfx">{
+    '4_Dictamen': true,
+    UsuarioDictamen: User().FullName,
+    FechaDictamen: Today()
+}
+</code></pre>
+<p><strong>No guarda el número de Dictamen.</strong></p>
+<p>Después la Resolución se ejecuta simplemente mediante:</p>
+<pre data-language="POWERFX"><code class="language-powerfx">Resolución.Run(Text(Expediente_usar_J))
+</code></pre>
+<p>Por lo tanto, el flujo de Resolución no tiene forma de saber qué número de Dictamen debe citar.</p>
+<p>Esto explica directamente la observación:</p>
+<blockquote>
+<p>En el último párrafo anterior al RESUELVE no cita el número de Dictamen.</p>
+</blockquote>
+<h2 id="solucion-2">Solución</h2>
+<p>Agregar a <code>Base-Expedientes</code>:</p>
+<h3 id="n-dictamen"><code>N_Dictamen</code></h3>
+<p>Tipo:</p>
+<p>Texto de una línea.</p>
+<p>Y recomiendo agregar también:</p>
+<h3 id="estado-descargo"><code>Estado_Descargo</code></h3>
+<p>Valores:</p>
+<ul>
+<li><code>SIN_DESCARGO</code></li>
+<li><code>EN_TERMINO</code></li>
+<li><code>FUERA_DE_PLAZO</code></li>
+</ul>
+<p>Opcionalmente:</p>
+<h3 id="tipo-dictamen"><code>Tipo_Dictamen</code></h3>
+<p>para mejorar trazabilidad.</p>
+<h2 id="patch-de-dictamich">Patch de Dictamich</h2>
+<p>Debe quedar conceptualmente:</p>
+<pre data-language="POWERFX"><code class="language-powerfx">Patch(
+    'Base-Expedientes',
+    locDictamenExpediente,
+    {
+        '4_Dictamen': true,
+        UsuarioDictamen: User().FullName,
+        FechaDictamen: Today(),
+        N_Dictamen: Trim(Input_Numero_Dictamen_Integral.Value),
+        Estado_Descargo:
+            Dropdown_Estado_Descargo_Integral.Selected.Value,
+        Tipo_Dictamen:
+            Dropdown_Tipo_Dictamen_Integral.Selected.Value
+    }
+)
+</code></pre>
+<p>Luego Resolución lee el registro de <code>Base-Expedientes</code>.</p>
+<h3 id="ventaja">Ventaja</h3>
+<p>No hace falta modificar la firma:</p>
+<pre data-language="POWERFX"><code class="language-powerfx">Resolución.Run(expediente)
+</code></pre>
+<p>y por lo tanto se evita tener que eliminar/reagregar la conexión del flujo en Power Apps.</p>
+<h3 id="prioridad-7">Prioridad</h3>
+<p><strong>P0 — imprescindible</strong></p>
+<hr/>
+<h1 id="12-dictamen-empresa-empresa-el-quebrachal">12. Dictamen — "EMPRESA EMPRESA EL QUEBRACHAL..."</h1>
+<p>La fotografía muestra la repetición:</p>
+<blockquote>
+<p>Empresa EMPRESA EL QUEBRACHAL S.R.L.</p>
+</blockquote>
+<h2 id="origen">Origen</h2>
+<p>El flujo agrega textualmente algo equivalente a:</p>
+<blockquote>
+<p>en relación con la Empresa [NombreEmpresas]</p>
+</blockquote>
+<p>pero <code>NombreEmpresas</code> ya puede venir como:</p>
+<p><code>EMPRESA EL QUEBRACHAL S.R.L.</code></p>
+<h2 id="solucion-3">Solución</h2>
+<p>Definir en <code>Dictamen_V2</code> una sola expresión:</p>
+<p><code>Empresa_Documento</code></p>
+<p>que normalice el nombre una vez.</p>
+<p>Luego usar <strong>esa variable/composición en todo el documento</strong>:</p>
+<ul>
+<li>asunto;</li>
+<li>antecedentes;</li>
+<li>análisis;</li>
+<li>artículos.</li>
+</ul>
+<p>No solucionar cada párrafo individualmente.</p>
+<h3 id="prioridad-8">Prioridad</h3>
+<p><strong>P0</strong></p>
+<hr/>
+<h1 id="13-dictamen-tipificacion-debajo-del-punto-a">13. Dictamen — Tipificación debajo del punto a)</h1>
+<p>La observación escrita es correcta y el problema está localizado.</p>
+<p>Actualmente <code>Dictamen_V2</code> arma inicialmente:</p>
+<ul>
+<li>a) Actas</li>
+<li>b) Notificación</li>
+<li>c) Descargo</li>
+</ul>
+<p>y después agrega las infracciones/tipificaciones.</p>
+<p>Por lo tanto, aunque la plantilla estuviera visualmente bien, el flujo está construyendo el contenido en un orden que no coincide con lo pedido.</p>
+<h2 id="la-solucion-tiene-dos-partes">La solución tiene dos partes</h2>
+<h3 id="plantilla">PLANTILLA</h3>
+<p>Crear un espacio/repeating section específico para los hechos/tipificaciones debajo del antecedente a).</p>
+<h3 id="power-automate">POWER AUTOMATE</h3>
+<p>Separar las infracciones del array general de antecedentes.</p>
+<p>Orden final:</p>
+<p><strong>a) Actas</strong></p>
+<p><strong>Hecho Único / Hecho 1 / Hecho 2…</strong></p>
+<p><strong>b) Notificación</strong></p>
+<p><strong>c) Descargo</strong></p>
+<p>Esto es más seguro que intentar mover posteriormente elementos dentro de un único array.</p>
+<h3 id="prioridad-9">Prioridad</h3>
+<p><strong>P0</strong></p>
+<hr/>
+<h1 id="14-dictamen-hecho-unico-hecho-1-hecho-2">14. Dictamen — Hecho Único / Hecho 1 / Hecho 2</h1>
+<p>La Resolución ya contiene lógica para esto.</p>
+<p>Actualmente construye títulos equivalentes a:</p>
+<ul>
+<li><code>Único Hecho</code></li>
+<li><code>Primer Hecho</code></li>
+<li><code>Segundo Hecho</code></li>
+<li>etc.</li>
+</ul>
+<p>Por lo tanto no hace falta diseñar nuevamente la lógica.</p>
+<h2 id="accion">Acción</h2>
+<p>Persona 2 debe reutilizar esa lógica de <code>Resolución</code> dentro de <code>Dictamen_V2</code>.</p>
+<h3 id="si-hay-1-infraccion">Si hay 1 infracción</h3>
+<p><code>HECHO ÚNICO</code></p>
+<h3 id="si-hay-mas">Si hay más</h3>
+<p><code>HECHO 1</code></p>
+<p><code>HECHO 2</code></p>
+<p>etc.</p>
+<p>El nombre final puede adaptarse al criterio jurídico, pero la lógica ya existe.</p>
+<h3 id="prioridad-10">Prioridad</h3>
+<p><strong>P0</strong></p>
+<hr/>
+<h1 id="15-dictamen-y-resolucion-deben-usar-exactamente-la-misma-tipificacion">15. Dictamen y Resolución deben usar exactamente la misma tipificación</h1>
+<p>Éste no debe resolverse escribiendo textos separados en ambos documentos.</p>
+<p>La fuente maestra debe ser:</p>
+<p><code>INFRACCIONES PARAMETRIZACION</code></p>
+<p>y la identificación debe ser siempre:</p>
+<p><strong>Categoría + Detalle</strong></p>
+<p>Recomiendo generar una denominación canónica:</p>
+<pre data-language="TEXT"><code class="language-text">CATEGORÍA - DETALLE
+</code></pre>
+<p>Ejemplo conceptual:</p>
+<p><code>HORARIOS - HORARIO AUTORIZADO NO PRESTADO</code></p>
+<p>Entonces:</p>
+<ul>
+<li>Decreto usa esa parametrización.</li>
+<li>Cédula usa esa parametrización.</li>
+<li>Dictamen usa esa parametrización.</li>
+<li>Resolución usa esa parametrización.</li>
+</ul>
+<p>No cuatro textos distintos.</p>
+<h3 id="prioridad-11">Prioridad</h3>
+<p><strong>P0</strong></p>
+<hr/>
+<h1 id="16-dictamen-iv-conclusiones">16. Dictamen — IV. CONCLUSIONES</h1>
+<p>El flujo actual genera un texto diferente del solicitado en la hoja corregida.</p>
+<p>Actualmente usa una expresión del tipo:</p>
+<blockquote>
+<p>Que, por lo expuesto y las normas citadas, esta Subdirección entiende que corresponde sancionar...</p>
+</blockquote>
+<p>La corrección requiere el siguiente texto:</p>
+<blockquote>
+<p>Que, por lo expuesto, normas citadas, las disposiciones emanadas de los artículos 21 y siguientes de la Ley N° 8835 – Carta del Ciudadano, es opinión de este Servicio Jurídico, que puede la Subdirección de Jurisdicción de Faltas Regulatorias del ENTE REGULADOR DE LOS SERVICIOS PUBLICOS (ERSeP), emitir acto administrativo disponiendo:</p>
+</blockquote>
+<h2 id="ubicacion-tecnica">Ubicación técnica</h2>
+<p>Flujo:</p>
+<p><code>Dictamen_V2</code></p>
+<p>Composición:</p>
+<p><code>Compose_CONCLUSION_INTRO</code></p>
+<p>Debe sustituirse allí, no escribirse manualmente después de generado el Word.</p>
+<h3 id="prioridad-12">Prioridad</h3>
+<p><strong>P0</strong></p>
+<hr/>
+<h1 id="17-error-estructural-expedientes-con-varias-actas">17. ERROR estructural — Expedientes con varias actas</h1>
+<p>Éste no estaba tan visible en las anotaciones, pero aparece claramente al revisar Power Apps.</p>
+<h2 id="pantalla">Pantalla</h2>
+<p><code>Cargar Acta_Expdte (T)</code></p>
+<p>Al aprobar el expediente:</p>
+<ol>
+<li>Obtiene todas las actas.</li>
+<li>Selecciona la <strong>primera acta</strong>.</li>
+<li>Obtiene las infracciones de ESA primera acta.</li>
+<li>Compara con las demás.</li>
+<li>Si difieren, muestra una advertencia.</li>
+<li>Pero igualmente guarda las infracciones de la primera.</li>
+</ol>
+<p>Incluso el mensaje actual dice:</p>
+<blockquote>
+<p>Advertencia: no todas las actas tienen las mismas categorías. Se utilizarán las correspondientes a la primera acta.</p>
+</blockquote>
+<p>Esto es riesgoso.</p>
+<h2 id="ademas">Además</h2>
+<p>La colección se denomina:</p>
+<p><code>colCategoriasPrimeraActa</code></p>
+<p>pero técnicamente está haciendo <code>Distinct(field_3)</code>.</p>
+<p>Y <code>field_3</code> de:</p>
+<p><code>Acta de transporte - Infracciones</code></p>
+<p>es el <strong>DetalleInfraccion</strong>, no la categoría.</p>
+<h2 id="cambio-requerido">Cambio requerido</h2>
+<p>Debe construirse la unión de las infracciones de TODAS las actas del expediente.</p>
+<p>Conceptualmente:</p>
+<pre data-language="TEXT"><code class="language-text">Todas las actas
+      ↓
+Todas sus infracciones
+      ↓
+Categoría + Detalle
+      ↓
+Eliminar duplicados
+      ↓
+infraccion1...infraccion7
+</code></pre>
+<p>Si son más de 7:</p>
+<p><strong>bloquear aprobación</strong>, como ya hace actualmente.</p>
+<p>Pero si dos actas tienen infracciones distintas:</p>
+<p><strong>no elegir la primera.</strong></p>
+<h3 id="prioridad-13">Prioridad</h3>
+<p><strong>P0</strong></p>
+<p>Porque de esos campos se alimentan posteriormente:</p>
+<ul>
+<li>asignación de UM;</li>
+<li>Dictamen;</li>
+<li>Resolución.</li>
+</ul>
+<hr/>
+<h1 id="18-asignacion-de-um-otro-punto-a-reforzar">18. Asignación de UM — otro punto a reforzar</h1>
+<p>Pantalla:</p>
+<p><code>Asignacion_UM_Expediente (J)</code></p>
+<p>Actualmente busca la parametrización principalmente por:</p>
+<p><code>NOMBRE = infraccionX</code></p>
+<p>Es decir, nuevamente por el detalle.</p>
+<p>Si alguna vez dos categorías contienen el mismo NOMBRE, existe ambigüedad.</p>
+<h2 id="diseno-recomendado">Diseño recomendado</h2>
+<p>Los campos <code>infraccion1...7</code> deberían representar una clave inequívoca.</p>
+<p>Para el MVP hay dos alternativas:</p>
+<h3 id="a-minima-modificacion">A. Mínima modificación</h3>
+<p>Mantener los campos actuales pero comprobar que <code>NOMBRE</code> sea único.</p>
+<h3 id="b-correcta-a-mediano-plazo">B. Correcta a mediano plazo</h3>
+<p>Persistir:</p>
+<ul>
+<li>Categoría</li>
+<li>Detalle</li>
+</ul>
+<p>o directamente un ID de la parametrización.</p>
+<p>Para no ampliar demasiado el MVP recomiendo <strong>A ahora</strong>, pero registrar B como deuda técnica.</p>
+<h3 id="prioridad-14">Prioridad</h3>
+<p><strong>P1</strong></p>
+<hr/>
+<h1 id="19-resolucion-dominio-y-chapa-mop">19. Resolución — dominio y Chapa MOP</h1>
+<p>La observación dice:</p>
+<blockquote>
+<p>Si el acta no cuenta con Dominio y Chapa MOP, debe figurar sólo nombre de empresa y CUIT.</p>
+</blockquote>
+<p>Encontré la causa.</p>
+<p>El flujo construye el texto concatenando siempre:</p>
+<pre data-language="TEXT"><code class="language-text">Dominio [valor], Chapa MOP [valor]
+</code></pre>
+<p>aunque los valores estén vacíos.</p>
+<p>Esto ocurre tanto en Vistos como en Considerandos.</p>
+<h2 id="cambio">Cambio</h2>
+<p>Crear una condición:</p>
+<pre data-language="TEXT"><code class="language-text">SI Dominio está vacío
+O Chapa MOP está vacía
+→ no generar frase de vehículo
+</code></pre>
+<p>Caso sin datos:</p>
+<blockquote>
+<p>Empresa X, CUIT X.</p>
+</blockquote>
+<p>Caso con datos:</p>
+<blockquote>
+<p>Empresa X, CUIT X, a través del vehículo Dominio XXX, Chapa MOP XXX.</p>
+</blockquote>
+<h3 id="prioridad-15">Prioridad</h3>
+<p><strong>P0</strong></p>
+<hr/>
+<h1 id="20-resolucion-fuera-de-servicio">20. Resolución — "Fuera de Servicio"</h1>
+<p>Acá encontré una causa técnica muy clara.</p>
+<p>La lista del acta ya posee:</p>
+<ul>
+<li><code>RetiroDeServicio</code></li>
+<li><code>ColocacionDeFaja</code></li>
+<li><code>RetiroChapaMOP</code></li>
+<li><code>ParalizacionProvisoria</code></li>
+<li><code>TrasladoDelPasaje</code></li>
+</ul>
+<p>y <code>Dictamich</code> ya los utiliza para identificar medidas preventivas.</p>
+<p>Sin embargo, el flujo <code>Resolución</code> al obtener sus datos del acta <strong>no incorpora esos campos en el objeto que usa posteriormente</strong>.</p>
+<p>Consecuencia:</p>
+<p>La Resolución no sabe que hubo retiro/fuera de servicio.</p>
+<h2 id="cambio-2">Cambio</h2>
+<p>En el paso que selecciona datos de las actas incorporar, como mínimo:</p>
+<p><code>RetiroDeServicio</code></p>
+<p>y si se desea un modelo completo:</p>
+<ul>
+<li>RetiroDeServicio</li>
+<li>ColocacionDeFaja</li>
+<li>RetiroChapaMOP</li>
+<li>ParalizacionProvisoria</li>
+<li>TrasladoDelPasaje</li>
+</ul>
+<p>Luego generar el mismo párrafo jurídico que corresponda en Dictamen y Resolución.</p>
+<h3 id="regla">Regla</h3>
+<p>No poner el texto por defecto.</p>
+<p>Sólo si la medida realmente existe.</p>
+<h3 id="prioridad-16">Prioridad</h3>
+<p><strong>P0</strong></p>
+<hr/>
+<h1 id="21-resolucion-notificacion-y-presentacion-del-descargo">21. Resolución — notificación y presentación del Descargo</h1>
+<p>La imagen indica que falta:</p>
+<ul>
+<li>párrafo de notificación;</li>
+<li>indicación de si presentó o no Descargo.</li>
+</ul>
+<p>En el flujo encontré una variable:</p>
+<p><code>cons_i_parrafos</code></p>
+<p>Se inicializa como array.</p>
+<p>Después se envía a la plantilla de Resolución.</p>
+<p>Pero <strong>no existe ninguna acción que agregue elementos a ese array</strong>.</p>
+<p>Está vacío.</p>
+<p>Ésa es una causa directa del faltante.</p>
+<h2 id="solucion-4">Solución</h2>
+<p>Construir allí:</p>
+<h3 id="sin-descargo">SIN_DESCARGO</h3>
+<p>Párrafo:</p>
+<ul>
+<li>empresa debidamente notificada;</li>
+<li>no formuló descargo.</li>
+</ul>
+<h3 id="en-termino">EN_TERMINO</h3>
+<p>Párrafo:</p>
+<ul>
+<li>empresa debidamente notificada;</li>
+<li>formuló descargo en término;</li>
+<li>referencia pertinente.</li>
+</ul>
+<h3 id="fuera-de-plazo">FUERA_DE_PLAZO</h3>
+<p>Párrafo específico:</p>
+<ul>
+<li>presentó descargo;</li>
+<li>carácter extemporáneo según lógica jurídica definida.</li>
+</ul>
+<p>Y, si corresponde:</p>
+<h3 id="medida-preventiva">MEDIDA PREVENTIVA</h3>
+<p>Agregar otro párrafo al mismo conjunto.</p>
+<h3 id="prioridad-17">Prioridad</h3>
+<p><strong>P0</strong></p>
+<hr/>
+<h1 id="22-resolucion-cita-normativa-y-maximo-aplicable-en-hechos">22. Resolución — cita normativa y máximo aplicable en HECHOS</h1>
+<p>Acá hay una particularidad importante.</p>
+<p>El flujo de Resolución YA calcula bastante de esa información.</p>
+<p>Dentro del array de hechos aparecen campos equivalentes a:</p>
+<ul>
+<li>categoría;</li>
+<li>norma de exigencia;</li>
+<li>detalle;</li>
+<li>norma sancionatoria;</li>
+<li>máximo UM;</li>
+<li>graduación.</li>
+</ul>
+<p>Por lo tanto, si el documento generado no muestra esos contenidos, <strong>no todo el problema está en Power Automate</strong>.</p>
+<p>Es muy probable que la plantilla Word no tenga colocados todos los controles dentro del repeating section de hechos.</p>
+<h2 id="trabajo-de-persona-2">Trabajo de Persona 2</h2>
+<p>Abrir:</p>
+<p><code>Resolucion_2026_Plantilla_Compatible_PowerAutomate.docx</code></p>
+<p>y verificar dentro de cada hecho:</p>
+<ul>
+<li>categoría;</li>
+<li>detalle;</li>
+<li>norma infringida;</li>
+<li>norma sancionatoria;</li>
+<li>máximo aplicable.</li>
+</ul>
+<p>Después de modificar los controles de contenido:</p>
+<p><strong>volver al flujo y recrear/refrescar la acción "Populate a Microsoft Word template".</strong></p>
+<p>Esto es importante porque al cambiar controles Word puede cambiar el esquema dinámico que ve Power Automate.</p>
+<h3 id="prioridad-18">Prioridad</h3>
+<p><strong>P0</strong></p>
+<hr/>
+<h1 id="23-resolucion-citar-n-o-de-dictamen-antes-del-resuelve">23. Resolución — citar N.º de Dictamen antes del RESUELVE</h1>
+<p>Se resuelve con el cambio explicado antes:</p>
+<p><code>Base-Expedientes.N_Dictamen</code></p>
+<p>El flujo:</p>
+<p><code>Resolución</code></p>
+<p>debe leerlo y colocarlo en el párrafo anterior al:</p>
+<p><code>RESUELVE</code></p>
+<p>No recomiendo pedir nuevamente el número al usuario desde Resolución.</p>
+<p>Debe ser el mismo que ya produjo el Dictamen.</p>
+<h3 id="prioridad-19">Prioridad</h3>
+<p><strong>P0</strong></p>
+<hr/>
+<h1 id="24-resolucion-articulo-1-sin-cita-normativa">24. Resolución — Artículo 1 sin cita normativa</h1>
+<p>El array actual de artículos contiene:</p>
+<ul>
+<li>empresa;</li>
+<li>CUIT;</li>
+<li>detalle de infracción;</li>
+<li>norma sancionatoria;</li>
+<li>actas;</li>
+<li>sanción.</li>
+</ul>
+<p>Pero no está modelando correctamente toda la norma de exigencia como campo separado del artículo.</p>
+<h2 id="cambio-3">Cambio</h2>
+<p>Agregar al objeto del artículo:</p>
+<p><code>articulo_norma_exigencia</code></p>
+<p>y mantener:</p>
+<p><code>articulo_norma_sancionatoria</code></p>
+<p>Entonces el texto puede construirse con la misma lógica jurídica utilizada en Dictamen.</p>
+<h3 id="prioridad-20">Prioridad</h3>
+<p><strong>P0</strong></p>
+<hr/>
+<h1 id="25-resolucion-eliminar-confeccionada">25. Resolución — eliminar "confeccionada"</h1>
+<p>Esto NO requiere tocar Power Apps.</p>
+<p>El flujo construye expresamente cadenas como:</p>
+<pre data-language="TEXT"><code class="language-text">Acta ... confeccionada
+</code></pre>
+<p>y para múltiples actas:</p>
+<pre data-language="TEXT"><code class="language-text">Actas ... confeccionadas
+</code></pre>
+<p>Por eso aparece.</p>
+<h2 id="cambio-4">Cambio</h2>
+<p>Modificar en el flujo las expresiones que construyen:</p>
+<ul>
+<li>texto del artículo;</li>
+<li>texto de antecedentes/considerandos que corresponda.</li>
+</ul>
+<p>Eliminar:</p>
+<p><code>confeccionada</code></p>
+<p>y</p>
+<p><code>confeccionadas</code></p>
+<p>cuando jurídicamente no corresponda.</p>
+<h3 id="prioridad-21">Prioridad</h3>
+<p><strong>P0 — muy sencillo</strong></p>
+<hr/>
+<h1 id="26-resolucion-falta-cbu">26. Resolución — falta CBU</h1>
+<p>Esta corrección es especialmente sencilla porque el <strong>Dictamen ya tiene el CBU correcto</strong>.</p>
+<p>El Dictamen genera:</p>
+<p><code>0200900501000000086168</code></p>
+<p>En cambio, el flujo <code>Resolución</code> actualmente sólo genera algo equivalente a:</p>
+<blockquote>
+<p>Banco Provincia de Córdoba, Suc. 900 N.º 861/06 para depósito...</p>
+</blockquote>
+<p>sin CBU.</p>
+<h2 id="solucion-5">Solución</h2>
+<p>Modificar el paso de Resolución que construye el texto de pago e incorporar:</p>
+<p><code>CBU: 0200900501000000086168</code></p>
+<p>Lo ideal es reutilizar el mismo texto que usa Dictamen para evitar que ambos vuelvan a divergir.</p>
+<h3 id="mejor-practica-posterior">Mejor práctica posterior</h3>
+<p>Centralizar:</p>
+<ul>
+<li>Banco</li>
+<li>Sucursal</li>
+<li>Cuenta</li>
+<li>CBU</li>
+</ul>
+<p>en una lista de configuración.</p>
+<p>Pero para el MVP puede mantenerse el dato actual común a ambos flujos.</p>
+<h3 id="prioridad-22">Prioridad</h3>
+<p><strong>P0</strong></p>
+<hr/>
+<h1 id="27-descargo-pequena-inconsistencia-detectada">27. Descargo — pequeña inconsistencia detectada</h1>
+<p>En <code>Descargo (DJ)</code> hay referencias tanto a:</p>
+<p><code>Texto_Descargo</code></p>
+<p>como a:</p>
+<p><code>TextoDescargo</code></p>
+<p>La columna que aparece en el esquema SharePoint es:</p>
+<p><code>Texto_Descargo</code></p>
+<p>Por lo tanto, cuando se modifique esa pantalla conviene normalizar todas las referencias a la columna real.</p>
+<p>No es el principal problema de las fotografías, pero debe aprovecharse el turno de Power Apps para dejarlo consistente.</p>
+<h3 id="prioridad-23">Prioridad</h3>
+<p><strong>P1</strong></p>
+<hr/>
+<h1 id="28-cedula-actas-anexadas-en-un-solo-archivo">28. Cédula + actas anexadas en un solo archivo</h1>
+<p>La observación propone:</p>
+<blockquote>
+<p>descargar la Cédula con las actas del expediente anexadas.</p>
+</blockquote>
+<p>Es una buena mejora, pero <strong>no la incluiría como requisito para el primer MVP</strong>.</p>
+<p>Los conectores utilizados actualmente son fundamentalmente:</p>
+<ul>
+<li>SharePoint;</li>
+<li>OneDrive for Business;</li>
+<li>Word Online.</li>
+</ul>
+<p>Esos conectores permiten generar y convertir documentos, pero no aparece en la solución un componente específico para combinar varios PDF en uno.</p>
+<p>Para una unión real:</p>
+<pre data-language="TEXT"><code class="language-text">Cédula.pdf
++ Acta1.pdf
++ Acta2.pdf
++ Acta3.pdf
+= DocumentoNotificacionCompleto.pdf
+</code></pre>
+<p>probablemente habrá que utilizar:</p>
+<ul>
+<li>Adobe PDF Services;</li>
+<li>Encodian;</li>
+<li>Muhimbi;</li>
+<li>algún servicio propio;</li>
+<li>u otra alternativa con capacidad de merge PDF.</li>
+</ul>
+<p>Eso debe evaluarse además por licencia.</p>
+<h2 id="mvp">MVP</h2>
+<p>Primero:</p>
+<ul>
+<li>generar Cédula correcta;</li>
+<li>abrir cada acta correcta;</li>
+<li>garantizar disponibilidad.</li>
+</ul>
+<h2 id="fase-2">Fase 2</h2>
+<p>Generar paquete PDF único.</p>
+<h3 id="prioridad-24">Prioridad</h3>
+<p><strong>P2</strong></p>
+<hr/>
+<h1 id="29-matriz-final-que-toca-cada-correccion">29. Matriz final: qué toca cada corrección</h1>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Mejora</th>
+<th style="text-align:center">Power Apps</th>
+<th style="text-align:center">Power Automate</th>
+<th style="text-align:center">Word</th>
+<th style="text-align:center">SharePoint</th>
+<th>Prioridad</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Abrir acta correcta</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">opcional</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">✅ URL</td>
+<td>P0</td>
+</tr>
+<tr>
+<td>Actas faltantes</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">proceso posterior</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">✅ auditoría</td>
+<td>P1/P2</td>
+</tr>
+<tr>
+<td>Normativa Decreto</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">parametrización</td>
+<td>P0</td>
+</tr>
+<tr>
+<td>Normativa Cédula</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">parametrización</td>
+<td>P0</td>
+</tr>
+<tr>
+<td>Firma Nico</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">—</td>
+<td>P0</td>
+</tr>
+<tr>
+<td>Dictamen con Descargo viejo</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">—</td>
+<td>P0</td>
+</tr>
+<tr>
+<td>Número Dictamen duplicado</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">—</td>
+<td>P0</td>
+</tr>
+<tr>
+<td>Guardar Nº Dictamen</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">✅</td>
+<td>P0</td>
+</tr>
+<tr>
+<td>Guardar Estado Descargo</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">✅</td>
+<td>P0</td>
+</tr>
+<tr>
+<td>Empresa repetida</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">posible</td>
+<td style="text-align:center">—</td>
+<td>P0</td>
+</tr>
+<tr>
+<td>Tipificación debajo a)</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">—</td>
+<td>P0</td>
+</tr>
+<tr>
+<td>Hecho Único / 1 / 2</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">—</td>
+<td>P0</td>
+</tr>
+<tr>
+<td>Conclusiones Dictamen</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">—</td>
+<td>P0</td>
+</tr>
+<tr>
+<td>Consolidar varias actas</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">—</td>
+<td>P0</td>
+</tr>
+<tr>
+<td>Dominio/chapa condicional</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">—</td>
+<td>P0</td>
+</tr>
+<tr>
+<td>Fuera de servicio Resolución</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">posible</td>
+<td style="text-align:center">—</td>
+<td>P0</td>
+</tr>
+<tr>
+<td>Notificación/Descargo Resolución</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">✅</td>
+<td>P0</td>
+</tr>
+<tr>
+<td>Normas y máximo en Hechos</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">—</td>
+<td>P0</td>
+</tr>
+<tr>
+<td>N.º Dictamen en Resolución</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">✅</td>
+<td>P0</td>
+</tr>
+<tr>
+<td>Norma Artículo 1</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">—</td>
+<td>P0</td>
+</tr>
+<tr>
+<td>Quitar "confeccionada"</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">posible</td>
+<td style="text-align:center">—</td>
+<td>P0</td>
+</tr>
+<tr>
+<td>Agregar CBU</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">posible</td>
+<td style="text-align:center">—</td>
+<td>P0</td>
+</tr>
+<tr>
+<td>Cédula + actas en PDF único</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">✅ nuevo</td>
+<td style="text-align:center">—</td>
+<td style="text-align:center">—</td>
+<td>P2</td>
+</tr>
+</tbody>
+</table></div>
+<hr/>
+<h1 id="30-orden-exacto-de-implementacion">30. Orden exacto de implementación</h1>
+<h2 id="fase-0-congelar-estado-actual">FASE 0 — Congelar estado actual</h2>
+<p>Antes de modificar:</p>
+<ul>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Guardar copia actual del <code>.msapp</code>.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Conservar <code>Paratrabajar_20260827174306.zip</code> únicamente como backup.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Conservar <code>DocumentacinMovilis_1_13_managed.zip</code> como referencia.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>No reimportar ninguno encima del entorno al terminar los cambios.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Crear una solución de desarrollo/no administrada para los flujos que se vayan a editar, cuando sea posible.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Duplicar las cuatro plantillas productivas con sufijo <code>_DEV</code>.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Identificar 5–7 expedientes de prueba.</li>
+</ul>
+<hr/>
+<h1 id="fase-1-persona-1-sharepoint-power-apps">FASE 1 — Persona 1: SharePoint + Power Apps</h1>
+<p><strong>Persona 2 no entra a Power Automate durante este turno.</strong></p>
+<h2 id="paso-1-crear-columnas">Paso 1. Crear columnas</h2>
+<p>En <code>Base-Expedientes</code>:</p>
+<ul>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/><code>N_Dictamen</code> — texto.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/><code>Estado_Descargo</code> — texto/choice.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/><code>Tipo_Dictamen</code> — recomendado.</li>
+</ul>
+<p>En la lista maestra de actas:</p>
+<ul>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/><code>Url_Acta_PDF</code>.</li>
+</ul>
+<h2 id="paso-2-dictamich">Paso 2. Dictamich</h2>
+<ul>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Cambiar label a "Número de Dictamen — sin año".</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Validar solamente dígitos.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Guardar <code>N_Dictamen</code>.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Guardar <code>Estado_Descargo</code>.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Guardar <code>Tipo_Dictamen</code>.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Mantener <code>Dictamen_V2.Run(...)</code>.</li>
+</ul>
+<h2 id="paso-3-navegador">Paso 3. Navegador</h2>
+<ul>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Eliminar/deshabilitar acceso a <code>Dictamen_CDescargo (DJ)</code>.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Utilizar <code>Dictamich</code> para todos los dictámenes.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>No usar <code>Dictamen (DJ) OLD</code>.</li>
+</ul>
+<h2 id="paso-4-ver-acta">Paso 4. Ver Acta</h2>
+<p>Cambiar en:</p>
+<ul>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/><code>Trabajar Expdte (J)</code></li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/><code>Selector Actas (T)</code></li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/><code>Cargar Acta_Expdte (T)</code></li>
+</ul>
+<p>para abandonar la búsqueda <code>/query?q=</code>.</p>
+<h2 id="paso-5-cargar-acta-expediente">Paso 5. Cargar Acta/Expediente</h2>
+<ul>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Dejar de usar exclusivamente <code>varPrimeraActaExpediente</code>.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Construir infracciones a partir de todas las actas.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Eliminar duplicados.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Bloquear si hay más de 7.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>No continuar mostrando el mensaje "se utilizarán las correspondientes a la primera acta".</li>
+</ul>
+<h2 id="paso-6-descargo">Paso 6. Descargo</h2>
+<ul>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Unificar referencias a <code>Texto_Descargo</code>.</li>
+</ul>
+<h2 id="paso-7-publicar-version-app-mvp-01">Paso 7. Publicar versión APP-MVP-01</h2>
+<ul>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Guardar.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Ejecutar App Checker.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Confirmar que no aparezcan errores nuevos.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Publicar.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Salir completamente de Power Apps.</li>
+</ul>
+<hr/>
+<h1 id="fase-2-mientras-persona-1-trabaja-persona-2-solo-prepara-word">FASE 2 — Mientras Persona 1 trabaja: Persona 2 sólo prepara Word</h1>
+<p>Este trabajo puede realizarse en paralelo porque no requiere entrar a Power Automate.</p>
+<p>Crear copias <code>_DEV</code> de:</p>
+<ul>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/><code>1 - Decreto Inicial new.docx</code></li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/><code>2 - Cédula de Notificación new.docx</code></li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/><code>Plantilla_Dictamen_ERSeP_PowerAutomate_V3_CORREGIDA.docx</code></li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/><code>Resolucion_2026_Plantilla_Compatible_PowerAutomate.docx</code></li>
+</ul>
+<p>Realizar:</p>
+<ul>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Firma/sello actualizado.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Revisar ubicación de hechos en Dictamen.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Preparar repeating section para Hechos.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Revisar repeating section de hechos de Resolución.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Verificar controles para norma exigencia.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Verificar controles para norma sancionatoria.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Verificar máximo aplicable.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Crear campo visual para Nº Dictamen en Resolución.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Revisar espacio para párrafos dinámicos.</li>
+</ul>
+<p>No reemplazar todavía las productivas.</p>
+<hr/>
+<h1 id="fase-3-persona-2-power-automate">FASE 3 — Persona 2: Power Automate</h1>
+<p><strong>Persona 1 no entra a Power Apps durante este turno.</strong></p>
+<h2 id="flujo-a-decreto-inicial-c-notificacion">Flujo A — Decreto Inicial + C. Notificación</h2>
+<ul>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Cambiar lookup de infracción de <code>Detalle</code> a <code>Categoría + Detalle</code>.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Exigir exactamente una coincidencia.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>No permitir <code>Nor_Legal = ''</code>.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Utilizar plantilla Decreto DEV.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Utilizar plantilla Cédula DEV.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Confirmar nueva firma.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Generar caso de prueba.</li>
+</ul>
+<hr/>
+<h2 id="flujo-b-dictamen-v2">Flujo B — Dictamen_V2</h2>
+<ul>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Mantener lookup compuesto actual.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Normalizar nombre de empresa.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Crear tipificación canónica <code>Categoría - Detalle</code>.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Reorganizar tipificación debajo de antecedente a).</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Implementar Hecho Único / Hecho 1 / Hecho 2.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Sustituir <code>Compose_CONCLUSION_INTRO</code>.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Mantener CBU existente.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Usar plantilla Dictamen DEV.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Probar SIN_DESCARGO.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Probar EN_TERMINO.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Probar FUERA_DE_PLAZO.</li>
+</ul>
+<hr/>
+<h2 id="flujo-c-resolucion">Flujo C — Resolución</h2>
+<p>Éste es el flujo que más trabajo necesita.</p>
+<ul>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Leer <code>N_Dictamen</code> desde <code>Base-Expedientes</code>.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Leer <code>Estado_Descargo</code>.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Incorporar RetiroDeServicio y restantes medidas.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Completar <code>cons_i_parrafos</code>, hoy vacío.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Agregar párrafo de notificación.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Agregar párrafo de descargo.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Agregar párrafo de medida preventiva sólo cuando corresponda.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Hacer Dominio/Chapa condicional.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Cambiar búsqueda normativa a Categoría + Detalle.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Validar coincidencia única.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Verificar renderizado de norma exigencia.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Verificar norma sancionatoria.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Verificar máximo aplicable.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Agregar norma al Artículo 1.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Quitar "confeccionada/confeccionadas".</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Incorporar CBU <code>0200900501000000086168</code>.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Incorporar N.º Dictamen antes de RESUELVE.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Conectar plantilla Resolución DEV.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Generar documentos de prueba.</li>
+</ul>
+<hr/>
+<h1 id="fase-4-pruebas-de-power-automate-antes-de-volver-a-power-apps">FASE 4 — Pruebas de Power Automate antes de volver a Power Apps</h1>
+<p>No se integra todavía.</p>
+<p>Probar directamente los flujos con expedientes controlados.</p>
+<h2 id="caso-a">Caso A</h2>
+<ul>
+<li>1 acta.</li>
+<li>1 infracción.</li>
+<li>Sin dominio/chapa.</li>
+<li>Sin descargo.</li>
+<li>Sin medida preventiva.</li>
+</ul>
+<p>Debe resultar:</p>
+<ul>
+<li>sin huecos de dominio/chapa;</li>
+<li>norma presente;</li>
+<li>Hecho Único;</li>
+<li>artículo con norma;</li>
+<li>CBU presente.</li>
+</ul>
+<h2 id="caso-b">Caso B</h2>
+<ul>
+<li>1 acta.</li>
+<li>Con dominio/chapa.</li>
+<li>Con descargo en término.</li>
+<li>Retiro de servicio.</li>
+</ul>
+<p>Debe aparecer:</p>
+<ul>
+<li>vehículo;</li>
+<li>notificación;</li>
+<li>descargo;</li>
+<li>medida preventiva.</li>
+</ul>
+<h2 id="caso-c">Caso C</h2>
+<ul>
+<li>2 actas.</li>
+<li>Misma infracción.</li>
+</ul>
+<p>Debe existir una sola tipificación lógica cuando corresponda.</p>
+<h2 id="caso-d">Caso D</h2>
+<ul>
+<li>2 actas.</li>
+<li>Infracciones diferentes.</li>
+</ul>
+<p>Debe mostrar:</p>
+<ul>
+<li>Hecho 1;</li>
+<li>Hecho 2;</li>
+<li>ambas infracciones.</li>
+</ul>
+<h2 id="caso-e">Caso E</h2>
+<p>Infracción sin parametrización.</p>
+<p>El flujo debe:</p>
+<p><strong>detenerse/advertir</strong></p>
+<p>y NO generar silenciosamente un documento definitivo sin norma.</p>
+<h2 id="caso-f">Caso F</h2>
+<p>Dos parametrizaciones con mismo NOMBRE pero distinta categoría.</p>
+<p>Debe seleccionar por:</p>
+<p><strong>Categoría + Detalle.</strong></p>
+<h2 id="caso-g">Caso G</h2>
+<p>Número Dictamen ingresado:</p>
+<p><code>1010</code></p>
+<p>Documento esperado:</p>
+<p><code>1010/2026</code></p>
+<p>Nunca:</p>
+<p><code>1010/2026/2026</code></p>
+<hr/>
+<h1 id="fase-5-integracion-final-en-power-apps">FASE 5 — Integración final en Power Apps</h1>
+<p>Vuelve Persona 1.</p>
+<p>Persona 2 sale de Automate.</p>
+<ul>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Refrescar <code>Base-Expedientes</code>.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Verificar nuevas columnas.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Si no cambió la firma de los flujos llamados desde Power Apps, NO eliminar ni volver a agregar conexiones.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Si se crea un nuevo flujo para URL de acta, conectar únicamente ese flujo.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Ejecutar circuito integral.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Corregir sólo errores de integración.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Publicar APP-MVP-02.</li>
+</ul>
+<hr/>
+<h1 id="31-que-considero-el-mvp-terminado">31. Qué considero el MVP terminado</h1>
+<p>MOVILIS puede considerarse MVP de este lote cuando se cumpla todo esto:</p>
+<ul>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>"Ver Acta" nunca abre otra acta.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Si falta el PDF, el sistema lo informa.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Decreto contiene cita normativa.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Cédula contiene cita normativa.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Firma actualizada.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Existe un único camino moderno de Dictamen.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Dictamen no duplica el año.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Empresa no aparece repetida.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Hecho/s del Dictamen están correctamente estructurados.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Conclusión jurídica corregida.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Dictamen y Resolución usan la misma tipificación.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Expedientes con varias actas no pierden infracciones.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Resolución omite dominio/chapa cuando faltan.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Resolución refleja Fuera de Servicio sólo cuando corresponde.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Resolución indica notificación y estado del descargo.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Resolución muestra normativa y máximo.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Resolución cita el Nº de Dictamen.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Artículo 1 incorpora la normativa requerida.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Se eliminó "confeccionada" donde fue observado.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Artículo de pago incluye CBU.</li>
+<li class="task-list-item"><input class="task-list-item-checkbox task-checkbox" type="checkbox"/>Una parametrización faltante provoca advertencia/error y nunca un documento silenciosamente incompleto.</li>
+</ul>
+<hr/>
+<h1 id="32-reparto-concreto-entre-las-dos-personas">32. Reparto concreto entre las dos personas</h1>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Momento</th>
+<th>Persona 1</th>
+<th>Persona 2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Inicio</td>
+<td>Backup + SharePoint</td>
+<td>Copias locales Word</td>
+</tr>
+<tr>
+<td>Turno 1</td>
+<td><strong>Power Apps</strong></td>
+<td>Word DEV / textos / QA</td>
+</tr>
+<tr>
+<td>Handoff 1</td>
+<td>Publica y sale</td>
+<td>Espera cierre</td>
+</tr>
+<tr>
+<td>Turno 2</td>
+<td>QA / expedientes de prueba</td>
+<td><strong>Power Automate</strong></td>
+</tr>
+<tr>
+<td>Handoff 2</td>
+<td>Espera cierre</td>
+<td>Prueba y sale</td>
+</tr>
+<tr>
+<td>Turno 3</td>
+<td><strong>Power Apps integración</strong></td>
+<td>Revisión documental</td>
+</tr>
+<tr>
+<td>QA final</td>
+<td>Ejecuta app</td>
+<td>Revisa PDFs</td>
+</tr>
+<tr>
+<td>Producción</td>
+<td>publicación única</td>
+<td>verificación final</td>
+</tr>
+</tbody>
+</table></div>
+<p>De esta forma <strong>nunca tienen dos personas tocando el mismo entorno de edición al mismo tiempo</strong> y, aun así, prácticamente no pierden horas de trabajo paralelo.</p>
+<hr/>
+<h1 id="33-orden-de-prioridad-resumido">33. Orden de prioridad resumido</h1>
+<h3 id="primero-imprescindible">Primero — imprescindible</h3>
+<ol>
+<li>Consolidación de infracciones de todas las actas.</li>
+<li>Lookup normativo Categoría + Detalle.</li>
+<li>Dictamich como único Dictamen.</li>
+<li>Guardar Nº Dictamen y Estado Descargo.</li>
+<li>Dictamen corregido.</li>
+<li>Resolución corregida.</li>
+<li>URL exacta de actas.</li>
+<li>Firma y CBU.</li>
+</ol>
+<h3 id="despues-del-mvp">Después del MVP</h3>
+<ol start="9">
+<li>Auditoría completa de actas faltantes.</li>
+<li>PDF único Cédula + anexos.</li>
+<li>Limpieza de pantallas antiguas.</li>
+<li>Refactor de claves de infracciones.</li>
+<li>Limpieza del App Checker.</li>
+<li>Pantalla experimental <code>Flujo_Expediente_Detalle</code>.</li>
+</ol>
+<hr/>
+<h1 id="34-punto-de-partida-cuando-retomen">34. Punto de partida cuando retomen</h1>
+<p>El primer bloque que deben ejecutar es:</p>
+<p><strong>Persona 1</strong></p>
+<p><code>Base-Expedientes</code> → crear <code>N_Dictamen</code>, <code>Estado_Descargo</code> y <code>Tipo_Dictamen</code>.</p>
+<p>Después:</p>
+<p><code>Dictamich</code> → persistir esos tres datos.</p>
+<p>Después:</p>
+<p><code>Cargar Acta_Expdte (T)</code> → dejar de tomar únicamente la primera acta.</p>
+<p>Después:</p>
+<p><code>Navegador</code> → retirar el Dictamen con Descargo viejo.</p>
+<p>Con eso terminado y Power Apps cerrado, se entrega el turno a Persona 2 para modificar:</p>
+<ol>
+<li><code>Decreto Inicial + C. Notificación</code></li>
+<li><code>Dictamen_V2</code></li>
+<li><code>Resolución</code></li>
+</ol>
+<p>en ese orden.</p>
+<p>Ése es el camino más corto y con menos riesgo para llevar el estado actual de MOVILIS a un <strong>MVP documental consistente y comprobable</strong>.</p>
+
+    </article>
+    <div class="footer-note">Versión HTML generada íntegramente a partir del Markdown original.</div>
+  </main>
+</div>
+<button class="backtop" type="button" aria-label="Volver arriba" title="Volver arriba" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+<script>
+function toggleTOC() { document.getElementById('sidebar').classList.toggle('open'); }
+document.querySelectorAll('.toc-link').forEach(a => a.addEventListener('click', () => {
+  if (window.innerWidth <= 1050) document.getElementById('sidebar').classList.remove('open');
+}));
+// Keep checklist interactions local to this browser without altering source data.
+document.querySelectorAll('.task-checkbox').forEach((cb, idx) => {
+  const key = 'movilis-mvp-check-' + idx;
+  const saved = localStorage.getItem(key);
+  if (saved !== null) cb.checked = saved === '1';
+  cb.addEventListener('change', () => localStorage.setItem(key, cb.checked ? '1' : '0'));
+});
+</script>
+</body>
+</html>
