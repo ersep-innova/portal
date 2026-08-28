@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex">
+  <meta name="description" content="Registro interno de pedidos de provisión del Área Compras y Contrataciones del ERSeP.">
+  <title>Registro de pedidos · Compras</title>
+  <link rel="stylesheet" href="../../../assets/css/style.css">
+  <link rel="stylesheet" href="../../../assets/css/portal-pages.css">
+  <link rel="stylesheet" href="../../../assets/css/standalone.css">
+  <link rel="icon" href="../../../assets/img/favicon.ico">
+  <link href="../../../assets/css/institutional-theme.css" rel="stylesheet"/>
+<style>
+/* ══════════ Acceso ══════════ */
+.gate{max-width:430px;margin:0 auto;text-align:center;display:flex;flex-direction:column;gap:14px;align-items:center;padding:8px 0 4px;}
+.gate-ico{font-size:38px;line-height:1;}
+.gate h3{font:800 19px var(--font-main);color:var(--text);margin:0;}
+.gate p{font:400 13px var(--font-main);color:var(--text-muted);line-height:1.55;margin:0;}
+.gate-form{display:flex;gap:8px;width:100%;flex-wrap:wrap;}
+.gate-form input{flex:1 1 200px;min-width:0;padding:11px 13px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);font:600 14px var(--font-main);}
+.gate-error{font:700 12.5px var(--font-main);color:var(--accent-mid);}
+
+.cbtn{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:10px 15px;font:700 13px var(--font-main);cursor:pointer;transition:.18s ease;display:inline-flex;align-items:center;gap:7px;justify-content:center;}
+.cbtn:hover{border-color:var(--accent-mid);color:var(--accent-mid);}
+.cbtn.primary{background:var(--accent-mid);border-color:var(--accent-mid);color:#fff;}
+.cbtn.primary:hover{background:#a90000;color:#fff;}
+.cbtn.danger{color:var(--accent-mid);border-color:color-mix(in srgb,var(--accent-mid) 40%,var(--border));}
+
+/* ══════════ Panel ══════════ */
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px;}
+.stat{border:1px solid var(--border);border-radius:14px;padding:13px 15px;background:var(--card);display:flex;flex-direction:column;gap:4px;}
+.stat span{font:800 10px var(--font-main);letter-spacing:.9px;text-transform:uppercase;color:var(--text-muted);}
+.stat strong{font:900 22px var(--font-main);color:var(--text);letter-spacing:-.4px;}
+
+.tools-row{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:14px;}
+.tools-row input[type="search"],.tools-row select{padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);font:600 13px var(--font-main);}
+.tools-row input[type="search"]{flex:1 1 240px;min-width:0;}
+.tools-row .spacer{flex:1 1 auto;}
+
+.tabla-wrap{border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--card);}
+table.reg{width:100%;border-collapse:collapse;font:400 13px var(--font-main);}
+table.reg th{background:var(--bg-subtle);font:800 10.5px var(--font-main);text-transform:uppercase;letter-spacing:.7px;color:var(--text-muted);text-align:left;padding:11px 13px;border-bottom:1px solid var(--border);}
+table.reg td{padding:11px 13px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle;}
+table.reg tr:last-child td{border-bottom:none;}
+table.reg tbody tr:hover{background:var(--bg-subtle);}
+.estado-tag{display:inline-flex;align-items:center;gap:6px;font:800 10.5px var(--font-main);text-transform:uppercase;
+  letter-spacing:.4px;padding:4px 9px;border-radius:999px;color:#fff;background:var(--ec,#75828a);white-space:nowrap}
+.acciones .mini.aprobar{border-color:#0f4c8a;color:#0f4c8a}
+.acciones .mini.aprobar:hover{background:#0f4c8a;color:#fff}
+.acciones .mini.rechazar{border-color:#b51234;color:#b51234}
+.acciones .mini.rechazar:hover{background:#b51234;color:#fff}
+.acciones .mini.entregar{border-color:#0c6858;color:#0c6858}
+.acciones .mini.entregar:hover{background:#0c6858;color:#fff}
+.historial{margin-top:14px;border-top:1px dashed var(--border);padding-top:12px}
+.historial h4{margin:0 0 8px;font:800 11px var(--font-main);text-transform:uppercase;letter-spacing:.7px;color:var(--text-muted)}
+.historial ol{margin:0;padding-left:18px;font:400 12.5px var(--font-main);color:var(--text);line-height:1.7}
+.historial b{color:var(--text)}
+.historial small{color:var(--text-muted)}
+.num-pill{display:inline-flex;align-items:center;font:800 12px var(--font-main);color:#fff;background:var(--accent-mid);border-radius:999px;padding:4px 10px;}
+.tipo-tag{display:inline-flex;font:700 10.5px var(--font-main);text-transform:uppercase;letter-spacing:.5px;padding:3px 8px;border-radius:999px;background:var(--bg-subtle);color:var(--text-muted);}
+.mono{font-variant-numeric:tabular-nums;}
+.acciones{display:flex;gap:6px;justify-content:flex-end;}
+.mini{border:1px solid var(--border);background:var(--card);border-radius:8px;padding:5px 9px;font:700 11.5px var(--font-main);color:var(--text-muted);cursor:pointer;}
+.mini:hover{border-color:var(--accent-mid);color:var(--accent-mid);}
+
+.vacio{padding:34px 18px;text-align:center;color:var(--text-muted);font:600 13px var(--font-main);}
+
+/* Detalle */
+.detalle{margin-top:18px;border:1px solid var(--border);border-radius:14px;background:var(--card);padding:16px 18px;}
+.detalle h3{font:800 16px var(--font-main);margin:0 0 4px;color:var(--text);}
+.detalle .dt-meta{font:500 12.5px var(--font-main);color:var(--text-muted);margin-bottom:12px;line-height:1.6;}
+.detalle table{width:100%;border-collapse:collapse;font:400 12.5px var(--font-main);}
+.detalle th{text-align:left;font:800 10px var(--font-main);text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);padding:7px 9px;border-bottom:1px solid var(--border);}
+.detalle td{padding:7px 9px;border-bottom:1px solid var(--border);color:var(--text);}
+
+.nota-seguridad{margin-top:20px;padding:13px 15px;border:1px dashed color-mix(in srgb,var(--accent-mid) 40%,var(--border));border-radius:12px;font:400 12px var(--font-main);color:var(--text-muted);line-height:1.6;}
+.nota-seguridad strong{color:var(--text);}
+
+@media (max-width:900px){
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+
+@media (max-width:760px){
+  .registro-page .header-left{flex:1 1 auto;}
+  table.reg thead{display:none;}
+  table.reg,table.reg tbody,table.reg tr,table.reg td{display:block;width:100%;}
+  table.reg tr{border-bottom:1px solid var(--border);padding:10px 12px;}
+  table.reg tr:last-child{border-bottom:none;}
+  table.reg td{border:none;padding:4px 0;display:flex;gap:10px;align-items:center;}
+  table.reg td::before{content:attr(data-label);flex:0 0 84px;font:800 10px var(--font-main);text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);}
+  .acciones{justify-content:flex-start;}
+}
+
+@media print{
+  .header,.tool-hero,.tools-row,.acciones,.nota-seguridad,.no-print{display:none !important;}
+}
+</style>
+</head>
+
+<body class="tool-page registro-page area-institutional">
+<div class="wrap">
+
+  <header class="header">
+    <a class="page-brand" href="../../../" aria-label="Volver al portal"><img src="../../../assets/img/institucional/logo-ersep.png" alt="ERSeP"></a>
+    <div class="header-left">
+      <h1>Registro de pedidos</h1>
+      <span class="header-badge">Compras y Contrataciones · Acceso restringido</span>
+    </div>
+    <div class="header-right">
+      <a class="nav-chip" href="../"><span>←</span> Formulario</a>
+      <a class="nav-chip" href="../../../"><span>⌂</span> Menú</a>
+      <button class="theme-toggle" data-theme-toggle="" type="button">🌙</button>
+    </div>
+  </header>
+
+  <section class="tool-hero">
+    <div>
+      <div class="tool-kicker">Área Compras y Contrataciones</div>
+      <h2>Pedidos de provisión registrados</h2>
+      <p>Listado interno de todas las solicitudes cargadas desde el formulario del portal, con su número de pedido, área solicitante, ítems y monto estimado.</p>
+    </div>
+    <div class="hero-symbol official-hero-logo institutional" aria-hidden="true"><img src="../../../assets/img/institucional/logo-ersep.png" alt=""></div>
+  </section>
+
+  <!-- ══════ Acceso ══════ -->
+  <section class="card" id="gate_card">
+    <div class="card-body">
+      <div class="gate">
+        <div class="gate-ico">🔒</div>
+        <h3>Acceso al registro</h3>
+        <p>Esta sección es de uso interno del Área Compras y Contrataciones. Ingresá la contraseña para ver los pedidos registrados en este equipo.</p>
+        <div class="gate-form">
+          <input type="password" id="clave" placeholder="Contraseña" autocomplete="current-password">
+          <button class="cbtn primary" id="btn_entrar" type="button">Ingresar</button>
+        </div>
+        <div class="gate-error" id="gate_error" hidden>La contraseña no es correcta.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ Panel ══════ -->
+  <section class="card" id="panel_card" hidden>
+    <div class="card-body">
+
+      <div class="stats">
+        <div class="stat"><span>Pedidos</span><strong id="st_pedidos">0</strong></div>
+        <div class="stat"><span>Ítems</span><strong id="st_items">0</strong></div>
+        <div class="stat"><span>Monto estimado</span><strong id="st_total" class="mono">$ 0,00</strong></div>
+        <div class="stat"><span>Pendientes de analizar</span><strong id="st_analizar">0</strong></div>
+        <div class="stat"><span>Pendientes de entregar</span><strong id="st_entregar">0</strong></div>
+        <div class="stat"><span>Finalizados</span><strong id="st_finalizado">0</strong></div>
+      </div>
+
+      <div class="tools-row">
+        <input type="search" id="buscar" placeholder="Buscar por número, área, ítem u observación…">
+        <select id="filtro_etapa">
+          <option value="">Todas las etapas</option>
+          <option value="analizar">Pendiente de analizar</option>
+          <option value="entregar">Pendiente de entregar</option>
+          <option value="finalizado">Finalizados</option>
+        </select>
+        <select id="filtro_tipo">
+          <option value="">Todos los tipos</option>
+          <option value="Libre">Libre</option>
+          <option value="Librería">Librería</option>
+          <option value="Cafetería">Cafetería</option>
+        </select>
+        <select id="filtro_anio"><option value="">Todos los ejercicios</option></select>
+        <span class="spacer"></span>
+        <button class="cbtn" id="btn_csv" type="button">⬇ CSV</button>
+        <button class="cbtn" id="btn_backup" type="button">💾 Copia de seguridad</button>
+        <button class="cbtn" id="btn_importar" type="button">⬆ Importar</button>
+        <input type="file" id="file_importar" accept="application/json" hidden>
+      </div>
+
+      <div class="tabla-wrap">
+        <table class="reg">
+          <thead>
+            <tr>
+              <th>Pedido</th><th>Fecha</th><th>Área</th><th>Estado</th>
+              <th>Ítems</th><th>Monto estimado</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="tabla_body"></tbody>
+        </table>
+        <div class="vacio" id="vacio" hidden>Todavía no hay pedidos registrados en este equipo.</div>
+      </div>
+
+      <div class="detalle" id="detalle" hidden></div>
+
+      <div class="nota-seguridad">
+        <strong>Sobre este registro.</strong> Los pedidos no se eliminan: cambian de etapa (pendiente de analizar → aprobado o rechazado → entregado) y cada movimiento queda asentado con fecha y observación en el historial del pedido. Los datos se guardan en el navegador de este equipo, no en un servidor: no se comparten con otras computadoras ni con otros navegadores, y se pierden si se borran los datos de navegación. Para consolidar la información de varias máquinas usá <em>Copia de seguridad</em> e <em>Importar</em>. La contraseña evita el acceso casual, pero no es un control de seguridad real: cualquiera que abra el código de la página puede verla. Si necesitan un registro único y compartido para toda el Área, hace falta una base de datos o una planilla en línea.
+      </div>
+
+    </div>
+  </section>
+
+</div>
+
+<script defer src="../../../assets/js/theme.js"></script>
+<script src="../compras-store.js"></script>
+<script>
+(function () {
+  var CLAVE = 'Compras-2027';
+  var KEY_SESION = 'ersep.compras.acceso';
+
+  var gateCard = document.getElementById('gate_card');
+  var panelCard = document.getElementById('panel_card');
+  var claveInput = document.getElementById('clave');
+  var gateError = document.getElementById('gate_error');
+  var tablaBody = document.getElementById('tabla_body');
+  var vacioEl = document.getElementById('vacio');
+  var detalleEl = document.getElementById('detalle');
+
+  var fmt = new Intl.NumberFormat('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  var seleccionado = null;
+
+  function pesos(n) { return '$ ' + fmt.format(Number(n) || 0); }
+
+  function fechaCorta(iso) {
+    if (!iso) return '—';
+    var p = String(iso).slice(0, 10).split('-');
+    return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : iso;
+  }
+
+  function escapar(t) {
+    return String(t == null ? '' : t)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  /* ═════ Acceso ═════ */
+  function desbloquear() {
+    gateCard.hidden = true;
+    panelCard.hidden = false;
+    cargarFiltroAnios();
+    render();
+  }
+
+  function intentar() {
+    if (claveInput.value === CLAVE) {
+      try { sessionStorage.setItem(KEY_SESION, '1'); } catch (e) {}
+      gateError.hidden = true;
+      claveInput.value = '';
+      desbloquear();
+    } else {
+      gateError.hidden = false;
+      claveInput.select();
+    }
+  }
+
+  document.getElementById('btn_entrar').addEventListener('click', intentar);
+  claveInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') intentar(); });
+
+  try {
+    if (sessionStorage.getItem(KEY_SESION) === '1') desbloquear();
+  } catch (e) {}
+
+  /* ═════ Listado ═════ */
+  function pedidosFiltrados() {
+    var texto = document.getElementById('buscar').value.trim().toLowerCase();
+    var tipo = document.getElementById('filtro_tipo').value;
+    var anio = document.getElementById('filtro_anio').value;
+    var etapa = document.getElementById('filtro_etapa').value;
+
+    return window.ComprasStore.pedidos().filter(function (p) {
+      if (etapa && p.etapa !== etapa) return false;
+      if (tipo && p.tipo !== tipo) return false;
+      if (anio && String(p.anio) !== anio) return false;
+      if (!texto) return true;
+      var bolsa = [p.numeroTexto, p.area, p.observaciones, p.numerado, p.codigo, p.partida,
+        window.ComprasStore.ESTADOS[p.estado].nombre]
+        .concat((p.items || []).map(function (i) { return i.descripcion; }))
+        .join(' ').toLowerCase();
+      return bolsa.indexOf(texto) !== -1;
+    }).sort(function (a, b) { return String(b.registrado).localeCompare(String(a.registrado)); });
+  }
+
+  function cargarFiltroAnios() {
+    var sel = document.getElementById('filtro_anio');
+    var anios = {};
+    window.ComprasStore.pedidos().forEach(function (p) { anios[p.anio] = true; });
+    var actual = sel.value;
+    sel.innerHTML = '<option value="">Todos los ejercicios</option>' +
+      Object.keys(anios).sort().reverse().map(function (a) {
+        return '<option value="' + a + '">Ejercicio ' + a + '</option>';
+      }).join('');
+    sel.value = actual;
+  }
+
+  function render() {
+    var lista = pedidosFiltrados();
+    var todos = window.ComprasStore.pedidos();
+
+    document.getElementById('st_pedidos').textContent = todos.length;
+    document.getElementById('st_items').textContent = todos.reduce(function (a, p) { return a + (p.items || []).length; }, 0);
+    document.getElementById('st_total').textContent = pesos(todos.reduce(function (a, p) { return a + (Number(p.total) || 0); }, 0));
+    ['analizar', 'entregar', 'finalizado'].forEach(function (e) {
+      document.getElementById('st_' + e).textContent =
+        todos.filter(function (p) { return p.etapa === e; }).length;
+    });
+
+    vacioEl.hidden = lista.length > 0;
+    vacioEl.textContent = todos.length
+      ? 'Ningún pedido coincide con la búsqueda.'
+      : 'Todavía no hay pedidos registrados en este equipo.';
+
+    tablaBody.innerHTML = lista.map(function (p) {
+      var est = window.ComprasStore.ESTADOS[p.estado];
+      var acciones = '<button class="mini" data-ver="' + p.id + '" type="button">Ver</button>';
+
+      if (p.estado === 'pendiente') {
+        acciones += '<button class="mini aprobar" data-estado="aprobado" data-id="' + p.id + '" type="button">Aprobar</button>' +
+                    '<button class="mini rechazar" data-estado="rechazado" data-id="' + p.id + '" type="button">Rechazar</button>';
+      } else if (p.estado === 'aprobado') {
+        acciones += '<button class="mini entregar" data-estado="entregado" data-id="' + p.id + '" type="button">Marcar entregado</button>' +
+                    '<button class="mini rechazar" data-estado="rechazado" data-id="' + p.id + '" type="button">Rechazar</button>';
+      } else {
+        acciones += '<button class="mini" data-estado="pendiente" data-id="' + p.id + '" type="button">Reabrir</button>';
+      }
+
+      return '<tr>' +
+        '<td data-label="Pedido"><span class="num-pill">' + escapar(p.numeroTexto) + '</span></td>' +
+        '<td data-label="Fecha" class="mono">' + fechaCorta(p.fecha) + '</td>' +
+        '<td data-label="Área">' + escapar(p.area || '—') +
+          '<br><span class="tipo-tag">' + escapar(p.tipo || 'Libre') + '</span></td>' +
+        '<td data-label="Estado"><span class="estado-tag" style="--ec:' + est.color + '">' + escapar(est.nombre) + '</span></td>' +
+        '<td data-label="Ítems" class="mono">' + (p.items || []).length + '</td>' +
+        '<td data-label="Monto" class="mono">' + pesos(p.total) + '</td>' +
+        '<td><div class="acciones">' + acciones + '</div></td>' +
+      '</tr>';
+    }).join('');
+
+    if (seleccionado && !lista.some(function (p) { return p.id === seleccionado; })) {
+      detalleEl.hidden = true;
+      seleccionado = null;
+    }
+  }
+
+  function verDetalle(id) {
+    var p = window.ComprasStore.pedidos().filter(function (x) { return x.id === id; })[0];
+    if (!p) return;
+    seleccionado = id;
+
+    var filas = (p.items || []).map(function (it, i) {
+      return '<tr><td class="mono">' + (i + 1) + '</td><td>' + escapar(it.descripcion) + '</td>' +
+        '<td class="mono">' + escapar(it.cantidad || '—') + '</td>' +
+        '<td class="mono">' + pesos(it.precio) + '</td></tr>';
+    }).join('');
+
+    var est = window.ComprasStore.ESTADOS[p.estado];
+    var pasos = (p.historial || []).map(function (h) {
+      var e = window.ComprasStore.ESTADOS[h.estado] || { nombre: h.estado, color: '#75828a' };
+      return '<li><b style="color:' + e.color + '">' + escapar(e.nombre) + '</b> — ' +
+        new Date(h.fecha).toLocaleString('es-AR') +
+        (h.nota ? '<br><small>' + escapar(h.nota) + '</small>' : '') + '</li>';
+    }).join('');
+
+    detalleEl.innerHTML =
+      '<h3>Pedido N° ' + escapar(p.numeroTexto) +
+        ' <span class="estado-tag" style="--ec:' + est.color + '">' + escapar(est.nombre) + '</span></h3>' +
+      '<div class="dt-meta">' +
+        'Fecha: ' + fechaCorta(p.fecha) + ' · Área: ' + escapar(p.area || '—') +
+        ' · Tipo: ' + escapar(p.tipo || 'Libre') + ' · Numerado: ' + escapar(p.numerado || '—') + '<br>' +
+        'Afectación: ' + escapar(p.afectacion || '—') + ' · Partida: ' + escapar(p.partida || '—') +
+        ' · Código: ' + escapar(p.codigo || '—') + '<br>' +
+        (p.observaciones ? 'Observaciones: ' + escapar(p.observaciones) + '<br>' : '') +
+        'Registrado: ' + new Date(p.registrado).toLocaleString('es-AR') +
+      '</div>' +
+      '<table><thead><tr><th>#</th><th>Descripción</th><th>Cantidad</th><th>Precio estimado</th></tr></thead>' +
+      '<tbody>' + (filas || '<tr><td colspan="4">Sin ítems.</td></tr>') + '</tbody></table>' +
+      '<div class="historial"><h4>Historial del trámite</h4><ol>' + pasos + '</ol></div>';
+    detalleEl.hidden = false;
+    detalleEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  tablaBody.addEventListener('click', function (e) {
+    var ver = e.target.closest('[data-ver]');
+    if (ver) { verDetalle(ver.getAttribute('data-ver')); return; }
+
+    var acc = e.target.closest('[data-estado]');
+    if (acc) {
+      var estado = acc.getAttribute('data-estado');
+      var id = acc.getAttribute('data-id');
+      var nombre = window.ComprasStore.ESTADOS[estado].nombre;
+
+      var nota = prompt('Pasar el pedido a “' + nombre + '”.\n\nObservación (opcional): quién autoriza, número de orden, motivo del rechazo…', '');
+      if (nota === null) return;
+
+      var res = window.ComprasStore.cambiarEstado(id, estado, nota);
+      if (!res.ok) { alert(res.mensaje || 'No se pudo guardar el cambio.'); return; }
+
+      render();
+      if (seleccionado === id) verDetalle(id);
+    }
+  });
+
+  ['buscar', 'filtro_tipo', 'filtro_anio', 'filtro_etapa'].forEach(function (id) {
+    document.getElementById(id).addEventListener('input', render);
+    document.getElementById(id).addEventListener('change', render);
+  });
+
+  /* ═════ Exportar / importar ═════ */
+  function descargar(nombre, contenido, tipo) {
+    var blob = new Blob([contenido], { type: tipo });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = nombre;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  document.getElementById('btn_csv').addEventListener('click', function () {
+    var filas = [['Pedido', 'Fecha', 'Area', 'Tipo', 'Estado', 'Etapa', 'Ultima actualizacion',
+                  'Orden', 'Descripcion', 'Cantidad', 'Precio estimado', 'Observaciones']];
+    pedidosFiltrados().forEach(function (p) {
+      var est = window.ComprasStore.ESTADOS[p.estado];
+      var ult = (p.historial || [])[(p.historial || []).length - 1];
+      (p.items || []).forEach(function (it) {
+        filas.push([p.numeroTexto, fechaCorta(p.fecha), p.area, p.tipo, est.nombre,
+          window.ComprasStore.ETAPAS[p.etapa], ult ? new Date(ult.fecha).toLocaleString('es-AR') : '',
+          it.orden, it.descripcion, it.cantidad, String(it.precio || 0).replace('.', ','), p.observaciones]);
+      });
+    });
+    var csv = filas.map(function (f) {
+      return f.map(function (c) { return '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"'; }).join(';');
+    }).join('\r\n');
+    descargar('pedidos-compras-ersep.csv', '\ufeff' + csv, 'text/csv;charset=utf-8');
+  });
+
+  document.getElementById('btn_backup').addEventListener('click', function () {
+    descargar('respaldo-compras-ersep.json', JSON.stringify(window.ComprasStore.exportar(), null, 2), 'application/json');
+  });
+
+  var fileInput = document.getElementById('file_importar');
+  document.getElementById('btn_importar').addEventListener('click', function () { fileInput.click(); });
+  fileInput.addEventListener('change', function () {
+    var f = fileInput.files && fileInput.files[0];
+    if (!f) return;
+    var lector = new FileReader();
+    lector.onload = function () {
+      try {
+        var res = window.ComprasStore.importar(JSON.parse(lector.result));
+        alert(res.mensaje);
+        cargarFiltroAnios();
+        render();
+      } catch (err) {
+        alert('No se pudo leer el archivo: no parece una copia de seguridad válida.');
+      }
+      fileInput.value = '';
+    };
+    lector.readAsText(f);
+  });
+})();
+</script>
+</body>
+</html>
