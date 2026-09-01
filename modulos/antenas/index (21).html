@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Mapa del relevamiento de antenas de telefonía móvil de la Provincia de Córdoba: PERSONAL, CLARO y MOVISTAR, por departamento y zona.">
+  <title>Mapa de antenas · Portal de Innovación y Análisis de Datos</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+  <link rel="stylesheet" href="../../assets/css/style.css">
+  <link rel="stylesheet" href="../../assets/css/portal-pages.css">
+  <link rel="stylesheet" href="../../assets/css/standalone.css">
+  <link rel="icon" href="../../assets/img/favicon.ico">
+  <link href="../../assets/css/institutional-theme.css" rel="stylesheet"/>
+<style>
+:root{
+  --personal:#0b63b5; --claro:#d52b1e; --movistar:#00a2c7; --telecom:#7a3fa5; --otra:#5b6770;
+}
+
+/* ── Filtros ── */
+.filtros{display:flex;flex-direction:column;gap:14px;margin-bottom:16px;}
+.filtro-fila{display:flex;gap:9px;flex-wrap:wrap;align-items:center;}
+.filtro-label{font:800 10px var(--font-main);letter-spacing:.9px;text-transform:uppercase;color:var(--text-muted);margin-right:2px;}
+
+.chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);background:var(--card);color:var(--text);
+  border-radius:999px;padding:8px 14px;font:800 12.5px var(--font-main);cursor:pointer;transition:.16s ease;}
+.chip:hover{transform:translateY(-1px);}
+.chip .punto{width:10px;height:10px;border-radius:50%;background:var(--c);}
+.chip .cuenta{font-weight:700;color:var(--text-muted);font-size:11px;}
+.chip.on{background:var(--c);border-color:var(--c);color:#fff;box-shadow:0 4px 12px color-mix(in srgb,var(--c) 30%,transparent);}
+.chip.on .punto{background:#fff;}
+.chip.on .cuenta{color:rgba(255,255,255,.85);}
+
+.filtros select,.filtros input[type="search"]{padding:9px 12px;border:1px solid var(--border);border-radius:10px;
+  background:var(--card);color:var(--text);font:600 12.5px var(--font-main);max-width:100%;}
+.filtros input[type="search"]{flex:1 1 260px;min-width:0;}
+.btn-lim{border:1px solid var(--border);background:var(--card);color:var(--text-muted);border-radius:10px;
+  padding:9px 13px;font:700 12.5px var(--font-main);cursor:pointer;}
+.btn-lim:hover{border-color:var(--accent-mid);color:var(--accent-mid);}
+
+/* ── KPIs ── */
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px;}
+.kpi{border:1px solid var(--border);border-radius:14px;padding:12px 15px;background:var(--card);display:flex;flex-direction:column;gap:3px;}
+.kpi span{font:800 10px var(--font-main);letter-spacing:.9px;text-transform:uppercase;color:var(--text-muted);}
+.kpi strong{font:900 22px var(--font-main);color:var(--text);letter-spacing:-.4px;}
+
+/* ── Mapa + listado ── */
+.mapa-layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:16px;align-items:start;}
+#mapa{height:610px;border:1px solid var(--border);border-radius:16px;z-index:1;}
+.panel-lista{border:1px solid var(--border);border-radius:16px;background:var(--card);overflow:hidden;display:flex;flex-direction:column;height:610px;}
+.panel-lista header{padding:11px 14px;border-bottom:1px solid var(--border);background:var(--bg-subtle);}
+.panel-lista header h3{margin:0;font:800 12px var(--font-main);color:var(--text);}
+.panel-lista header p{margin:2px 0 0;font:500 11px var(--font-main);color:var(--text-muted);}
+.lista{overflow:auto;padding:7px;flex:1;}
+.item{padding:9px 11px;border-radius:10px;border:1px solid transparent;cursor:pointer;margin-bottom:4px;}
+.item:hover{background:var(--bg-subtle);}
+.item.activo{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent-mid) 35%,transparent);}
+.item b{display:flex;align-items:center;gap:7px;font:800 12.5px var(--font-main);color:var(--text);}
+.item b i{width:9px;height:9px;border-radius:50%;background:var(--c);flex:0 0 9px;}
+.item span{display:block;font:400 11px var(--font-main);color:var(--text-muted);margin-top:3px;line-height:1.45;}
+.vacio-lista{padding:26px 16px;text-align:center;font:600 12px var(--font-main);color:var(--text-muted);}
+
+.leyenda{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font:600 11.5px var(--font-main);color:var(--text-muted);}
+.leyenda i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;}
+
+/* ── Popup ── */
+.pop b{display:block;font:800 13px var(--font-main);margin-bottom:2px;}
+.pop small{display:block;font:400 11.5px var(--font-main);color:#5a666f;line-height:1.5;}
+.pop .tag{display:inline-block;margin-top:6px;padding:3px 8px;border-radius:999px;background:#eef1f3;color:#3f4b53;font:700 10.5px var(--font-main);}
+.pop a{display:inline-block;margin-top:7px;font:700 11.5px var(--font-main);color:#b51234;}
+
+.nota{margin-top:18px;padding:13px 15px;border:1px dashed var(--border);border-radius:12px;
+  font:400 12px var(--font-main);color:var(--text-muted);line-height:1.6;}
+.nota strong{color:var(--text);}
+
+@media (max-width:1024px){
+  .mapa-layout{grid-template-columns:1fr;}
+  #mapa{height:440px;}
+  .panel-lista{height:400px;}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media (max-width:760px){
+  .antenas-page .header-left{flex:1 1 auto;}
+  .chip{padding:9px 12px;font-size:12px;}
+  .filtros select{flex:1 1 100%;}
+}
+</style>
+</head>
+
+<body class="tool-page antenas-page area-antennas">
+<div class="wrap">
+
+  <header class="header">
+    <a class="page-brand" href="../../" aria-label="Volver al portal"><img src="../../assets/img/institucional/logo-ersep.png" alt="ERSeP"></a>
+    <div class="header-left">
+      <h1>Mapa de antenas</h1>
+      <span class="header-badge">Telefonía móvil · Relevamiento provincial</span>
+    </div>
+    <div class="header-right">
+      <a class="nav-chip" href="../../"><span>⌂</span> Menú</a>
+      <button class="theme-toggle" data-theme-toggle="" type="button">🌙</button>
+    </div>
+  </header>
+
+  <section class="tool-hero">
+    <div>
+      <div class="tool-kicker">Antenas y telecomunicaciones</div>
+      <h2>Relevamiento de antenas de telefonía móvil</h2>
+      <p>Ubicación de las estructuras relevadas en la Provincia de Córdoba, con filtro por operador, departamento y zona de control. Tocá un punto del mapa o del listado para ver el detalle.</p>
+    </div>
+    <div class="hero-symbol official-hero-logo institutional" aria-hidden="true"><img src="../../assets/img/institucional/logo-ersep.png" alt=""></div>
+  </section>
+
+  <section class="card">
+    <div class="card-body">
+
+      <div class="filtros">
+        <div class="filtro-fila" id="chips_empresa"></div>
+        <div class="filtro-fila">
+          <input type="search" id="buscar" placeholder="Buscar por código, N° de control o dirección…">
+          <input type="text" id="f_departamento" list="lista_deptos" placeholder="Departamento (escribí para filtrar)" autocomplete="off">
+          <datalist id="lista_deptos"></datalist>
+          <select id="f_zona"><option value="">Todas las zonas</option></select>
+          <button class="btn-lim" id="btn_limpiar" type="button">Limpiar filtros</button>
+          <button class="btn-lim" id="btn_csv" type="button">⬇ CSV</button>
+        </div>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><span>Antenas visibles</span><strong id="k_total">0</strong></div>
+        <div class="kpi"><span>Departamentos</span><strong id="k_loc">0</strong></div>
+        <div class="kpi"><span>Zonas</span><strong id="k_zonas">0</strong></div>
+        <div class="kpi"><span>Sin coordenadas válidas</span><strong id="k_sin">0</strong></div>
+      </div>
+
+      <div class="mapa-layout">
+        <div id="mapa"></div>
+        <aside class="panel-lista">
+          <header>
+            <h3>Listado</h3>
+            <p id="lista_sub">—</p>
+          </header>
+          <div class="lista" id="lista"></div>
+        </aside>
+      </div>
+
+      <div class="leyenda" id="leyenda"></div>
+
+      <p class="nota"><strong>Sobre los datos.</strong> El relevamiento incluye <span id="n_registros">—</span> estructuras de PERSONAL, CLARO y MOVISTAR, con su código identificador, número de control, departamento y zona asignada. Los registros sin coordenadas válidas quedan fuera del mapa pero se listan igual. Fuente: planilla UNIFICADO del Área de Antenas.</p>
+
+    </div>
+  </section>
+
+</div>
+
+<script defer src="../../assets/js/theme.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="datos-antenas.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var COLORES = {
+    PERSONAL: '#0b63b5', CLARO: '#d52b1e', MOVISTAR: '#00a2c7', TELECOM: '#7a3fa5'
+  };
+  var COLOR_OTRA = '#5b6770';
+
+  function color(empresa) { return COLORES[empresa] || COLOR_OTRA; }
+
+  function aCoord(txt) {
+    var n = parseFloat(String(txt || '').replace(',', '.'));
+    return isFinite(n) ? n : null;
+  }
+
+  /* ═════ Parseo del dataset ═════ */
+  var ANTENAS = String(window.ANTENAS_DATOS || '').split('\n')
+    .map(function (l) { return l.trim(); })
+    .filter(Boolean)
+    .map(function (linea, i) {
+      var p = linea.split('|');
+      var lat = aCoord(p[5]), lon = aCoord(p[6]);
+      var coordOk = lat !== null && lon !== null && lat < -29 && lat > -36 && lon < -61 && lon > -67;
+      return {
+        i: i,
+        empresa: (p[0] || '').trim(),
+        id: (p[1] || '').trim(),
+        control: (p[2] || '').trim(),
+        direccion: (p[3] || '').trim(),
+        departamento: (p[4] || '').trim() || '(sin departamento)',
+        lat: lat, lon: lon, coordOk: coordOk,
+        zona: (p[7] || '').trim() || '(sin zona)'
+      };
+    });
+
+  var EMPRESAS = [];
+  ANTENAS.forEach(function (a) { if (EMPRESAS.indexOf(a.empresa) === -1) EMPRESAS.push(a.empresa); });
+  EMPRESAS.sort();
+
+  var activas = {};
+  EMPRESAS.forEach(function (e) { activas[e] = true; });
+
+  /* ═════ Mapa ═════ */
+  var mapa = L.map('mapa', { scrollWheelZoom: true }).setView([-31.7, -63.9], 7);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19
+  }).addTo(mapa);
+
+  var grupo = L.markerClusterGroup({
+    maxClusterRadius: 45,
+    spiderfyOnMaxZoom: true,
+    chunkedLoading: true
+  });
+  mapa.addLayer(grupo);
+
+  var marcadores = {};
+
+  function popup(a) {
+    return '<div class="pop">' +
+      '<b>' + esc(a.empresa) + ' · ' + esc(a.id || 'sin código') + '</b>' +
+      '<small>' + esc(a.direccion) + '<br>Depto. ' + esc(a.departamento) + '</small>' +
+      '<span class="tag">Zona ' + esc(a.zona) + '</span>' +
+      (a.control ? ' <span class="tag">Control N° ' + esc(a.control) + '</span>' : '') +
+      '</div>';
+  }
+
+  function esc(t) {
+    return String(t == null ? '' : t)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  /* ═════ Filtros ═════ */
+  function filtradas() {
+    var texto = document.getElementById('buscar').value.trim().toLowerCase();
+    var dep = document.getElementById('f_departamento').value.trim().toLowerCase();
+    var zona = document.getElementById('f_zona').value;
+
+    return ANTENAS.filter(function (a) {
+      if (!activas[a.empresa]) return false;
+      if (zona && a.zona !== zona) return false;
+      if (dep && a.departamento.toLowerCase().indexOf(dep) === -1) return false;
+      if (!texto) return true;
+      return (a.id + ' ' + a.control + ' ' + a.direccion + ' ' + a.departamento + ' ' + a.zona + ' ' + a.empresa)
+        .toLowerCase().indexOf(texto) !== -1;
+    });
+  }
+
+  function pintar() {
+    var lista = filtradas();
+
+    grupo.clearLayers();
+    marcadores = {};
+    var capas = [];
+    lista.forEach(function (a) {
+      if (!a.coordOk) return;
+      var m = L.circleMarker([a.lat, a.lon], {
+        radius: 6, color: '#fff', weight: 1.5, fillColor: color(a.empresa), fillOpacity: .92
+      }).bindPopup(popup(a));
+      marcadores[a.i] = m;
+      capas.push(m);
+    });
+    grupo.addLayers(capas);
+
+    // KPIs
+    var deps = {}, zonas = {};
+    lista.forEach(function (a) { deps[a.departamento] = 1; zonas[a.zona] = 1; });
+    document.getElementById('k_total').textContent = lista.length;
+    document.getElementById('k_loc').textContent = Object.keys(deps).length;
+    document.getElementById('k_zonas').textContent = Object.keys(zonas).length;
+    document.getElementById('k_sin').textContent = lista.filter(function (a) { return !a.coordOk; }).length;
+
+    // Conteo por empresa en los chips
+    EMPRESAS.forEach(function (e) {
+      var n = lista.filter(function (a) { return a.empresa === e; }).length;
+      var el = document.querySelector('.chip[data-empresa="' + e + '"] .cuenta');
+      if (el) el.textContent = n;
+    });
+
+    // Listado (se muestran los primeros 300 para no trabar el scroll)
+    var tope = lista.slice(0, 300);
+    document.getElementById('lista_sub').textContent = lista.length
+      ? (lista.length > 300 ? 'Mostrando 300 de ' + lista.length + ' antenas' : lista.length + ' antena(s)')
+      : 'Sin resultados';
+
+    document.getElementById('lista').innerHTML = lista.length
+      ? tope.map(function (a) {
+          return '<div class="item" data-i="' + a.i + '" style="--c:' + color(a.empresa) + '">' +
+            '<b><i></i>' + esc(a.empresa) + ' · ' + esc(a.id || 'sin código') + '</b>' +
+            '<span>' + esc(a.direccion) + '<br>Depto. ' + esc(a.departamento) + ' · Zona ' + esc(a.zona) +
+            (a.coordOk ? '' : '<br>⚠ Sin coordenadas válidas') + '</span></div>';
+        }).join('')
+      : '<div class="vacio-lista">Ninguna antena coincide con los filtros aplicados.</div>';
+  }
+
+  /* ═════ Interfaz ═════ */
+  function chips() {
+    document.getElementById('chips_empresa').innerHTML =
+      '<span class="filtro-label">Empresa</span>' +
+      EMPRESAS.map(function (e) {
+        return '<button class="chip on" type="button" data-empresa="' + e + '" style="--c:' + color(e) + '">' +
+          '<span class="punto"></span>' + esc(e) + ' <span class="cuenta">0</span></button>';
+      }).join('') +
+      '<button class="btn-lim" type="button" id="chip_todas">Todas</button>';
+
+    document.getElementById('chips_empresa').addEventListener('click', function (ev) {
+      var chip = ev.target.closest('.chip');
+      if (chip) {
+        var e = chip.getAttribute('data-empresa');
+        activas[e] = !activas[e];
+        chip.classList.toggle('on', activas[e]);
+        pintar();
+        return;
+      }
+      if (ev.target.id === 'chip_todas') {
+        EMPRESAS.forEach(function (e) { activas[e] = true; });
+        document.querySelectorAll('.chip').forEach(function (c) { c.classList.add('on'); });
+        pintar();
+      }
+    });
+
+    document.getElementById('leyenda').innerHTML = EMPRESAS.map(function (e) {
+      return '<span><i style="background:' + color(e) + '"></i>' + esc(e) + '</span>';
+    }).join('') + '<span><i style="background:#c9d1d6"></i>Los círculos agrupan antenas cercanas; acercá el zoom para separarlas</span>';
+  }
+
+  function opciones(id, valores, etiqueta) {
+    var sel = document.getElementById(id);
+    sel.innerHTML = '<option value="">' + etiqueta + '</option>' +
+      valores.map(function (v) { return '<option value="' + esc(v) + '">' + esc(v) + '</option>'; }).join('');
+  }
+
+  function inicializar() {
+    chips();
+
+    var deps = [], zonas = [];
+    ANTENAS.forEach(function (a) {
+      if (a.departamento && deps.indexOf(a.departamento) === -1) deps.push(a.departamento);
+      if (a.zona && zonas.indexOf(a.zona) === -1) zonas.push(a.zona);
+    });
+    deps.sort(function (a, b) { return a.localeCompare(b, 'es'); });
+    zonas.sort();
+    document.getElementById('lista_deptos').innerHTML =
+      deps.map(function (d) { return '<option value="' + esc(d) + '"></option>'; }).join('');
+    opciones('f_zona', zonas, 'Todas las zonas');
+
+    document.getElementById('n_registros').textContent = ANTENAS.length;
+
+    ['buscar', 'f_departamento', 'f_zona'].forEach(function (id) {
+      var el = document.getElementById(id);
+      el.addEventListener('input', pintar);
+      el.addEventListener('change', pintar);
+    });
+
+    document.getElementById('btn_limpiar').addEventListener('click', function () {
+      document.getElementById('buscar').value = '';
+      ['f_departamento', 'f_zona'].forEach(function (id) { document.getElementById(id).value = ''; });
+      EMPRESAS.forEach(function (e) { activas[e] = true; });
+      document.querySelectorAll('.chip').forEach(function (c) { c.classList.add('on'); });
+      pintar();
+      mapa.setView([-31.7, -63.9], 7);
+    });
+
+    document.getElementById('btn_csv').addEventListener('click', function () {
+      var filas = [['Operador', 'Codigo', 'N Control', 'Direccion', 'Departamento', 'Latitud', 'Longitud', 'Zona']];
+      filtradas().forEach(function (a) {
+        filas.push([a.empresa, a.id, a.control, a.direccion, a.departamento, a.lat, a.lon, a.zona]);
+      });
+      var csv = filas.map(function (f) {
+        return f.map(function (c) { return '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"'; }).join(';');
+      }).join('\r\n');
+      var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = 'antenas-ersep.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    });
+
+    document.getElementById('lista').addEventListener('click', function (ev) {
+      var item = ev.target.closest('.item');
+      if (!item) return;
+      document.querySelectorAll('.item.activo').forEach(function (x) { x.classList.remove('activo'); });
+      item.classList.add('activo');
+      var m = marcadores[item.getAttribute('data-i')];
+      if (!m) return;
+      // Se abre un popup propio: el marcador puede estar dentro de un clúster
+      mapa.setView(m.getLatLng(), 17);
+      window.setTimeout(function () {
+        L.popup({ autoPan: true }).setLatLng(m.getLatLng()).setContent(m.getPopup().getContent()).openOn(mapa);
+      }, 320);
+    });
+
+    pintar();
+  }
+
+  if (window.ANTENAS_DATOS) {
+    inicializar();
+  } else {
+    document.getElementById('lista').innerHTML =
+      '<div class="vacio-lista">No se pudo cargar el archivo de datos (datos-antenas.js).</div>';
+  }
+})();
+</script>
+</body>
+</html>
