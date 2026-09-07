@@ -113,6 +113,9 @@
           <button class="btn-primary" id="fitBtn" type="button">Ver selección</button>
           <button class="btn-secondary" id="clearBtn" type="button">Limpiar</button>
         </div>
+        <div style="margin-top:8px">
+          <button class="btn-secondary" id="clusterBtn" type="button" style="width:100%">Desagrupar puntos</button>
+        </div>
         <div class="visible-note" id="visibleNote">Mostrando 66 centros georreferenciados.</div>
       </section>
 
@@ -155,6 +158,8 @@
       spiderfyOnMaxZoom:true,
       maxClusterRadius:45
     });
+    const plainLayer = L.layerGroup();
+    let clusteringEnabled = true;
     map.addLayer(clusters);
 
     const markerByName = new Map();
@@ -228,7 +233,11 @@
       marker.bindPopup(popupHtml(x));
       marker.on('click', () => showDetail(x));
       markerByName.set(x.institucion, marker);
-      clusters.addLayer(marker);
+      if (clusteringEnabled) {
+        clusters.addLayer(marker);
+      } else {
+        plainLayer.addLayer(marker);
+      }
     }
 
     function renderList(items) {
@@ -242,11 +251,17 @@
         btn.addEventListener('click',()=>{
           const m=markerByName.get(x.institucion);
           if(m){
-            clusters.zoomToShowLayer(m,()=>{
+            if (clusteringEnabled) {
+              clusters.zoomToShowLayer(m,()=>{
+                map.setView(m.getLatLng(), Math.max(map.getZoom(),14));
+                m.openPopup();
+                showDetail(x);
+              });
+            } else {
               map.setView(m.getLatLng(), Math.max(map.getZoom(),14));
               m.openPopup();
               showDetail(x);
-            });
+            }
           }
         });
         listEl.appendChild(btn);
@@ -275,8 +290,17 @@
       });
 
       clusters.clearLayers();
+      plainLayer.clearLayers();
       markerByName.clear();
       filtered.forEach(addMarker);
+
+      if (clusteringEnabled) {
+        if (!map.hasLayer(clusters)) map.addLayer(clusters);
+        if (map.hasLayer(plainLayer)) map.removeLayer(plainLayer);
+      } else {
+        if (!map.hasLayer(plainLayer)) map.addLayer(plainLayer);
+        if (map.hasLayer(clusters)) map.removeLayer(clusters);
+      }
       renderList(filtered);
       statVisible.textContent=filtered.length;
       visibleNote.textContent=`Mostrando ${filtered.length} centro${filtered.length===1?'':'s'} georreferenciado${filtered.length===1?'':'s'}.`;
@@ -313,7 +337,29 @@
       document.querySelector('.sidebar .section').appendChild(warning);
     }
 
+
+    const clusterBtn = document.getElementById('clusterBtn');
+    clusterBtn.addEventListener('click', () => {
+      clusteringEnabled = !clusteringEnabled;
+
+      clusters.clearLayers();
+      plainLayer.clearLayers();
+      markerByName.clear();
+      filtered.forEach(addMarker);
+
+      if (clusteringEnabled) {
+        if (map.hasLayer(plainLayer)) map.removeLayer(plainLayer);
+        if (!map.hasLayer(clusters)) map.addLayer(clusters);
+        clusterBtn.textContent = 'Desagrupar puntos';
+      } else {
+        if (map.hasLayer(clusters)) map.removeLayer(clusters);
+        if (!map.hasLayer(plainLayer)) map.addLayer(plainLayer);
+        clusterBtn.textContent = 'Agrupar puntos';
+      }
+    });
+
     window.addEventListener('resize',()=>map.invalidateSize());
   </script>
 </body>
 </html>
+
