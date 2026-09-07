@@ -1,7 +1,7 @@
-<!-- Versión 5: fecha actual por fotografía y logo PNG en PDF -->
+<!-- Versión 7: coordenadas clickeables, hoja de datos geográficos y mapa KML -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Generador de Acta de Estado de Corredor</title>
+<title>Vial y Edilicia · Portal de Innovación y Análisis de Datos</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.1/tesseract.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -29,9 +29,12 @@
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px}
   .grid .full{grid-column:1/-1}
   label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:0 0 5px;text-transform:uppercase;letter-spacing:.04em}
-  input[type=text],textarea{width:100%;font:inherit;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:7px;padding:9px 11px}
+  input[type=text],textarea,select{width:100%;font:inherit;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:7px;padding:9px 11px}
   textarea{resize:vertical;min-height:74px;line-height:1.5}
-  input:focus,textarea:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(14,77,92,.12)}
+  select{cursor:pointer}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(14,77,92,.12)}
+  .fieldhelp{display:block;color:var(--muted);font-size:12px;margin-top:5px;text-transform:none;letter-spacing:0;font-weight:400}
+  [hidden]{display:none!important}
   .drop{border:2px dashed var(--line);border-radius:10px;background:#fafbfc;padding:28px 18px;text-align:center;cursor:pointer;transition:.15s}
   .drop:hover,.drop.over{border-color:var(--teal);background:#f1f7f8}
   .drop .big{font-size:15px;font-weight:600}
@@ -52,9 +55,12 @@
   .paste{display:flex;gap:8px;align-items:flex-end}
   .paste .fld{flex:1}.paste input{font-family:var(--mono);font-size:12.5px}
   .row2{display:grid;grid-template-columns:120px 1fr;gap:10px}
+  .photoobs{min-height:62px}
   .tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   .copychip{font-family:var(--mono);font-size:12px;background:#fff7d6;border:1px solid var(--road-dk);color:#5b4a00;border-radius:6px;padding:6px 9px;cursor:pointer;display:inline-flex;gap:7px;align-items:center}
   .copychip:hover{background:#fff0b0}
+  .mapchip{font-family:var(--mono);font-size:12px;background:#edf6ff;border:1px solid #7aaee0;color:#0b579e;border-radius:6px;padding:6px 9px;text-decoration:none;display:inline-flex;gap:7px;align-items:center}
+  .mapchip:hover{background:#dceeff}.mapchip.disabled{background:#f2f3f4;border-color:var(--line);color:#8a9099;pointer-events:none}
   .btn{font:inherit;font-weight:600;border:1px solid transparent;border-radius:8px;padding:10px 16px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
   .btn.primary{background:var(--teal);color:#fff}.btn.primary:hover{background:var(--teal-2)}.btn.primary:disabled{background:#9bb3b9;cursor:not-allowed}
   .btn.ghost{background:#fff;border-color:var(--line);color:var(--ink)}.btn.ghost:hover{border-color:var(--teal);color:var(--teal)}
@@ -70,13 +76,13 @@
   details.help .hc{padding:0 16px 14px;color:#444;font-size:13px;line-height:1.6}
   details.help code{font-family:var(--mono);background:#eef0f2;padding:1px 5px;border-radius:4px;font-size:12px}
   .previewback{position:fixed;inset:0;background:rgba(20,24,29,.62);display:none;align-items:center;justify-content:center;padding:22px;z-index:20}.previewback.show{display:flex}
-  .previewbox{background:#fff;border-radius:12px;width:min(100%,980px);max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 18px 54px rgba(0,0,0,.3)}.previewhead{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}.previewhead b{flex:1}.previewbody{overflow:auto;padding:24px;background:#eef0f2}.sheet{background:#fff;max-width:850px;margin:auto;padding:24px;min-height:420px;box-shadow:0 2px 9px rgba(0,0,0,.12);font-family:Arial,sans-serif;font-size:11px}.sheetlogo{height:55px;display:block;margin-bottom:14px}.sheettitle{text-align:center;font-size:16px;font-weight:700;margin:8px 0 22px}.sheetintro{line-height:1.5;margin-bottom:18px}.sheet table{width:100%;border-collapse:collapse}.sheet th,.sheet td{border:1px solid #8a9099;padding:7px;vertical-align:top}.sheet th{background:#0e4d5c;color:#fff;text-align:center}.sheetphoto{max-width:100%;max-height:260px;display:block;margin:8px auto}.sheetlabel{background:#f4e9b0;border:1px solid #8a9099;padding:6px;font-weight:700;margin-top:16px}
+  .previewbox{background:#fff;border-radius:12px;width:min(100%,980px);max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 18px 54px rgba(0,0,0,.3)}.previewhead{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}.previewhead b{flex:1}.previewbody{overflow:auto;padding:24px;background:#eef0f2}.sheet{background:#fff;max-width:850px;margin:auto;padding:24px;min-height:420px;box-shadow:0 2px 9px rgba(0,0,0,.12);font-family:Arial,sans-serif;font-size:11px}.sheetlogo{height:55px;display:block;margin-bottom:14px}.sheettitle{text-align:center;font-size:16px;font-weight:700;margin:8px 0 22px}.sheetintro{line-height:1.55;margin-bottom:18px;text-align:justify}.sheetnowrap{white-space:nowrap}.sheet table{width:100%;border-collapse:collapse}.sheet th,.sheet td{border:1px solid #8a9099;padding:7px;vertical-align:top}.sheet th{background:#0e4d5c;color:#fff;text-align:center}.sheet a.maplink{color:#075fae;text-decoration:underline;font-weight:600}.sheetphotoblock{break-inside:avoid;page-break-inside:avoid;margin-top:16px}.sheetphoto{max-width:82%;max-height:380px;display:block;margin:8px auto 0}.sheetlabel{background:#f4e9b0;border:1px solid #8a9099;padding:6px;font-weight:700}.sheetcomment{max-width:82%;margin:0 auto;padding:7px 9px;border:1px solid #c7ccd1;border-top:0;background:#f7f8f9;line-height:1.45;text-align:justify}
   @media(max-width:720px){.grid{grid-template-columns:1fr}.pcard{grid-template-columns:1fr}.pcard img{min-height:210px}.coordrow{grid-template-columns:1fr}}
 </style>
 
 <header><div class="hbar"><span class="mark">ERSeP</span>
   <div><h1>Generador de Acta de Estado de Corredor</h1>
-  <p>Cargá las fotos: lee solo el sello GPS y arma el Excel — datos arriba, imágenes abajo.</p></div></div></header>
+  <p>Cargá las fotos: lee el sello GPS y arma el Excel, el PDF y el mapa de anomalías.</p></div></div></header>
 
 <div class="wrap">
   <section class="sec">
@@ -85,12 +91,66 @@
       <div><label>N° de acta</label><input id="f_nro" type="text" value="92/2026"></div>
       <div><label>Ciudad</label><input id="f_ciudad" type="text" value="Córdoba"></div>
       <div class="full"><label>Fecha (en letras)</label><input id="f_fecha" type="text"></div>
-      <div><label>Profesional interviniente</label><input id="f_prof" type="text" value="Ing. Civil Juan Loguer Carrizo"></div>
+      <div><label>Profesional interviniente</label><select id="f_prof">
+        <option>Ing. Manuel Ramón Gastaldi</option>
+        <option selected>Ing. Juan Loguer Carrizo</option>
+        <option>Ing. María Candela Vecchio</option>
+      </select></div>
       <div><label>Organismo / área</label><input id="f_org" type="text" value="del área técnica del Ente Regulador de Servicios Públicos (ERSeP)"></div>
-      <div class="full"><label>Corredor vial supervisado</label><input id="f_corredor" type="text" value="Ruta Provincial - Autovía Calamuchita"></div>
-      <div class="full"><label>Cita normativa presunta</label><input id="f_cita" type="text" value="Art. N° 6 y 13 - A.E.T.G."></div>
-      <div class="full"><label>Falta verificada / Observación general</label>
-        <textarea id="f_obs">Se observaron tareas de conservación de rutina consistentes en la reposición de señalización vertical y el repintado de señalización horizontal, en cumplimiento de las obligaciones de mantenimiento y seguridad vial previstas en el Artículo N° 13 del Anexo Técnico General de la Concesión.</textarea></div>
+      <div class="full"><label>Corredor vial supervisado</label><select id="f_corredor">
+        <option>Avenida de Circunvalación</option>
+        <option>Distribuidores de la Circunvalación</option>
+        <option>Ruta Nacional 9 Norte</option>
+        <option>Ruta Nacional 19</option>
+        <option>Autopista Pilar - Córdoba</option>
+        <option>Ruta Nacional 9 Sur</option>
+        <option>Ruta Nacional 36</option>
+        <option>Ruta Provincial 5</option>
+        <option>Ruta Provincial C45</option>
+        <option>Ruta Nacional 20</option>
+        <option>Ruta Nacional 38</option>
+        <option>Ruta Provincial E55</option>
+        <option>Ruta Provincial E53</option>
+        <option>Ruta Intermunicipal Villa Allende - Unquillo</option>
+        <option>Autopista Juárez Celman</option>
+        <option>2° Anillo de Circunvalación</option>
+        <option selected>Autovía Calamuchita</option>
+        <option>Autovía Punilla</option>
+        <option>Padre Luchesse</option>
+        <option>Otro</option>
+      </select></div>
+      <div class="full"><label>Falta verificada</label><select id="f_obs">
+        <option>Art. N° 1 - Anteproyecto técnico definitivo</option>
+        <option>Art. N° 2 - Plan de trabajos</option>
+        <option>Art. N° 3 - Proyectos ejecutivos</option>
+        <option>Art. N° 4 - Planos conforme a obra</option>
+        <option>Art. N° 5 - Ejecución de las obras</option>
+        <option>Art. N° 6 - Señalización vertical y demarcación horizontal</option>
+        <option>Art. N° 7 - Trabajos de conservación de rutina</option>
+        <option>Art. N° 8 - Calidad en todas sus fases</option>
+        <option>Art. N° 9 - Condiciones técnicas exigidas para calzadas pavimentadas</option>
+        <option>Art. N° 10 - Condiciones exigibles para banquinas</option>
+        <option>Art. N° 11 - Sistemas de alumbrado</option>
+        <option>Art. N° 12 - Tareas de inventario</option>
+        <option selected>Art. N° 13 - Condiciones a cumplir en la conservación de rutina, parquización, gestión ambiental y de explotación</option>
+        <option>Art. N° 14 - Barreras de seguridad y barandas peatonales</option>
+        <option>Art. N° 15 - Información sobre accidentes de tránsito</option>
+        <option>Art. N° 16 - Obras de verificación ulterior imposible</option>
+        <option>Art. N° 17 - Cumplimiento de normas y reglamentos</option>
+        <option>Art. N° 18 - Daños a personas o cosas</option>
+        <option>Art. N° 19 - Señalización de las obras</option>
+        <option>Art. N° 20 - Mantenimiento del tránsito</option>
+        <option>Art. N° 21 - Cumplimiento de obligaciones con el personal dependiente</option>
+        <option>Art. N° 22 - Instalaciones aéreas y subterráneas existentes en el camino</option>
+        <option>Art. N° 23 - Liberación de trazas</option>
+        <option>Art. N° 24 - Representación del concesionario</option>
+        <option>Art. N° 25 - Prohibiciones</option>
+        <option>Art. N° 26 - Conocimiento de la obra</option>
+        <option value="__otro__">Otros (especificar)</option>
+      </select><span class="fieldhelp">Los títulos corresponden al índice del A.E.T.G.; no se muestran los capítulos.</span></div>
+      <div class="full" id="f_obs_otro_wrap" hidden><label>Detalle de “Otros”</label>
+        <textarea id="f_obs_otro" placeholder="Escribí la falta o la aclaración que no figure en el contrato."></textarea></div>
+      <div class="full"><label>Cita normativa presunta</label><input id="f_cita" type="text" value="Art. N° 13 - A.E.T.G."><span class="fieldhelp">Se completa con el artículo elegido y se puede corregir o ampliar a mano.</span></div>
     </div></div>
   </section>
 
@@ -122,21 +182,24 @@
 
   <div class="gen"><div class="genbox">
     <div class="info"><b id="genCount">0</b> imágenes listas para el acta <b id="genNro">92/2026</b>
-      <small id="status" class="status">Completá los datos y descargá el Excel o el PDF.</small></div>
+      <small id="status" class="status">Completá los datos y descargá el Excel, el PDF o el mapa KML.</small></div>
     <label style="display:flex;align-items:center;gap:7px;color:#fff;font-size:13px;cursor:pointer;text-transform:none;letter-spacing:0;font-weight:500;margin:0">
       <input type="checkbox" id="withImgs" checked style="width:16px;height:16px;accent-color:#f0c000;cursor:pointer"> Incluir las fotos
     </label>
     <button class="btn ghost" id="previewBtn" disabled>Vista previa</button>
+    <button class="btn ghost" id="kmlBtn" title="Importable en Google My Maps, Google Earth y otros mapas compatibles" disabled>Descargar mapa (.KML)</button>
     <button class="btn primary" id="genBtn" disabled>Descargar Excel</button>
     <button class="btn primary" id="pdfBtn" disabled>Descargar PDF</button>
+    <button class="btn primary" id="btnRegistrar" disabled>✔ Registrar acta</button>
   </div></div>
 </div>
 
-<div class="previewback" id="preview"><div class="previewbox"><div class="previewhead"><b>Vista previa del Excel</b><small style="color:var(--muted)">Editá directamente cualquier texto</small><button class="btn ghost tiny" id="closePreview">Cerrar</button></div><div class="previewbody" id="previewBody"></div></div></div>
+<div class="previewback" id="preview"><div class="previewbox"><div class="previewhead"><b>Vista previa del acta</b><small style="color:var(--muted)">Editá directamente cualquier texto</small><button class="btn ghost tiny" id="closePreview">Cerrar</button></div><div class="previewbody" id="previewBody"></div></div></div>
 
 <script>
 (function(){
   const photos=[]; let seq=0; const $=id=>document.getElementById(id);
+  window.VIAL_ACTA = { photos: photos };   // lo usa el registro georreferenciado
   const LOGO_ERSEP_BASE64='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';
 
   /* ---------------- EXIF GPS (metadatos) ---------------- */
@@ -287,13 +350,15 @@
     const n=photos.length;
     $('count').textContent=n+' '+(n===1?'imagen':'imágenes');
     $('genCount').textContent=n; $('genBtn').disabled=n===0;$('pdfBtn').disabled=n===0;$('previewBtn').disabled=n===0;
+    $('kmlBtn').disabled=!photos.some(p=>urlMapa(p));
   }
   const SRCLABEL={meta:'metadatos',ocr:'sello leído',man:'a mano',work:'…',fail:'sin lectura'};
   function setSrc(p,kind,txt){p.source=kind;const el=document.querySelector(`[data-pid="${p.id}"] .src`);if(el){el.className='src '+kind;el.textContent=txt||SRCLABEL[kind];}}
   function updateCard(p){const root=document.querySelector(`[data-pid="${p.id}"]`);if(!root)return;
     root.querySelector('[data-k="lat"]').value=p.lat;root.querySelector('[data-k="lon"]').value=p.lon;
     if(p.fecha)root.querySelector('[data-k="fecha"]').value=p.fecha;
-    const cv=root.querySelector('.cv');if(cv)cv.textContent=(p.lat||p.lon)?`${p.lat||'?'}, ${p.lon||'?'}`:'—';}
+    const cv=root.querySelector('.cv');if(cv)cv.textContent=(p.lat||p.lon)?`${p.lat||'?'}, ${p.lon||'?'}`:'—';
+    actualizarEnlaceMapa(p,root);}
   function normalizarImagen(p,giro=0){const im=p._imgEl,rad=giro*Math.PI/180,vertical=Math.abs(giro)%180===90;
     const c=document.createElement('canvas');c.width=vertical?im.naturalHeight:im.naturalWidth;c.height=vertical?im.naturalWidth:im.naturalHeight;
     const x=c.getContext('2d');x.translate(c.width/2,c.height/2);x.rotate(rad);x.drawImage(im,-im.naturalWidth/2,-im.naturalHeight/2);
@@ -314,9 +379,10 @@
           <div><label>Longitud (decimal)</label><input type="text" data-k="lon" value="${p.lon}" placeholder="-64.1887267"></div></div>
         <div class="row2">
           <div><label>Fecha</label><input type="text" data-k="fecha" value="${p.fecha}" placeholder="23/06/2026"></div>
-          <div><label>Observación de la foto (opcional)</label><input type="text" data-k="obs" value="${p.obs}" placeholder="Detalle..."></div></div>
+          <div><label>Comentario de la foto (opcional)</label><textarea class="photoobs" data-k="obs" placeholder="Escribí el comentario que debe aparecer debajo de esta foto.">${esc(p.obs)}</textarea></div></div>
         <div class="tools">
           <span class="copychip" data-act="copy">📋 Copiar coordenadas <b class="cv"></b></span>
+          <a class="mapchip disabled" data-act="map" href="#" target="_blank" rel="noopener" aria-disabled="true">📍 Abrir ubicación</a>
           <button class="btn ghost tiny" data-act="left">↶ Girar izquierda</button>
           <button class="btn ghost tiny" data-act="right">↷ Girar derecha</button>
           <button class="btn ghost tiny" data-act="ocr">Leer sello</button>
@@ -324,12 +390,12 @@
           <button class="btn warn tiny" data-act="del">Quitar</button></div>
       </div>`;
     el.querySelector('img').addEventListener('click',()=>window.open(p.dataUrl,'_blank'));
-    el.querySelectorAll('input[data-k]').forEach(inp=>inp.addEventListener('input',()=>{
+    el.querySelectorAll('[data-k]').forEach(inp=>inp.addEventListener('input',()=>{
       p[inp.dataset.k]=inp.value.trim();
       if(inp.dataset.k==='lat'||inp.dataset.k==='lon'){if(p.source!=='man')setSrc(p,'man','a mano');chip();}
     }));
     const chipEl=el.querySelector('.copychip'),cv=el.querySelector('.cv');
-    function chip(){cv.textContent=(p.lat||p.lon)?`${p.lat||'?'}, ${p.lon||'?'}`:'—';}chip();
+    function chip(){cv.textContent=(p.lat||p.lon)?`${p.lat||'?'}, ${p.lon||'?'}`:'—';actualizarEnlaceMapa(p,el);}chip();
     el.querySelector('[data-act="parse"]').addEventListener('click',()=>{
       const raw=el.querySelector('[data-k="paste"]').value;const c=parseCoords(raw),d=parseDate(raw);
       if(c&&(c.lat||c.lon)){if(c.lat){p.lat=c.lat;el.querySelector('[data-k="lat"]').value=c.lat;}if(c.lon){p.lon=c.lon;el.querySelector('[data-k="lon"]').value=c.lon;}setSrc(p,'man','a mano');}
@@ -345,29 +411,99 @@
     return el;
   }
   $('f_nro').addEventListener('input',()=>$('genNro').textContent=$('f_nro').value);
+  $('f_obs').addEventListener('change',()=>actualizarFalta(true));
+
+  function valorFalta(){
+    return $('f_obs').value==='__otro__' ? ($('f_obs_otro').value.trim()||'Otros') : $('f_obs').value.trim();
+  }
+  function actualizarFalta(actualizarCita){
+    const otro=$('f_obs').value==='__otro__';
+    $('f_obs_otro_wrap').hidden=!otro;
+    if(actualizarCita){
+      if(otro){
+        if(/^Art\. N° \d+ - A\.E\.T\.G\.$/.test($('f_cita').value.trim())) $('f_cita').value='';
+        $('f_obs_otro').focus();
+      }else{
+        const m=$('f_obs').value.match(/^Art\. N° (\d+)/);
+        if(m) $('f_cita').value=`Art. N° ${m[1]} - A.E.T.G.`;
+      }
+    }
+  }
+  function articuloProfesional(prof){return /^(Inga\.|Ing\.\s+María\s+Candela\s+Vecchio)/i.test(prof)?'la':'el';}
+  function corredorConPreposicion(corredor){
+    if(/^2[°º]\s*Anillo/i.test(corredor)) return `del ${corredor}`;
+    if(/^Padre\s+/i.test(corredor)) return `de ${corredor}`;
+    if(/^Otro$/i.test(corredor)) return 'identificado como “Otro”';
+    return `de la ${corredor}`;
+  }
+  function asignarDesdeVista(campo,valor){
+    if(campo==='obs'){
+      const sel=$('f_obs'),existe=[...sel.options].some(o=>o.value===valor);
+      if(existe) sel.value=valor;
+      else{sel.value='__otro__';$('f_obs_otro').value=valor;}
+      actualizarFalta(false);return;
+    }
+    const control=$(`f_${campo}`);if(!control)return;
+    if(control.tagName==='SELECT'&&![...control.options].some(o=>o.value===valor)) control.add(new Option(valor,valor));
+    control.value=valor;
+  }
 
   /* ---------------- vista previa y archivos ---------------- */
   $('genBtn').addEventListener('click',generar);
   $('pdfBtn').addEventListener('click',generarPdf);
+  $('kmlBtn').addEventListener('click',generarKml);
   $('previewBtn').addEventListener('click',mostrarVistaPrevia);
   $('closePreview').addEventListener('click',()=>$('preview').classList.remove('show'));
   $('preview').addEventListener('click',e=>{if(e.target===$('preview'))$('preview').classList.remove('show');});
   function setStatus(m,k){const s=$('status');s.textContent=m;s.className='status'+(k?' '+k:'');}
+  function numeroCoordenada(v){
+    const s=String(v==null?'':v).trim().replace(',','.');
+    if(!/^-?\d+(?:\.\d+)?$/.test(s))return null;
+    const n=Number(s);return Number.isFinite(n)?n:null;
+  }
+  function coordenadasValidas(p){
+    const lat=numeroCoordenada(p.lat),lon=numeroCoordenada(p.lon);
+    return lat!=null&&lon!=null&&lat>=-90&&lat<=90&&lon>=-180&&lon<=180?{lat,lon}:null;
+  }
+  function urlMapa(p){const c=coordenadasValidas(p);return c?`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${c.lat},${c.lon}`)}`:'';}
+  function actualizarEnlaceMapa(p,root){
+    const link=root&&root.querySelector('[data-act="map"]'),url=urlMapa(p);
+    if(link){link.href=url||'#';link.classList.toggle('disabled',!url);link.setAttribute('aria-disabled',url?'false':'true');link.tabIndex=url?0:-1;}
+    $('kmlBtn').disabled=!photos.some(x=>urlMapa(x));
+  }
   function numOrText(v){if(v===''||v==null)return'';const n=parseFloat(String(v).replace(',','.'));return isNaN(n)?v:n;}
   function applyBorder(ws,range,b){const[a,z]=range.split(':');const c1=ws.getCell(a),c2=ws.getCell(z);for(let row=c1.row;row<=c2.row;row++)for(let col=c1.col;col<=c2.col;col++)ws.getCell(row,col).border=b;}
-  function datosActa(){return {nro:$('f_nro').value.trim(),ciudad:$('f_ciudad').value.trim(),fecha:$('f_fecha').value.trim(),prof:$('f_prof').value.trim(),org:$('f_org').value.trim(),corredor:$('f_corredor').value.trim(),cita:$('f_cita').value.trim(),obs:$('f_obs').value.trim()};}
+  function datosActa(){return {nro:$('f_nro').value.trim(),ciudad:$('f_ciudad').value.trim(),fecha:$('f_fecha').value.trim(),prof:$('f_prof').value.trim(),org:$('f_org').value.trim(),corredor:$('f_corredor').value.trim(),cita:$('f_cita').value.trim(),obs:valorFalta()};}
   function fechaActualEnLetras(){const n=['','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez','once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve','veinte','veintiuno','veintidós','veintitrés','veinticuatro','veinticinco','veintiséis','veintisiete','veintiocho','veintinueve','treinta','treinta y uno'];const meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'],hoy=new Date();return `los ${n[hoy.getDate()]} días del mes de ${meses[hoy.getMonth()]} de ${hoy.getFullYear()}`;}
   function fechaActualCorta(){return new Intl.DateTimeFormat('es-AR',{timeZone:'America/Argentina/Cordoba',day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date());}
   function logoPdfComoPng(){return new Promise((ok,fail)=>{const im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=im.naturalWidth;c.height=im.naturalHeight;const x=c.getContext('2d');x.drawImage(im,0,0);ok(c.toDataURL('image/png'));};im.onerror=()=>fail(new Error('No se pudo preparar el logo ERSeP.'));im.src=`data:image/jpeg;base64,${LOGO_ERSEP_BASE64}`;});}
   function nombreArchivo(d,ext){return `Acta_Estado_Corredor_${(d.nro||'acta').replace(/[\\/\\\\:*?"<>|]/g,'-')}${ext}`;}
   function esc(v){return String(v||'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));}
-  function mostrarVistaPrevia(){const d=datosActa(),conFotos=$('withImgs').checked;
-    const filas=photos.map((p,i)=>`<tr><td>${p.num}</td>${i===0?`<td rowspan="${photos.length}"><span contenteditable="true" data-field="obs">${esc(d.obs)}</span></td><td rowspan="${photos.length}"><span contenteditable="true" data-field="cita">${esc(d.cita)}</span></td>`:''}<td>${esc(p.lat)}</td><td>${esc(p.lon)}</td><td>N° ${p.num}</td><td><span contenteditable="true" data-photo-obs="${p.id}">${esc(p.obs)}</span></td></tr>`).join('');
-    const fotos=conFotos?`<h3>REGISTRO FOTOGRÁFICO</h3>${photos.map(p=>{const co=p.lat||p.lon?` — ${esc(p.lat||'?')}, ${esc(p.lon||'?')}`:'';const fe=p.fecha?` — ${esc(p.fecha)}`:'';return `<div class="sheetlabel">Imagen N° ${p.num}${co}${fe}</div><img class="sheetphoto" src="${p.dataUrl}">`;}).join('')}`:'';
-    $('previewBody').innerHTML=`<div class="sheet"><img class="sheetlogo" src="data:image/jpeg;base64,${LOGO_ERSEP_BASE64}"><div class="sheettitle">ACTA DE ESTADO DE CORREDOR N° <span contenteditable="true" data-field="nro">${esc(d.nro)}</span></div><div class="sheetintro">En la ciudad de <span contenteditable="true" data-field="ciudad">${esc(d.ciudad)}</span>, a <span contenteditable="true" data-field="fecha">${esc(d.fecha)}</span>, el <span contenteditable="true" data-field="prof">${esc(d.prof)}</span>, profesional <span contenteditable="true" data-field="org">${esc(d.org)}</span>, realizó una supervisión en el corredor vial de la <span contenteditable="true" data-field="corredor">${esc(d.corredor)}</span>, donde se constató lo siguiente:</div><table><thead><tr><th>N°</th><th>FALTA VERIFICADA</th><th>Cita Normativa presunta</th><th>Latitud</th><th>Longitud</th><th>Imagen</th><th>Observaciones</th></tr></thead><tbody>${filas}</tbody></table><p><i>Nota: La ubicación GPS está sujeta a la precisión del "dispositivo móvil".</i></p>${fotos}</div>`;
-    $('previewBody').querySelectorAll('[data-field]').forEach(el=>el.addEventListener('input',()=>{const f=el.dataset.field;$(`f_${f}`).value=el.textContent.trim();}));
+  function enlaceMapaHtml(p,texto){const url=urlMapa(p);return url?`<a class="maplink" href="${esc(url)}" target="_blank" rel="noopener" title="Abrir ubicación en Google Maps">${esc(texto)}</a>`:esc(texto);}
+  function corredorVistaHtml(corredor){const campo=`<span contenteditable="true" data-field="corredor">${esc(corredor)}</span>`;if(/^Otro$/i.test(corredor))return `identificado como “${campo}”`;const completo=corredorConPreposicion(corredor);return `${esc(completo.slice(0,-corredor.length))}${campo}`;}
+  function mostrarVistaPrevia(){const d=datosActa(),conFotos=$('withImgs').checked,artProf=articuloProfesional(d.prof);
+    const filas=photos.map((p,i)=>`<tr><td>${p.num}</td>${i===0?`<td rowspan="${photos.length}"><span contenteditable="true" data-field="obs">${esc(d.obs)}</span></td><td rowspan="${photos.length}"><span contenteditable="true" data-field="cita">${esc(d.cita)}</span></td>`:''}<td>${enlaceMapaHtml(p,p.lat)}</td><td>${enlaceMapaHtml(p,p.lon)}</td><td>N° ${p.num}</td><td><span contenteditable="true" data-photo-obs="${p.id}">${esc(p.obs)}</span></td></tr>`).join('');
+    const fotos=conFotos?`<h3>REGISTRO FOTOGRÁFICO</h3>${photos.map(p=>{const coords=(p.lat||p.lon)?`${p.lat||'?'}, ${p.lon||'?'}`:'';const co=coords?` - ${enlaceMapaHtml(p,coords)}`:'';const fe=p.fecha?` - ${esc(p.fecha)}`:'';const comentario=p.obs?`<div class="sheetcomment"><b>Comentario:</b> <span contenteditable="true" data-photo-obs="${p.id}">${esc(p.obs)}</span></div>`:'';return `<div class="sheetphotoblock"><div class="sheetlabel">Imagen N° ${p.num}${co}${fe}</div><img class="sheetphoto" src="${p.dataUrl}">${comentario}</div>`;}).join('')}`:'';
+    $('previewBody').innerHTML=`<div class="sheet"><img class="sheetlogo" src="data:image/jpeg;base64,${LOGO_ERSEP_BASE64}"><div class="sheettitle">ACTA DE ESTADO DE CORREDOR N° <span contenteditable="true" data-field="nro">${esc(d.nro)}</span></div><div class="sheetintro">En la ciudad de <span contenteditable="true" data-field="ciudad">${esc(d.ciudad)}</span>, a <span contenteditable="true" data-field="fecha">${esc(d.fecha)}</span>, ${artProf} <span class="sheetnowrap" contenteditable="true" data-field="prof">${esc(d.prof)}</span>, profesional <span contenteditable="true" data-field="org">${esc(d.org)}</span>, realizó una supervisión en el corredor vial ${corredorVistaHtml(d.corredor)}, donde se constató lo siguiente:</div><table><thead><tr><th>N°</th><th>FALTA VERIFICADA</th><th>Cita Normativa presunta</th><th>Latitud</th><th>Longitud</th><th>Imagen</th><th>Observaciones</th></tr></thead><tbody>${filas}</tbody></table><p><i>Nota: La ubicación GPS está sujeta a la precisión del "dispositivo móvil". Las coordenadas en azul abren Google Maps.</i></p>${fotos}</div>`;
+    $('previewBody').querySelectorAll('[data-field]').forEach(el=>el.addEventListener('input',()=>asignarDesdeVista(el.dataset.field,el.textContent.trim())));
     $('previewBody').querySelectorAll('[data-photo-obs]').forEach(el=>el.addEventListener('input',()=>{const p=photos.find(x=>x.id===Number(el.dataset.photoObs));if(!p)return;p.obs=el.textContent.trim();const card=document.querySelector(`[data-pid="${p.id}"] [data-k="obs"]`);if(card)card.value=p.obs;}));
     $('preview').classList.add('show');}
+
+  function xml(v){return String(v==null?'':v).replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[x]));}
+  function descargarBlob(blob,nombre){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=nombre;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);}
+  function generarKml(){
+    const d=datosActa(),puntos=photos.map(p=>({p,coords:coordenadasValidas(p),mapa:urlMapa(p)})).filter(x=>x.coords);
+    if(!puntos.length){setStatus('No hay pares de coordenadas válidas para crear el mapa.','bad');return;}
+    const marcas=puntos.map(({p,coords,mapa})=>{
+      const descripcion=`<b>Acta:</b> ${d.nro}<br><b>Corredor:</b> ${d.corredor}<br><b>Falta:</b> ${d.obs}<br><b>Cita:</b> ${d.cita}<br><b>Profesional:</b> ${d.prof}<br><b>Fecha de la foto:</b> ${p.fecha||''}<br><b>Comentario:</b> ${p.obs||''}<br><a href="${mapa}">Abrir en Google Maps</a>`;
+      return `    <Placemark>\n      <name>${xml(`${d.corredor} - Imagen N° ${p.num}`)}</name>\n      <styleUrl>#anomalia</styleUrl>\n      <description>${xml(descripcion)}</description>\n      <ExtendedData>\n        <Data name="Acta"><value>${xml(d.nro)}</value></Data>\n        <Data name="Fecha acta"><value>${xml(d.fecha)}</value></Data>\n        <Data name="Fecha foto"><value>${xml(p.fecha)}</value></Data>\n        <Data name="Corredor"><value>${xml(d.corredor)}</value></Data>\n        <Data name="Falta verificada"><value>${xml(d.obs)}</value></Data>\n        <Data name="Cita normativa"><value>${xml(d.cita)}</value></Data>\n        <Data name="Profesional"><value>${xml(d.prof)}</value></Data>\n        <Data name="Imagen"><value>${xml(`N° ${p.num}`)}</value></Data>\n        <Data name="Comentario"><value>${xml(p.obs)}</value></Data>\n        <Data name="Google Maps"><value>${xml(mapa)}</value></Data>\n      </ExtendedData>\n      <Point><coordinates>${coords.lon},${coords.lat},0</coordinates></Point>\n    </Placemark>`;
+    }).join('\n');
+    const kml=`<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">\n  <Document>\n    <name>${xml(`Anomalías RAC - Acta ${d.nro}`)}</name>\n    <Style id="anomalia"><IconStyle><color>ff0000ff</color><scale>1.1</scale></IconStyle></Style>\n${marcas}\n  </Document>\n</kml>\n`;
+    const seguro=(d.nro||'acta').replace(/[\/\\:*?"<>|]/g,'-');
+    descargarBlob(new Blob([kml],{type:'application/vnd.google-earth.kml+xml;charset=utf-8'}),`Mapa_RAC_Acta_${seguro}.kml`);
+    const omitidas=photos.length-puntos.length;
+    setStatus(`✓ Mapa KML descargado con ${puntos.length} ${puntos.length===1?'anomalía':'anomalías'}${omitidas?`; ${omitidas} sin coordenadas válidas se omitieron`:''}.`,'ok');
+  }
 
   async function generar(){
     if(typeof ExcelJS==='undefined'){setStatus('No se pudo cargar el generador de Excel. Recargá la página.','bad');return;}
@@ -386,19 +522,29 @@
       let r=3;
       ws.mergeCells(`B${r}:H${r}`);let t=ws.getCell(`B${r}`);t.value=`ACTA DE ESTADO DE CORREDOR N° ${d.nro}`;t.font={name:F,bold:true,size:14};t.alignment={horizontal:'center'};r+=2;
       ws.mergeCells(`B${r}:H${r+3}`);let intro=ws.getCell(`B${r}`);
-      intro.value=`En la ciudad de ${d.ciudad}, a ${d.fecha}, el ${d.prof}, profesional ${d.org}, realizó una supervisión en el corredor vial de la ${d.corredor}, donde se constató lo siguiente:`;
-      intro.font={name:F,size:11};intro.alignment=L;r+=5;
+      intro.value=`En la ciudad de ${d.ciudad}, a ${d.fecha}, ${articuloProfesional(d.prof)} ${d.prof}, profesional ${d.org}, realizó una supervisión en el corredor vial ${corredorConPreposicion(d.corredor)}, donde se constató lo siguiente:`;
+      intro.font={name:F,size:11};intro.alignment={horizontal:'justify',vertical:'top',wrapText:true};r+=5;
       const heads={B:'N°',C:'FALTA VERIFICADA',D:'Cita Normativa presunta',E:'Latitud',F:'Longitud',G:'Imagen',H:'Observaciones'};
       Object.entries(heads).forEach(([c,x])=>{const cell=ws.getCell(`${c}${r}`);cell.value=x;cell.font={name:F,bold:true,size:10,color:{argb:'FFFFFFFF'}};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF0E4D5C'}};cell.alignment=C;cell.border=B;});
       ws.getRow(r).height=26;r++;
       const first=r;
+      const lineasGenerales=Math.max(1,Math.ceil(d.obs.length/34),Math.ceil(d.cita.length/28));
+      const altoGeneral=Math.max(22,lineasGenerales*14),altoGeneralPorFila=Math.ceil(altoGeneral/Math.max(photos.length,1));
       photos.forEach(p=>{
-        ws.getCell(`B${r}`).value=p.num;ws.getCell(`E${r}`).value=numOrText(p.lat);ws.getCell(`F${r}`).value=numOrText(p.lon);
+        const mapa=urlMapa(p);
+        ws.getCell(`B${r}`).value=p.num;
+        if(mapa){
+          ws.getCell(`E${r}`).value={text:String(p.lat),hyperlink:mapa};ws.getCell(`F${r}`).value={text:String(p.lon),hyperlink:mapa};
+          ws.getCell(`E${r}`).font={name:F,size:10,color:{argb:'FF075FAE'},underline:true};ws.getCell(`F${r}`).font={name:F,size:10,color:{argb:'FF075FAE'},underline:true};
+        }else{
+          ws.getCell(`E${r}`).value=numOrText(p.lat);ws.getCell(`F${r}`).value=numOrText(p.lon);
+          ws.getCell(`E${r}`).numFmt='0.0000000000000';ws.getCell(`F${r}`).numFmt='0.0000000000000';
+        }
         ws.getCell(`G${r}`).value=`N° ${p.num}`;ws.getCell(`H${r}`).value=p.obs||'';
         ['B','E','F','G'].forEach(c=>ws.getCell(`${c}${r}`).alignment=C);ws.getCell(`H${r}`).alignment=L;
         'BCDEFGH'.split('').forEach(c=>{const cell=ws.getCell(`${c}${r}`);cell.border=B;if(!cell.font)cell.font={name:F,size:10};});
-        ws.getCell(`E${r}`).numFmt='0.0000000000000';ws.getCell(`F${r}`).numFmt='0.0000000000000';
-        ws.getRow(r).height=22;r++;
+        const lineasObservacion=Math.max(1,Math.ceil((p.obs||'').length/48));
+        ws.getRow(r).height=Math.min(180,Math.max(22,altoGeneralPorFila,lineasObservacion*14));r++;
       });
       const last=r-1;
       if(photos.length){
@@ -406,50 +552,476 @@
         ws.mergeCells(`D${first}:D${last}`);let dc=ws.getCell(`D${first}`);dc.value=d.cita;dc.alignment=C;dc.font={name:F,size:10};dc.border=B;
       }
       r++;
-      ws.mergeCells(`B${r}:H${r}`);let note=ws.getCell(`B${r}`);note.value='Nota: La ubicación GPS está sujeta a la precisión del "dispositivo móvil".';note.font={name:F,italic:true,size:9,color:{argb:'FF6A7178'}};r+=2;
+      ws.mergeCells(`B${r}:H${r}`);let note=ws.getCell(`B${r}`);note.value='Nota: La ubicación GPS está sujeta a la precisión del "dispositivo móvil". Las coordenadas en azul abren Google Maps.';note.font={name:F,italic:true,size:9,color:{argb:'FF6A7178'}};r+=2;
       const withImgs=$('withImgs').checked;
       if(withImgs){
       ws.mergeCells(`B${r}:H${r}`);let it=ws.getCell(`B${r}`);it.value='REGISTRO FOTOGRÁFICO';it.font={name:F,bold:true,size:12};r+=2;
       const DW=460;
       for(const p of photos){
         ws.mergeCells(`B${r}:H${r}`);let lab=ws.getCell(`B${r}`);
-        const co=(p.lat||p.lon)?`  —  ${p.lat||'?'}, ${p.lon||'?'}`:'';const da=p.fecha?`  —  ${p.fecha}`:'';
-        lab.value=`Imagen N° ${p.num}${co}${da}`;lab.font={name:F,bold:true,size:10};lab.alignment={horizontal:'left',vertical:'middle'};
+        const co=(p.lat||p.lon)?` - ${p.lat||'?'}, ${p.lon||'?'}`:'';const da=p.fecha?` - ${p.fecha}`:'';
+        const etiqueta=`Imagen N° ${p.num}${co}${da}`,mapa=urlMapa(p);
+        lab.value=mapa?{text:etiqueta,hyperlink:mapa}:etiqueta;lab.font={name:F,bold:true,size:10,...(mapa?{color:{argb:'FF075FAE'},underline:true}:{})};lab.alignment={horizontal:'center',vertical:'middle'};
         lab.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF4E9B0'}};applyBorder(ws,`B${r}:H${r}`,B);ws.getRow(r).height=20;r++;
         let dh=Math.round(DW*(p.h/p.w));if(dh>360)dh=360;
         ws.mergeCells(`B${r}:H${r}`);applyBorder(ws,`B${r}:H${r}`,B);ws.getRow(r).height=Math.min(409,Math.round(dh/1.333)+6);
         const id=wb.addImage({base64:p.base64,extension:p.ext});
-        ws.addImage(id,{tl:{col:1.15,row:(r-1)+0.06},ext:{width:DW,height:dh},editAs:'oneCell'});
-        r+=2;
+        ws.addImage(id,{tl:{nativeCol:3,nativeColOff:630000,nativeRow:r-1,nativeRowOff:57150},ext:{width:DW,height:dh},editAs:'oneCell'});
+        r++;
+        if(p.obs){
+          ws.mergeCells(`B${r}:H${r}`);const comentario=ws.getCell(`B${r}`);
+          comentario.value=`Comentario: ${p.obs}`;comentario.font={name:F,size:10};comentario.alignment={horizontal:'justify',vertical:'middle',wrapText:true};
+          comentario.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF7F8F9'}};applyBorder(ws,`B${r}:H${r}`,B);
+          ws.getRow(r).height=Math.max(24,Math.ceil(comentario.value.length/120)*15);r++;
+        }
+        r++;
       }
       }
+      const wsMapa=wb.addWorksheet('Datos mapa',{pageSetup:{paperSize:9,orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0}});
+      wsMapa.views=[{state:'frozen',ySplit:1,showGridLines:false}];
+      const mapaHeaders=['Acta','Fecha acta','Fecha foto','Corredor','Falta verificada','Cita normativa','Profesional','Imagen N°','Latitud','Longitud','Comentario','Abrir ubicación','Estado ubicación'];
+      mapaHeaders.forEach((valor,i)=>wsMapa.getCell(1,i+1).value=valor);
+      [15,29,14,34,52,26,31,12,18,18,45,25,22].forEach((w,i)=>wsMapa.getColumn(i+1).width=w);
+      const mh=wsMapa.getRow(1);mh.height=28;
+      mh.eachCell(cell=>{cell.font={name:F,bold:true,size:10,color:{argb:'FFFFFFFF'}};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF0E4D5C'}};cell.alignment=C;cell.border=B;});
+      photos.forEach((p,i)=>{
+        const coords=coordenadasValidas(p),mapa=urlMapa(p);
+        const fila=wsMapa.getRow(i+2),valores=[d.nro,d.fecha,p.fecha||'',d.corredor,d.obs,d.cita,d.prof,p.num,coords?coords.lat:'',coords?coords.lon:'',p.obs||'',mapa?{text:'Abrir en Google Maps',hyperlink:mapa}:'',mapa?'Lista para mapear':'Revisar coordenadas'];
+        valores.forEach((valor,j)=>fila.getCell(j+1).value=valor);
+        fila.height=Math.max(24,Math.min(90,Math.ceil(Math.max(d.obs.length/50,(p.obs||'').length/45))*14));
+        fila.eachCell({includeEmpty:true},cell=>{cell.font={name:F,size:10};cell.alignment={vertical:'top',wrapText:true};cell.border=B;if(i%2===1)cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF5F8F9'}};});
+        fila.getCell(8).alignment=C;fila.getCell(9).alignment=C;fila.getCell(10).alignment=C;fila.getCell(13).alignment=C;
+        fila.getCell(9).numFmt='0.0000000000000';fila.getCell(10).numFmt='0.0000000000000';
+        if(mapa)fila.getCell(12).font={name:F,size:10,color:{argb:'FF075FAE'},underline:true};
+      });
+      wsMapa.autoFilter={from:'A1',to:`M${Math.max(1,photos.length+1)}`};
+      wsMapa.getColumn(1).alignment=C;wsMapa.getColumn(2).alignment={vertical:'top',wrapText:true};
       const buf=await wb.xlsx.writeBuffer();
       const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
       const url=URL.createObjectURL(blob),a=document.createElement('a');
       const suf=withImgs?'':'_sin_fotos';
       a.href=url;a.download=nombreArchivo(d,`${suf}.xlsx`);
       document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);
-      setStatus(withImgs?'✓ Excel descargado con las fotos. Revisá las coordenadas.':'✓ Excel descargado sin fotos (solo la tabla de datos).','ok');
+      setStatus(withImgs?'✓ Excel descargado con fotos, enlaces y hoja “Datos mapa”.':'✓ Excel descargado sin fotos, con enlaces y hoja “Datos mapa”.','ok');
     }catch(err){console.error(err);setStatus('Error al generar: '+err.message,'bad');}
     finally{$('genBtn').disabled=photos.length===0;}
   }
   async function generarPdf(){
     if(!window.jspdf){setStatus('No se pudo cargar el generador de PDF. Recargá la página.','bad');return;}
     setStatus('Generando el PDF…');$('pdfBtn').disabled=true;
-    try{const d=datosActa(),{jsPDF}=window.jspdf,doc=new jsPDF({unit:'mm',format:'a4'}),M=14,W=182,logoPdf=await logoPdfComoPng();let y=14;
-      doc.addImage(logoPdf,'PNG',M,y,48,24,undefined,'FAST');y+=32;doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text(`ACTA DE ESTADO DE CORREDOR N° ${d.nro}`,105,y,{align:'center'});y+=11;doc.setFont('helvetica','normal');doc.setFontSize(10);const intro=`En la ciudad de ${d.ciudad}, a ${d.fecha}, el ${d.prof}, profesional ${d.org}, realizó una supervisión en el corredor vial de la ${d.corredor}, donde se constató lo siguiente:`;doc.text(doc.splitTextToSize(intro,W),M,y);y+=doc.getTextDimensions(doc.splitTextToSize(intro,W)).h+7;
-      const encabezados=['N°','Falta verificada','Cita normativa','Latitud','Longitud','Imagen','Observaciones'];const anchos=[8,38,30,24,24,14,44];function linea(vals,alto,header){let x=M;vals.forEach((v,i)=>{doc.setDrawColor(138,144,153);doc.rect(x,y,anchos[i],alto,header?'FD':'S');if(header){doc.setFillColor(14,77,92);doc.rect(x,y,anchos[i],alto,'F');doc.setTextColor(255);}else doc.setTextColor(0);doc.setFont('helvetica',header?'bold':'normal');doc.setFontSize(7.2);doc.text(doc.splitTextToSize(String(v||''),anchos[i]-2),x+1,y+4);x+=anchos[i];});doc.setTextColor(0);}
-      linea(encabezados,8,true);y+=8;photos.forEach(p=>{const vals=[p.num,d.obs,d.cita,p.lat,p.lon,`N° ${p.num}`,p.obs];const h=Math.max(10,...vals.map((v,i)=>doc.getTextDimensions(doc.splitTextToSize(String(v||''),anchos[i]-2)).h+3));if(y+h>278){doc.addPage();y=14;}linea(vals,h,false);y+=h;});y+=6;doc.setFontSize(8);doc.setFont('helvetica','italic');doc.text('Nota: La ubicación GPS está sujeta a la precisión del "dispositivo móvil".',M,y);y+=9;
-      if($('withImgs').checked){doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text('REGISTRO FOTOGRÁFICO',M,y);y+=8;for(const p of photos){let dh=Math.min(118,150*(p.h/p.w));if(y+dh+14>283){doc.addPage();y=14;}const co=p.lat||p.lon?` — ${p.lat||'?'}, ${p.lon||'?'}`:'';const fe=p.fecha?` — ${p.fecha}`:'';doc.setFontSize(9);doc.text(`Imagen N° ${p.num}${co}${fe}`,M,y);y+=4;doc.addImage(p.dataUrl,p.ext.toUpperCase(),M,y,150,dh);y+=dh+9;}}
-      doc.save(nombreArchivo(d,'.pdf'));setStatus('✓ PDF descargado. Revisá las coordenadas.','ok');
+    try{
+      const d=datosActa(),{jsPDF}=window.jspdf,doc=new jsPDF({unit:'mm',format:'a4'}),M=14,W=182,PAGE_W=210,BOTTOM=283,logoPdf=await logoPdfComoPng();let y=14;
+      doc.addImage(logoPdf,'PNG',M,y,48,24,undefined,'FAST');y+=32;
+      doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text(`ACTA DE ESTADO DE CORREDOR N° ${d.nro}`,PAGE_W/2,y,{align:'center'});y+=11;
+      doc.setFont('helvetica','normal');doc.setFontSize(10);
+      function textoJustificado(lineas,x,base,maxWidth,factor=1.2){
+        const paso=doc.getFontSize()*factor/doc.internal.scaleFactor;
+        lineas.forEach((linea,i)=>{
+          doc.setCharSpace(0);
+          const texto=String(linea).trim(),palabras=texto.split(/\s+/),ultima=i===lineas.length-1;
+          if(!ultima&&palabras.length>1){
+            const anchoPalabras=palabras.reduce((s,p)=>s+doc.getTextWidth(p),0),espacio=(maxWidth-anchoPalabras)/(palabras.length-1);let cursor=x;
+            palabras.forEach((palabra,j)=>{doc.text(palabra,cursor,base+i*paso);cursor+=doc.getTextWidth(palabra)+(j<palabras.length-1?espacio:0);});
+          }else doc.text(texto,x,base+i*paso);
+        });
+        doc.setCharSpace(0);
+        return lineas.length*paso;
+      }
+      const profUnido=d.prof.replace(/ /g,'\u00a0');
+      const intro=`En la ciudad de ${d.ciudad}, a ${d.fecha}, ${articuloProfesional(d.prof)} ${profUnido}, profesional ${d.org}, realizó una supervisión en el corredor vial ${corredorConPreposicion(d.corredor)}, donde se constató lo siguiente:`;
+      const introLineas=doc.splitTextToSize(intro,W);
+      y+=textoJustificado(introLineas,M,y,W,1.25)+5;
+
+      const encabezados=['N°','Falta verificada','Cita normativa','Latitud','Longitud','Imagen','Observaciones'],anchos=[8,38,30,24,24,14,44];
+      function linea(vals,alto,header,links=[]){
+        let x=M;vals.forEach((v,i)=>{
+          const link=!header&&links[i];
+          doc.setDrawColor(138,144,153);
+          if(header){doc.setFillColor(14,77,92);doc.rect(x,y,anchos[i],alto,'FD');doc.setTextColor(255);}
+          else{doc.rect(x,y,anchos[i],alto,'S');link?doc.setTextColor(7,95,174):doc.setTextColor(0);}
+          doc.setFont('helvetica',header?'bold':'normal');doc.setFontSize(7.2);
+          const lineas=doc.splitTextToSize(String(v||''),anchos[i]-2);doc.text(lineas,x+1,y+4,{lineHeightFactor:1.15});
+          if(link)doc.link(x,y,anchos[i],alto,{url:link});
+          x+=anchos[i];
+        });doc.setTextColor(0);
+      }
+      linea(encabezados,8,true);y+=8;
+      for(const p of photos){
+        const vals=[p.num,d.obs,d.cita,p.lat,p.lon,`N° ${p.num}`,p.obs];
+        const mapa=urlMapa(p),links=[null,null,null,mapa,mapa,null,null];
+        const h=Math.max(10,...vals.map((v,i)=>doc.getTextDimensions(doc.splitTextToSize(String(v||''),anchos[i]-2)).h+3));
+        if(y+h>278){doc.addPage();y=14;linea(encabezados,8,true);y+=8;}
+        linea(vals,h,false,links);y+=h;
+      }
+      y+=6;doc.setFontSize(8);doc.setFont('helvetica','italic');
+      const nota=doc.splitTextToSize('Nota: La ubicación GPS está sujeta a la precisión del "dispositivo móvil". Las coordenadas en azul abren Google Maps.',W),notaH=doc.getTextDimensions(nota).h+3;
+      if(y+notaH>BOTTOM){doc.addPage();y=14;}
+      doc.text(nota,M,y,{lineHeightFactor:1.2});y+=notaH+3;
+
+      if($('withImgs').checked){
+        if(y+9>BOTTOM){doc.addPage();y=14;}
+        doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text('REGISTRO FOTOGRÁFICO',M,y);y+=8;
+        for(const p of photos){
+          const iw=150,ix=(PAGE_W-iw)/2,dh=Math.min(118,iw*(p.h/p.w));
+          const co=p.lat||p.lon?` - ${p.lat||'?'}, ${p.lon||'?'}`:'',fe=p.fecha?` - ${p.fecha}`:'',mapa=urlMapa(p);
+          doc.setFont('helvetica','bold');doc.setFontSize(9);
+          const etiqueta=doc.splitTextToSize(`Imagen N° ${p.num}${co}${fe}`,iw),eh=doc.getTextDimensions(etiqueta).h+2;
+          doc.setFont('helvetica','normal');doc.setFontSize(9);
+          const comentario=p.obs?doc.splitTextToSize(`Comentario: ${p.obs}`,iw-4):[],ch=p.obs?doc.getTextDimensions(comentario).h+5:0;
+          const bloque=eh+dh+ch+9;
+          if(y+bloque>BOTTOM){doc.addPage();y=14;}
+          doc.setFont('helvetica','bold');doc.setFontSize(9);if(mapa)doc.setTextColor(7,95,174);doc.text(etiqueta,PAGE_W/2,y,{align:'center'});if(mapa)doc.link(ix,y-3,iw,eh+3,{url:mapa});doc.setTextColor(0);y+=eh;
+          doc.addImage(p.dataUrl,p.ext.toUpperCase(),ix,y,iw,dh);y+=dh;
+          if(p.obs){
+            doc.setFillColor(247,248,249);doc.setDrawColor(199,204,209);doc.rect(ix,y,iw,ch,'FD');
+            doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(0);textoJustificado(comentario,ix+2,y+4,iw-4,1.2);y+=ch;
+          }
+          y+=9;
+        }
+      }
+      doc.save(nombreArchivo(d,'.pdf'));setStatus('✓ PDF descargado con coordenadas clickeables.','ok');
     }catch(err){console.error(err);setStatus('Error al generar: '+err.message,'bad');}finally{$('pdfBtn').disabled=photos.length===0;}
   }
   $('f_fecha').value=fechaActualEnLetras();
+  actualizarFalta(false);
   render();
 })();
 </script>
 
-<!-- Volver al portal (agregado por el Portal de Innovación) -->
+<!-- ══════ Registro de actas y mapa de anomalías (Portal de Innovación) ══════ -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+<script src="../../assets/js/config-nube.js"></script>
+<script src="../../assets/js/nube.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+<style>
+.reg-sec{max-width:1180px;margin:0 auto 28px;padding:0 18px}
+.reg-caja{border:1px solid #d9dde1;border-radius:16px;background:#fff;overflow:hidden}
+.reg-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid #eceff1;
+  background:#fafbfc;cursor:pointer}
+.reg-head h3{margin:0;font-size:16px;color:#1d2429}
+.reg-head small{color:#6b757d;font-size:12.5px}
+.reg-head .flecha{margin-left:auto;font-size:13px;color:#6b757d;transition:transform .2s ease}
+.reg-caja.abierta .flecha{transform:rotate(180deg)}
+.reg-cuerpo{display:none;padding:14px 18px 18px}
+.reg-caja.abierta .reg-cuerpo{display:block}
+.reg-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin-bottom:13px}
+.reg-kpis div{border:1px solid #e3e7ea;border-radius:12px;padding:10px 13px;background:#f7f8f9}
+.reg-kpis span{display:block;font-size:9.5px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#6b757d}
+.reg-kpis b{font-size:20px;color:#1d2429}
+#vialMapa{height:430px;border:1px solid #e3e7ea;border-radius:12px}
+.reg-filtros{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:12px}
+.reg-filtros input,.reg-filtros select{padding:9px 12px;border:1px solid #d9dde1;border-radius:10px;font:600 13px inherit;color:#1d2429}
+.reg-filtros input{flex:1 1 220px;min-width:0}
+.reg-lista{max-height:190px;overflow:auto;margin-top:12px;border:1px solid #e3e7ea;border-radius:12px}
+.reg-lista table{width:100%;border-collapse:collapse;font-size:12.5px}
+.reg-lista th{position:sticky;top:0;background:#f2f4f5;text-align:left;padding:8px 11px;font-size:10px;
+  text-transform:uppercase;letter-spacing:.6px;color:#6b757d;border-bottom:1px solid #e3e7ea}
+.reg-lista td{padding:8px 11px;border-bottom:1px solid #eceff1;color:#28313a}
+.reg-lista tr:hover td{background:#f7f8f9}
+.reg-estado{display:flex;align-items:center;gap:9px;font-size:12.5px;color:#6b757d;margin-bottom:12px;flex-wrap:wrap}
+.reg-pt{width:10px;height:10px;border-radius:50%;background:#9aa4ab}
+.reg-pt.ok{background:#087f5b}.reg-pt.local{background:#b7791f}.reg-pt.error{background:#b51234}
+.pop-acta b{display:block;margin-bottom:2px}
+.pop-acta small{color:#5a666f;line-height:1.5}
+@media(max-width:820px){.reg-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#vialMapa{height:340px}}
+</style>
+
+<section class="reg-sec">
+  <div class="reg-caja" id="regCaja">
+    <div class="reg-head" id="regHead">
+      <h3>Actas registradas y mapa de anomalías</h3>
+      <small id="regResumen">—</small>
+      <span class="flecha">▼</span>
+    </div>
+    <div class="reg-cuerpo">
+      <div class="reg-estado">
+        <span class="reg-pt" id="regPunto"></span>
+        <span id="regTexto">Verificando la base…</span>
+        <button class="btn ghost tiny" id="regRefrescar" type="button">↻ Actualizar</button>
+        <button class="btn ghost tiny" id="regCsv" type="button">⬇ CSV de anomalías</button>
+      </div>
+
+      <div class="reg-kpis">
+        <div><span>Actas</span><b id="kActas">0</b></div>
+        <div><span>Anomalías</span><b id="kPuntos">0</b></div>
+        <div><span>Georreferenciadas</span><b id="kGeo">0</b></div>
+        <div><span>Corredores</span><b id="kCorr">0</b></div>
+      </div>
+
+      <div class="reg-filtros">
+        <input type="search" id="regBuscar" placeholder="Buscar por acta, corredor u observación…">
+        <select id="regCorredor"><option value="">Todos los corredores</option></select>
+      </div>
+
+      <div id="vialMapa"></div>
+
+      <div class="reg-lista">
+        <table>
+          <thead><tr><th>Acta</th><th>Fecha</th><th>Corredor</th><th>Anomalías</th><th>Profesional</th></tr></thead>
+          <tbody id="regTabla"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+/* Guarda cada acta generada en la base compartida y las dibuja en el mapa.
+   Se registran los datos del acta y las coordenadas de cada anomalía, no las
+   fotos: el peso quedaría enorme y las imágenes ya viajan en el PDF y el Excel. */
+(function () {
+  'use strict';
+
+  var COLECCION = 'vial-actas';
+  var CLAVE_LOCAL = 'ersep.vial.actas';
+  var $ = function (id) { return document.getElementById(id); };
+  var actas = [];
+  var mapa = null, grupo = null;
+
+  function enNube() { return window.ERSePNube && window.ERSePNube.configurada(); }
+
+  function estado(clase, texto) {
+    $('regPunto').className = 'reg-pt ' + clase;
+    $('regTexto').innerHTML = texto;
+  }
+
+  function leerLocal() {
+    try { return JSON.parse(localStorage.getItem(CLAVE_LOCAL) || '[]'); } catch (e) { return []; }
+  }
+
+  function guardarLocal(lista) {
+    try { localStorage.setItem(CLAVE_LOCAL, JSON.stringify(lista)); } catch (e) {}
+  }
+
+  function num(v) {
+    var n = parseFloat(String(v == null ? '' : v).replace(',', '.'));
+    return isFinite(n) ? n : null;
+  }
+
+  function esc(t) {
+    return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  /* ═════ Armado del acta a partir del formulario ═════ */
+  function actaActual() {
+    var fotos = (window.VIAL_ACTA && window.VIAL_ACTA.photos) || [];
+    var puntos = fotos.map(function (p) {
+      return {
+        num: p.num, lat: p.lat || '', lon: p.lon || '',
+        fecha: p.fecha || '', obs: p.obs || '', origen: p.source || ''
+      };
+    });
+
+    var valor = function (id) { var e = $(id); return e ? String(e.value || '').trim() : ''; };
+
+    return {
+      nro: valor('f_nro'),
+      ciudad: valor('f_ciudad'),
+      fechaTexto: valor('f_fecha'),
+      profesional: valor('f_prof'),
+      organismo: valor('f_org'),
+      corredor: valor('f_corredor'),
+      cita: valor('f_cita'),
+      observaciones: valor('f_obs') + (valor('f_obs_otro') ? ' · ' + valor('f_obs_otro') : ''),
+      puntos: puntos,
+      total: puntos.length,
+      georreferenciadas: puntos.filter(function (x) { return num(x.lat) !== null && num(x.lon) !== null; }).length,
+      registrado: new Date().toISOString()
+    };
+  }
+
+  function idDeActa(a) {
+    return String(a.nro || 'sin-numero').replace(/[^\w\-]/g, '-') + '__' + String(a.corredor || '').slice(0, 24).replace(/[^\w\-]/g, '-');
+  }
+
+  function registrar() {
+    var fotos = (window.VIAL_ACTA && window.VIAL_ACTA.photos) || [];
+    if (!fotos.length) { alert('Cargá al menos una imagen antes de registrar el acta.'); return; }
+
+    var a = actaActual();
+    if (!a.nro) { alert('Indicá el N° de acta.'); return; }
+
+    var id = idDeActa(a);
+    var lista = leerLocal().filter(function (x) { return x.id !== id; });
+    lista.push({ id: id, datos: a });
+    guardarLocal(lista);
+
+    if (!enNube()) {
+      estado('local', 'Acta <b>' + esc(a.nro) + '</b> guardada solo en esta computadora.');
+      cargar();
+      return;
+    }
+
+    estado('', 'Registrando el acta…');
+    window.ERSePNube.guardar(COLECCION, id, a).then(function (r) {
+      estado(r.diferido ? 'error' : 'ok', r.diferido
+        ? 'Acta <b>' + esc(a.nro) + '</b> guardada acá: se enviará al recuperar la conexión.'
+        : 'Acta <b>' + esc(a.nro) + '</b> registrada en la base compartida.');
+      cargar();
+    });
+  }
+
+  /* ═════ Lectura y dibujo ═════ */
+  function cargar() {
+    var locales = leerLocal();
+
+    if (!enNube()) {
+      actas = locales.map(function (x) { return x.datos; });
+      estado('local', 'Registro <b>solo en esta computadora</b> · configurá la base en <code>assets/js/config-nube.js</code> para compartirlo.');
+      pintar();
+      return;
+    }
+
+    estado('', 'Sincronizando…');
+    window.ERSePNube.sincronizarPendientes()
+      .then(function () { return window.ERSePNube.listar(COLECCION); })
+      .then(function (remotos) {
+        var porId = {};
+        locales.forEach(function (x) { porId[x.id] = x.datos; });
+        remotos.forEach(function (r) {
+          var a = r.datos || {};
+          if (!porId[r.id] || String(a.registrado) >= String(porId[r.id].registrado)) porId[r.id] = a;
+        });
+
+        actas = Object.keys(porId).map(function (k) { return porId[k]; });
+        guardarLocal(Object.keys(porId).map(function (k) { return { id: k, datos: porId[k] }; }));
+
+        var faltan = window.ERSePNube.pendientes();
+        estado(faltan ? 'error' : 'ok', 'Base compartida · ' + actas.length + ' actas' +
+          (faltan ? ' · ' + faltan + ' en espera' : ''));
+        pintar();
+      })
+      .catch(function () {
+        actas = locales.map(function (x) { return x.datos; });
+        estado('error', 'Sin conexión con la base: se muestran las actas de esta computadora.');
+        pintar();
+      });
+  }
+
+  function filtradas() {
+    var t = String($('regBuscar').value || '').toLowerCase();
+    var c = $('regCorredor').value;
+    return actas.filter(function (a) {
+      if (c && a.corredor !== c) return false;
+      if (!t) return true;
+      return [a.nro, a.corredor, a.observaciones, a.profesional, a.ciudad].join(' ').toLowerCase().indexOf(t) !== -1;
+    });
+  }
+
+  function iniciarMapa() {
+    if (mapa) return;
+    mapa = L.map('vialMapa').setView([-31.7, -64.2], 7);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+      { attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19 }).addTo(mapa);
+    grupo = L.markerClusterGroup({ maxClusterRadius: 40 });
+    mapa.addLayer(grupo);
+  }
+
+  function pintar() {
+    var lista = filtradas();
+
+    var corredores = {};
+    actas.forEach(function (a) { if (a.corredor) corredores[a.corredor] = 1; });
+    var sel = $('regCorredor'), actual = sel.value;
+    sel.innerHTML = '<option value="">Todos los corredores</option>' +
+      Object.keys(corredores).sort().map(function (c) {
+        return '<option value="' + esc(c) + '">' + esc(c) + '</option>';
+      }).join('');
+    sel.value = actual;
+
+    var puntos = [];
+    lista.forEach(function (a) {
+      (a.puntos || []).forEach(function (p) {
+        var la = num(p.lat), lo = num(p.lon);
+        if (la !== null && lo !== null && la < -20 && la > -56) puntos.push({ acta: a, p: p, la: la, lo: lo });
+      });
+    });
+
+    $('kActas').textContent = lista.length;
+    $('kPuntos').textContent = lista.reduce(function (n, a) { return n + (a.total || 0); }, 0);
+    $('kGeo').textContent = puntos.length;
+    $('kCorr').textContent = Object.keys(corredores).length;
+    $('regResumen').textContent = actas.length
+      ? actas.length + ' actas · ' + puntos.length + ' anomalías ubicadas'
+      : 'todavía no hay actas registradas';
+
+    $('regTabla').innerHTML = lista.length ? lista.slice(0, 300).map(function (a) {
+      return '<tr><td><b>' + esc(a.nro) + '</b></td><td>' + esc(a.fechaTexto || '—') + '</td>' +
+        '<td>' + esc(a.corredor || '—') + '</td><td>' + (a.total || 0) +
+        ' <small style="color:#6b757d">(' + (a.georreferenciadas || 0) + ' con GPS)</small></td>' +
+        '<td>' + esc(a.profesional || '—') + '</td></tr>';
+    }).join('') : '<tr><td colspan="5" style="text-align:center;color:#6b757d;padding:18px">Sin actas para mostrar.</td></tr>';
+
+    if (!grupo) return;
+    grupo.clearLayers();
+    var capas = puntos.map(function (x) {
+      return L.circleMarker([x.la, x.lo], {
+        radius: 6, color: '#fff', weight: 1.5, fillColor: '#b51234', fillOpacity: .9
+      }).bindPopup('<div class="pop-acta"><b>Acta ' + esc(x.acta.nro) + ' · imagen ' + esc(x.p.num) + '</b>' +
+        '<small>' + esc(x.acta.corredor || '') + '<br>' + esc(x.p.fecha || '') +
+        (x.p.obs ? '<br>' + esc(x.p.obs) : '') +
+        '<br><a href="https://www.google.com/maps?q=' + x.la + ',' + x.lo + '" target="_blank" rel="noopener">Ver en Google Maps →</a>' +
+        '</small></div>');
+    });
+    grupo.addLayers(capas);
+
+    if (capas.length) {
+      try { mapa.fitBounds(grupo.getBounds().pad(0.15)); } catch (e) {}
+    }
+  }
+
+  /* ═════ Exportación ═════ */
+  function csv() {
+    var filas = [['Acta', 'Fecha', 'Corredor', 'Profesional', 'Imagen', 'Latitud', 'Longitud', 'Fecha foto', 'Observacion']];
+    filtradas().forEach(function (a) {
+      (a.puntos || []).forEach(function (p) {
+        filas.push([a.nro, a.fechaTexto, a.corredor, a.profesional, p.num, p.lat, p.lon, p.fecha, p.obs]);
+      });
+    });
+    var txt = filas.map(function (f) {
+      return f.map(function (c) { return '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"'; }).join(';');
+    }).join('\r\n');
+    var url = URL.createObjectURL(new Blob(['\ufeff' + txt], { type: 'text/csv;charset=utf-8' }));
+    var a = document.createElement('a');
+    a.href = url; a.download = 'anomalias-vial.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  /* ═════ Eventos ═════ */
+  $('regHead').addEventListener('click', function () {
+    var caja = $('regCaja');
+    caja.classList.toggle('abierta');
+    if (caja.classList.contains('abierta')) {
+      iniciarMapa();
+      setTimeout(function () { mapa.invalidateSize(); pintar(); }, 120);
+    }
+  });
+
+  $('regRefrescar').addEventListener('click', function (e) { e.stopPropagation(); cargar(); });
+  $('regCsv').addEventListener('click', function (e) { e.stopPropagation(); csv(); });
+  ['regBuscar', 'regCorredor'].forEach(function (id) {
+    $(id).addEventListener('input', pintar);
+    $(id).addEventListener('change', pintar);
+  });
+  $('btnRegistrar').addEventListener('click', registrar);
+
+  /* El botón se habilita junto con los demás, cuando hay fotos cargadas */
+  setInterval(function () {
+    var hay = ((window.VIAL_ACTA && window.VIAL_ACTA.photos) || []).length > 0;
+    $('btnRegistrar').disabled = !hay;
+  }, 700);
+
+  cargar();
+})();
+</script>
+
+<!-- Volver al portal -->
 <style>
 .portal-back{position:fixed;left:14px;bottom:14px;z-index:99999;display:inline-flex;align-items:center;gap:7px;
   padding:9px 14px;border-radius:999px;background:#b51234;color:#fff;font:800 12px "Segoe UI",system-ui,Arial,sans-serif;
