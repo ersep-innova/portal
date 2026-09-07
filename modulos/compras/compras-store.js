@@ -61,6 +61,65 @@ window.ComprasStore = (function () {
     return p;
   }
 
+  /* ═════ Base compartida ═════
+     Si está configurada, la planilla manda: al abrir se trae todo y se fusiona
+     con lo local (gana la versión más reciente de cada pedido). */
+  function enNube() {
+    return window.ERSePNube && window.ERSePNube.configurada();
+  }
+
+  function fusionar(remotos) {
+    var locales = pedidos();
+    var porId = {};
+    locales.forEach(function (p) { porId[p.id] = p; });
+
+    remotos.forEach(function (r) {
+      var p = r.datos || {};
+      if (!p.id) return;
+      var actual = porId[p.id];
+      var fechaR = ultimoMovimiento(p), fechaL = actual ? ultimoMovimiento(actual) : '';
+      if (!actual || fechaR >= fechaL) porId[p.id] = p;
+    });
+
+    var lista = Object.keys(porId).map(function (k) { return normalizar(porId[k]); });
+    lista.sort(function (a, b) { return String(a.registrado).localeCompare(String(b.registrado)); });
+    guardarPedidos(lista);
+    return lista;
+  }
+
+  function ultimoMovimiento(p) {
+    var h = p.historial || [];
+    return h.length ? String(h[h.length - 1].fecha) : String(p.registrado || '');
+  }
+
+  /* Trae la planilla y devuelve la lista ya fusionada */
+  function sincronizar() {
+    if (!enNube()) return Promise.resolve({ nube: false, pedidos: pedidos() });
+
+    return window.ERSePNube.sincronizarPendientes()
+      .then(function () { return window.ERSePNube.listar('compras'); })
+      .then(function (remotos) {
+        var lista = fusionar(remotos);
+
+        // Lo que sólo existía en este equipo se sube para que lo vean los demás
+        var idsRemotos = {};
+        remotos.forEach(function (r) { idsRemotos[r.id] = true; });
+        lista.forEach(function (p) {
+          if (!idsRemotos[p.id]) window.ERSePNube.guardar('compras', p.id, p);
+        });
+
+        return { nube: true, pedidos: lista };
+      })
+      .catch(function (e) {
+        return { nube: false, error: e.message, pedidos: pedidos() };
+      });
+  }
+
+  function subir(pedido) {
+    if (!enNube()) return;
+    window.ERSePNube.guardar('compras', pedido.id, pedido);
+  }
+
   function pedidos() {
     var lista = hayStorage ? leerJSON(KEY_PEDIDOS, []) : memoria.pedidos;
     return Array.isArray(lista) ? lista.map(normalizar) : [];
@@ -94,15 +153,31 @@ window.ComprasStore = (function () {
   }
 
   /* Registra el pedido y consume el número. Devuelve el pedido guardado. */
-  function registrar(datos) {
+  /* Con base compartida el número lo asigna el servidor: evita que dos equipos
+     tomen el mismo correlativo. Sin base, se usa el contador local. */
+  function pedirNumero(anio) {
+    if (!enNube()) return Promise.resolve(proximoNumero(anio));
+    return window.ERSePNube.numero('compras-' + anio)
+      .then(function (n) { return { anio: anio, numero: n, texto: pad(n) + "/" + anio }; })
+      .catch(function () {
+        // Sin conexión se usa el contador local y el número queda marcado como
+        // provisional: al sincronizar puede coincidir con otro equipo.
+        var local = proximoNumero(anio);
+        local.provisional = true;
+        return local;
+      });
+  }
+
+  function registrar(datos, prox) {
     var anio = Number(String(datos.fecha || "").slice(0, 4)) || new Date().getFullYear();
-    var prox = proximoNumero(anio);
+    prox = prox || proximoNumero(anio);
 
     var pedido = {
       id: "P" + Date.now() + "-" + Math.random().toString(36).slice(2, 7),
       numero: prox.numero,
       anio: prox.anio,
       numeroTexto: prox.texto,
+      provisional: !!prox.provisional,
       fecha: datos.fecha || "",
       area: datos.area || "",
       tipo: datos.tipo || "Libre",
@@ -124,10 +199,12 @@ window.ComprasStore = (function () {
     var ok = guardarPedidos(lista);
 
     var c = contadores();
-    c[prox.anio] = prox.numero;
+    if (!c[prox.anio] || prox.numero > c[prox.anio]) c[prox.anio] = prox.numero;
     guardarContadores(c);
 
-    return { ok: ok, pedido: pedido, persistido: hayStorage && ok };
+    subir(pedido);
+
+    return { ok: ok, pedido: pedido, persistido: (hayStorage && ok) || enNube() };
   }
 
   /* Los pedidos no se borran: cambian de estado y queda el historial completo. */
@@ -148,6 +225,7 @@ window.ComprasStore = (function () {
     });
 
     var ok = guardarPedidos(lista);
+    subir(pedido);
     return { ok: ok, pedido: pedido };
   }
 
@@ -207,6 +285,9 @@ window.ComprasStore = (function () {
     proximoNumero: proximoNumero,
     registrar: registrar,
     cambiarEstado: cambiarEstado,
+    sincronizar: sincronizar,
+    pedirNumero: pedirNumero,
+    enNube: enNube,
     ESTADOS: ESTADOS,
     ETAPAS: ETAPAS,
     vaciar: vaciar,
