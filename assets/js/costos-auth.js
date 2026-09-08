@@ -1,4 +1,4 @@
-() => {
+(() => {
   "use strict";
 
   const config = window.ERSEP_COSTOS_AUTH_CONFIG;
