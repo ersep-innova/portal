@@ -41,9 +41,40 @@ footer{padding:0 0 34px;color:var(--muted);font-size:.8rem;display:flex;justify-
 @media(max-width:1100px){.filter-grid{grid-template-columns:repeat(3,1fr)}.kpis{grid-template-columns:repeat(3,1fr)}.grid2{grid-template-columns:1fr}.hero-inner{grid-template-columns:1fr}.hero-badge{min-width:0}}
 @media(max-width:720px){.activity-start-hint{align-items:flex-start;flex-direction:column}.activity-start-hint .btn{width:100%;justify-content:center}.resolution-toolbar{width:100%}.resolution-toolbar .btn{width:100%;justify-content:center}.shell{width:min(100% - 20px,1480px)}.topbar .inner{height:64px}.brandcopy span{display:none}.brand img{height:34px}.hero-inner{padding:26px 22px}.filter-grid{grid-template-columns:1fr 1fr}.kpis{grid-template-columns:1fr 1fr}.kpi:last-child{grid-column:1/-1}.method-grid{grid-template-columns:1fr}.section-head{flex-direction:column}.search{min-width:100%}}
 @media(max-width:460px){.filter-grid,.kpis{grid-template-columns:1fr}.kpi:last-child{grid-column:auto}.hero h1{font-size:2.2rem}}
+
+/* Acceso protegido · agregado para integración con Portal ERSeP */
+.auth-gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--bg)}
+.auth-gate[hidden]{display:none!important}
+.auth-card{width:min(430px,100%);background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:28px}
+.auth-card h1{margin:0 0 8px;font-size:1.8rem}
+.auth-card p{margin:0 0 20px;color:var(--muted)}
+.auth-card label{display:block;font-size:.72rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:0 0 6px 3px}
+.auth-card input{width:100%;height:46px;border:1px solid var(--line);border-radius:13px;background:var(--card2);color:var(--ink);padding:0 12px;margin-bottom:12px;outline:none}
+.auth-card input:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(26,166,199,.13)}
+.auth-card .btn{width:100%;justify-content:center}
+.auth-error{min-height:1.2em;color:var(--bad);font-size:.82rem;font-weight:800;margin-top:10px}
+[data-protected][hidden]{display:none!important}
 </style>
 </head>
-<body>
+<body data-auth-required="costos-tarifas">
+<section id="auth_gate" class="auth-gate" hidden>
+  <div class="auth-card">
+    <div class="eyebrow" style="color:var(--cyan);margin-bottom:8px">ERSeP · Acceso protegido</div>
+    <h1>Costos y Tarifas</h1>
+    <p>Ingresá la contraseña para acceder al módulo.</p>
+    <form id="auth_form">
+      <label for="auth_password">Contraseña</label>
+      <input id="auth_password" type="password" autocomplete="current-password" required />
+      <button class="btn primary" type="submit">Ingresar a Costos y Tarifas</button>
+      <div id="auth_error" class="auth-error" role="alert"></div>
+    </form>
+  </div>
+</section>
+
+<script src="../../assets/js/costos-auth-config.js"></script>
+<script src="../../assets/js/costos-auth.js"></script>
+
+<div data-protected hidden>
 <div class="topbar"><div class="shell inner">
   <a class="brand" href="https://ersep-innova.github.io/portal/" target="_top" aria-label="Volver al Portal ERSeP Innova">
     <img src="https://ersep-innova.github.io/portal/assets/img/institucional/logo-ersep.png" alt="ERSeP" />
@@ -989,4 +1020,5 @@ function setTariffSourceStatus(){
   refreshOfficialIpc();
 })();
 </script>
+</div>
 </body></html>
