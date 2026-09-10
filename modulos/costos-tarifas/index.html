@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Ajustes tarifarios ERSeP · versión 8 · prueba barra sincronizada -->
+<!-- Ajustes tarifarios ERSeP · versión 11.1 portal · acceso protegido + fuente tarifaria en vivo desde Google Drive -->
 <html lang="es" data-theme="dark">
 <head>
 <meta charset="utf-8" />
@@ -7,8 +7,8 @@
 <meta name="color-scheme" content="light dark" />
 <title>Ajustes tarifarios · ERSeP</title>
 <meta name="description" content="Módulo de análisis de ajustes tarifarios ERSeP" />
-<link rel="stylesheet" href="../../assets/css/auth.css" />
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{
   --navy:#0b2948; --navy-2:#113b62; --blue:#2f6fa8; --cyan:#1aa6c7; --teal:#2f8a67;
@@ -29,7 +29,7 @@ a{color:inherit}.shell{width:min(1480px,calc(100% - 32px));margin:auto}
 .top-actions{display:flex;gap:8px}.icon-btn,.btn{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:13px;padding:10px 13px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px}.icon-btn:hover,.btn:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(15,66,108,.08)}
 .hero{margin:22px auto 18px;border-radius:28px;overflow:hidden;background:linear-gradient(125deg,var(--navy) 0%,var(--navy-2) 55%,#0b7191 100%);color:#fff;box-shadow:var(--shadow);position:relative}.hero:after{content:"";position:absolute;width:420px;height:420px;border-radius:50%;right:-160px;top:-220px;background:rgba(255,255,255,.08)}.hero-inner{padding:34px 38px;position:relative;z-index:1;display:grid;grid-template-columns:1fr auto;gap:24px;align-items:end}.eyebrow{font-size:.78rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;opacity:.78}.hero h1{font-size:clamp(2rem,4vw,3.4rem);line-height:1.02;margin:8px 0 9px;letter-spacing:-.04em}.hero p{margin:0;max-width:820px;color:rgba(255,255,255,.82);font-size:1rem}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.chip{font-size:.76rem;font-weight:800;border-radius:999px;padding:7px 10px;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.18)}.hero-badge{min-width:240px;padding:14px 16px;border-radius:18px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18)}.hero-badge small{display:block;opacity:.75;margin-bottom:4px}.hero-badge strong{font-size:1.05rem}
 .statusbar{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 16px}.status{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:8px 12px;font-size:.8rem;color:var(--muted)}.status b{color:var(--ink)}.status-link{margin-left:5px;font-size:.72rem;font-weight:800;color:var(--blue);text-decoration:none}.status-link:hover{text-decoration:underline}
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}.filters{padding:20px;margin-bottom:16px}.section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}.section-head h2,.section-head h3{margin:0;font-size:1.08rem}.section-head p{margin:4px 0 0;color:var(--muted);font-size:.86rem}.filter-grid{display:grid;grid-template-columns:repeat(6,minmax(150px,1fr));gap:12px}.field label{display:block;font-size:.72rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:0 0 6px 3px}.field select,.field input{width:100%;height:44px;border:1px solid var(--line);border-radius:13px;background:var(--card2);color:var(--ink);padding:0 11px;outline:none}.field select:focus,.field input:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(26,166,199,.13)}.filter-actions{display:flex;justify-content:flex-end;margin-top:12px;gap:8px}.filter-error{margin-top:12px;padding:10px 12px;border:1px solid color-mix(in srgb,var(--bad) 38%,var(--line));background:color-mix(in srgb,var(--bad) 8%,var(--card));color:var(--bad);border-radius:12px;font-size:.82rem;font-weight:800}.btn.primary{background:var(--navy);color:#fff;border-color:transparent}.btn.ghost{background:transparent}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}.filters{padding:20px;margin-bottom:16px}.section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}.section-head h2,.section-head h3{margin:0;font-size:1.08rem}.section-head p{margin:4px 0 0;color:var(--muted);font-size:.86rem}.filter-grid{display:grid;grid-template-columns:repeat(6,minmax(150px,1fr));gap:12px}.field label{display:block;font-size:.72rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:0 0 6px 3px}.field select,.field input{width:100%;height:44px;border:1px solid var(--line);border-radius:13px;background:var(--card2);color:var(--ink);padding:0 11px;outline:none}.field select:focus,.field input:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(26,166,199,.13)}.search-select{position:relative}.search-select input:disabled{opacity:.62;cursor:not-allowed}.search-options{position:absolute;left:0;right:0;top:49px;z-index:45;max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:13px;background:var(--card);box-shadow:0 16px 34px rgba(0,0,0,.18);padding:6px}.search-option{width:100%;border:0;background:transparent;color:var(--ink);text-align:left;padding:9px 10px;border-radius:9px;cursor:pointer;font:inherit;font-size:.82rem;line-height:1.25}.search-option:hover,.search-option.active{background:var(--soft)}.search-option-empty{padding:12px;color:var(--muted);font-size:.8rem}.filter-actions{display:flex;justify-content:flex-end;margin-top:12px;gap:8px}.activity-start-hint{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:10px 12px;border:1px solid color-mix(in srgb,var(--warn) 34%,var(--line));background:color-mix(in srgb,var(--warn) 7%,var(--card));border-radius:12px;color:var(--muted);font-size:.8rem}.activity-start-hint b{color:var(--ink)}.activity-start-hint .btn{padding:7px 10px;font-size:.76rem;white-space:nowrap}.filter-error{margin-top:12px;padding:10px 12px;border:1px solid color-mix(in srgb,var(--bad) 38%,var(--line));background:color-mix(in srgb,var(--bad) 8%,var(--card));color:var(--bad);border-radius:12px;font-size:.82rem;font-weight:800}.btn.primary{background:var(--navy);color:#fff;border-color:transparent}.btn.ghost{background:transparent}
 .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}.kpi{padding:18px}.kpi-label{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;font-weight:800}.kpi-value{font-size:clamp(1.55rem,2.4vw,2.35rem);font-weight:850;letter-spacing:-.04em;margin:4px 0}.kpi-note{font-size:.78rem;color:var(--muted);min-height:1.2em}.positive{color:var(--good)}.negative{color:var(--bad)}.neutral{color:var(--ink)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}.chart-card{padding:18px;min-height:390px}.real-chart-card{margin-bottom:16px}.analysis-range-card{padding:14px 18px;margin-bottom:16px}.analysis-range-card .chart-range{margin-top:0;border:0;padding:0;background:transparent}.chart-wrap{height:310px;position:relative}.chart-hint{font-size:.8rem;color:var(--warn);font-weight:700;margin-top:6px}
 .chart-head-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.segmented{display:inline-flex;padding:3px;border:1px solid var(--line);border-radius:11px;background:var(--card2)}.segmented button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:.74rem;font-weight:800;padding:7px 10px;border-radius:8px;cursor:pointer}.segmented button.active{background:var(--card);color:var(--ink);box-shadow:0 3px 10px rgba(15,66,108,.08)}
@@ -39,46 +39,46 @@ a{color:inherit}.shell{width:min(1480px,calc(100% - 32px));margin:auto}
 .method{padding:18px;margin-bottom:28px}.method-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.method-item{background:var(--card2);border:1px solid var(--line);border-radius:16px;padding:14px}.method-item b{display:block;margin-bottom:4px}.method-item span{font-size:.82rem;color:var(--muted)}
 footer{padding:0 0 34px;color:var(--muted);font-size:.8rem;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
 @media(max-width:1100px){.filter-grid{grid-template-columns:repeat(3,1fr)}.kpis{grid-template-columns:repeat(3,1fr)}.grid2{grid-template-columns:1fr}.hero-inner{grid-template-columns:1fr}.hero-badge{min-width:0}}
-@media(max-width:720px){.resolution-toolbar{width:100%}.resolution-toolbar .btn{width:100%;justify-content:center}.shell{width:min(100% - 20px,1480px)}.topbar .inner{height:64px}.brandcopy span{display:none}.brand img{height:34px}.hero-inner{padding:26px 22px}.filter-grid{grid-template-columns:1fr 1fr}.kpis{grid-template-columns:1fr 1fr}.kpi:last-child{grid-column:1/-1}.method-grid{grid-template-columns:1fr}.section-head{flex-direction:column}.search{min-width:100%}}
+@media(max-width:720px){.activity-start-hint{align-items:flex-start;flex-direction:column}.activity-start-hint .btn{width:100%;justify-content:center}.resolution-toolbar{width:100%}.resolution-toolbar .btn{width:100%;justify-content:center}.shell{width:min(100% - 20px,1480px)}.topbar .inner{height:64px}.brandcopy span{display:none}.brand img{height:34px}.hero-inner{padding:26px 22px}.filter-grid{grid-template-columns:1fr 1fr}.kpis{grid-template-columns:1fr 1fr}.kpi:last-child{grid-column:1/-1}.method-grid{grid-template-columns:1fr}.section-head{flex-direction:column}.search{min-width:100%}}
 @media(max-width:460px){.filter-grid,.kpis{grid-template-columns:1fr}.kpi:last-child{grid-column:auto}.hero h1{font-size:2.2rem}}
+
+/* Acceso protegido Costos y Tarifas */
+.auth-gate{min-height:100vh;display:grid;place-items:center;padding:28px;background:radial-gradient(circle at 80% 15%,rgba(26,166,199,.16),transparent 30%),var(--bg)}
+.auth-gate[hidden]{display:none!important}.auth-card{width:min(460px,100%);padding:28px;background:var(--card);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow)}
+.auth-card h1{margin:0 0 8px;font-size:1.7rem}.auth-card p{margin:0 0 18px;color:var(--muted)}.auth-card label{display:block;font-size:.76rem;font-weight:800;margin-bottom:7px}.auth-card input{width:100%;height:46px;border:1px solid var(--line);border-radius:13px;background:var(--card2);color:var(--ink);padding:0 12px;margin-bottom:12px}.auth-error{min-height:1.2em;color:var(--bad);font-size:.82rem;font-weight:800;margin-top:10px}.auth-card .btn{width:100%;justify-content:center}
+[data-protected][hidden]{display:none!important}.refreshing{opacity:.65;pointer-events:none}
 </style>
 </head>
 <body data-auth-required="costos-tarifas">
-<section class="auth-gate" id="auth_gate" hidden>
-  <form class="auth-panel" id="auth_form" autocomplete="off">
-    <div class="auth-brand">
-      <span class="auth-logo-wrap"><img class="auth-logo" src="../../assets/img/institucional/logo-ersep.png" alt="ERSeP" style="height:42px;width:auto"></span>
-      <div><strong>Portal de Innovación y Análisis de Datos</strong><span>Subdirección de Jurisdicción de Costos y Tarifas</span></div>
-    </div>
-    <h1>Acceso a Costos y Tarifas</h1>
-    <p>Ingresá la contraseña institucional para consultar el historial y los análisis tarifarios.</p>
-    <div class="auth-field">
+<section id="auth_gate" class="auth-gate" hidden>
+  <div class="auth-card">
+    <div class="eyebrow" style="color:var(--cyan);margin-bottom:8px">ERSeP · Acceso protegido</div>
+    <h1>Costos y Tarifas</h1>
+    <p>Ingresá la contraseña para abrir el módulo y consultar la fuente tarifaria en vivo.</p>
+    <form id="auth_form">
       <label for="auth_password">Contraseña</label>
-      <input id="auth_password" type="password" required autocomplete="current-password">
-    </div>
-    <button class="auth-submit" type="submit">Ingresar a Costos y Tarifas</button>
-    <p class="auth-error" id="auth_error" role="alert"></p>
-    <div class="auth-security-note">La contraseña no queda guardada en el navegador. La base tarifaria publicada en el repositorio permanece cifrada.</div>
-    <a class="auth-back" href="../../">← Volver al menú principal</a>
-  </form>
+      <input id="auth_password" type="password" autocomplete="current-password" required />
+      <button class="btn primary" type="submit">Ingresar a Costos y Tarifas</button>
+      <div id="auth_error" class="auth-error" role="alert"></div>
+    </form>
+  </div>
 </section>
-<div data-protected hidden>
-<div class="topbar"><div class="shell inner">
+<div class="topbar" data-protected hidden><div class="shell inner">
   <a class="brand" href="https://ersep-innova.github.io/portal/" target="_top" aria-label="Volver al Portal ERSeP Innova">
     <img src="https://ersep-innova.github.io/portal/assets/img/institucional/logo-ersep.png" alt="ERSeP" />
     <div class="brandcopy"><strong>Innovación y Análisis de Datos</strong><span>Ente Regulador de los Servicios Públicos</span></div>
   </a>
-  <div class="top-actions"><a class="icon-btn" id="driveBtn" href="#resoluciones">Resoluciones ↓</a><button class="icon-btn" id="themeBtn" aria-label="Cambiar tema">◐</button><button class="icon-btn" data-costos-lock type="button">Cerrar</button></div>
+  <div class="top-actions"><button class="icon-btn" id="refreshDataBtn" type="button" title="Volver a leer AJUSTES TARIFARIOS.xlsx desde Google Drive">↻ Actualizar datos</button><a class="icon-btn" id="driveBtn" href="#resoluciones">Resoluciones ↓</a><button class="icon-btn" id="themeBtn" aria-label="Cambiar tema">◐</button></div>
 </div></div>
 
-<main class="shell">
+<main class="shell" data-protected hidden>
 <section class="hero"><div class="hero-inner">
   <div><div class="eyebrow">Módulo de regulación</div><h1>Ajustes tarifarios</h1><p>Consulta histórica de modificaciones tarifarias, cálculo de variación acumulada por período y comparación con IPC Córdoba.</p><div class="chips"><span class="chip">Datos</span><span class="chip">Regulación</span><span class="chip">Tarifas</span></div></div>
   <div class="hero-badge"><small>Período disponible</small><strong id="heroRange">—</strong><small style="margin-top:8px">Registros cargados</small><strong id="heroCount">—</strong></div>
 </div></section>
 
 <div class="statusbar">
-  <div class="status">Fuente tarifaria: <b>AJUSTES TARIFARIOS.xlsx</b> · solo lectura</div>
+  <div class="status">Fuente tarifaria: <b>AJUSTES TARIFARIOS.xlsx</b> · <span id="tariffSourceStatus">esperando acceso…</span><a id="tariffSourceLink" class="status-link" href="#" target="_blank" rel="noopener">abrir fuente</a></div>
   <div class="status">IPC: <b id="ipcStatus">cargando fuente oficial…</b><a class="status-link" id="ipcSourceLink" href="https://estadistica.cba.gov.ar/portal/apps/sites/#/estadistica" target="_blank" rel="noopener">fuente ↗</a></div>
   <div class="status">Cálculo: <b>variación compuesta</b></div>
   <div class="status">Carga: <b id="loadStatus">—</b></div>
@@ -90,12 +90,13 @@ footer{padding:0 0 34px;color:var(--muted);font-size:.8rem;display:flex;justify-
   <div class="filter-grid">
     <div class="field"><label for="gerencia">Gerencia</label><select id="gerencia"><option value="">Todas</option></select></div>
     <div class="field"><label for="servicio">Servicio</label><select id="servicio"><option value="">Todos</option></select></div>
-    <div class="field"><label for="empresa">Empresa / Prestador</label><select id="empresa"><option value="">Todas</option></select></div>
+    <div class="field"><label for="empresa">Empresa / Prestador</label><div class="search-select" id="empresaSearchWrap"><input id="empresa" type="search" autocomplete="off" placeholder="Primero elegí gerencia y servicio" disabled aria-autocomplete="list" aria-controls="empresaOptions" aria-expanded="false" /><div class="search-options" id="empresaOptions" role="listbox" hidden></div></div></div>
     <div class="field"><label for="segmento">Serie / segmento</label><select id="segmento"><option value="">Todos</option></select></div>
-    <div class="field"><label for="desde">Desde</label><input id="desde" type="date" /></div>
-    <div class="field"><label for="hasta">Hasta</label><input id="hasta" type="date" /></div>
+    <div class="field"><label for="desde">Desde</label><input id="desde" type="date" max="9999-12-31" /></div>
+    <div class="field"><label for="hasta">Hasta</label><input id="hasta" type="date" max="9999-12-31" /></div>
   </div>
   <div class="filter-actions"><button class="btn ghost" id="resetBtn">Restablecer</button></div>
+  <div id="activityStartHint" class="activity-start-hint" hidden><span id="activityStartText"></span><button class="btn ghost" id="activityStartBtn" type="button">Iniciar en primer ajuste</button></div>
   <div id="filterError" class="filter-error" hidden></div>
 </section>
 
@@ -113,7 +114,7 @@ footer{padding:0 0 34px;color:var(--muted);font-size:.8rem;display:flex;justify-
     <div class="dual-range"><div class="range-track"></div><div class="range-fill" id="chartRangeFill"></div><input id="chartRangeStart" type="range" min="0" max="1" value="0" aria-label="Inicio de la ventana de análisis"><input id="chartRangeEnd" type="range" min="0" max="1" value="1" aria-label="Fin de la ventana de análisis"></div>
     <div class="chart-range-ends"><span id="chartRangeStartLabel">—</span><span id="chartRangeEndLabel">—</span></div>
   </div>
-  <div class="chart-click-hint">Este rango se aplica simultáneamente a los KPIs analíticos, Variaciones tarifarias, Evolución acumulada y Tarifa en términos reales.</div>
+  <div class="chart-click-hint">Este rango se aplica simultáneamente a los KPIs analíticos y a los tres gráficos. En Evolución acumulada y Tarifa real podés hacer clic sobre cualquier punto de ajuste para usar esa fecha como nuevo inicio.</div>
 </section>
 
 <section class="grid2">
@@ -155,18 +156,26 @@ footer{padding:0 0 34px;color:var(--muted);font-size:.8rem;display:flex;justify-
 
 <footer><span>ERSeP · Innovación y Análisis de Datos</span><span id="footerSource">Fuente: AJUSTES TARIFARIOS.xlsx</span></footer>
 </main>
-</div>
 
 <script src="../../assets/js/costos-auth-config.js"></script>
 <script src="../../assets/js/costos-auth.js"></script>
+
 <script>
-const EMBEDDED_DATA = null;
+const EMBEDDED_DATA = {"metadata":{"fuente_tarifaria":"AJUSTES TARIFARIOS.xlsx","modo_fuente":"Google Drive en vivo · sin respaldo tarifario embebido","ipc_fuente":"IPC-CBA oficial · respaldo embebido hasta julio 2026 + actualización automática desde Datos Abiertos Córdoba","resoluciones_drive_folder":"https://drive.google.com/drive/folders/1R3YmYKq5sSSly9--0tmCoEsTAq-IrOks","registros":0,"fecha_min":"2006-01-01","fecha_max":"2026-09-01","ipc_fecha_max":"2026-07-01"},"registros":[],"ipc":[{"fecha":"2006-01-01","indice":30.407725987939138,"variacion_mensual":0.01695059625212947},{"fecha":"2006-02-01","indice":30.657324542827993,"variacion_mensual":0.008208392662702124},{"fecha":"2006-03-01","indice":31.10303624798666,"variacion_mensual":0.01453850627232689},{"fecha":"2006-04-01","indice":31.446870991966204,"variacion_mensual":0.011054700294792053},{"fecha":"2006-05-01","indice":31.57676411746959,"variacion_mensual":0.004130558030290832},{"fecha":"2006-06-01","indice":31.75759572356253,"variacion_mensual":0.005726730117760814},{"fecha":"2006-07-01","indice":31.88239500100696,"variacion_mensual":0.0039297457695084415},{"fecha":"2006-08-01","indice":32.0988835435126,"variacion_mensual":0.006790222080204522},{"fecha":"2006-09-01","indice":32.33574747825406,"variacion_mensual":0.007379195429659591},{"fecha":"2006-10-01","indice":32.67448837417465,"variacion_mensual":0.010475740390674115},{"fecha":"2006-11-01","indice":33.041245434419494,"variacion_mensual":0.011224569335100076},{"fecha":"2006-12-01","indice":33.50987945584347,"variacion_mensual":0.01418330378478383},{"fecha":"2007-01-01","indice":33.807869567292414,"variacion_mensual":0.00889260469711961},{"fecha":"2007-02-01","indice":34.04473350203387,"variacion_mensual":0.007006177489829568},{"fecha":"2007-03-01","indice":34.52355521957576,"variacion_mensual":0.014064487169896278},{"fecha":"2007-04-01","indice":34.936156912351215,"variacion_mensual":0.011951309479896643},{"fecha":"2007-05-01","indice":35.24942856797703,"variacion_mensual":0.008966975286141432},{"fecha":"2007-06-01","indice":35.65693641269352,"variacion_mensual":0.01156069364161838},{"fecha":"2007-07-01","indice":36.06953810546897,"variacion_mensual":0.011571428571428566},{"fecha":"2007-08-01","indice":36.415919773477995,"variacion_mensual":0.009603163395000669},{"fecha":"2007-09-01","indice":36.70372218880903,"variacion_mensual":0.007903203245209323},{"fecha":"2007-10-01","indice":37.047556932788574,"variacion_mensual":0.009367844008049353},{"fecha":"2007-11-01","indice":37.037369236670656,"variacion_mensual":-0.00027498968788686184},{"fecha":"2007-12-01","indice":37.33026550006064,"variacion_mensual":0.007908128180442953},{"fecha":"2008-01-01","indice":37.61806791539166,"variacion_mensual":0.007709626799481395},{"fecha":"2008-02-01","indice":37.95680881131225,"variacion_mensual":0.009004739336492928},{"fecha":"2008-03-01","indice":38.61646213494708,"variacion_mensual":0.01737905119774541},{"fecha":"2008-04-01","indice":39.18442619352069,"variacion_mensual":0.014707822187046471},{"fecha":"2008-05-01","indice":39.55118325376554,"variacion_mensual":0.009359766005849757},{"fecha":"2008-06-01","indice":40.05038036354325,"variacion_mensual":0.01262154678343741},{"fecha":"2008-07-01","indice":40.36365201916905,"variacion_mensual":0.007821939586645454},{"fecha":"2008-08-01","indice":40.73550292747286,"variacion_mensual":0.009212518929833546},{"fecha":"2008-09-01","indice":41.1149946078651,"variacion_mensual":0.009315993497561736},{"fecha":"2008-10-01","indice":41.42062549140247,"variacion_mensual":0.007433562534844729},{"fecha":"2008-11-01","indice":41.756819463293574,"variacion_mensual":0.008116583656151866},{"fecha":"2008-12-01","indice":41.9631203096813,"variacion_mensual":0.004940530649588215},{"fecha":"2009-01-01","indice":42.309501977690324,"variacion_mensual":0.00825443068706},{"fecha":"2009-02-01","indice":42.683899810023604,"variacion_mensual":0.008849024801348415},{"fecha":"2009-03-01","indice":43.035375326091575,"variacion_mensual":0.008234381526343926},{"fecha":"2009-04-01","indice":43.346100057687906,"variacion_mensual":0.0072202166064982976},{"fecha":"2009-05-01","indice":43.534572435869286,"variacion_mensual":0.0043480815559080455},{"fecha":"2009-06-01","indice":43.72559173808014,"variacion_mensual":0.004387761071783736},{"fecha":"2009-07-01","indice":44.03631646967647,"variacion_mensual":0.007106244175209664},{"fecha":"2009-08-01","indice":44.42344892215714,"variacion_mensual":0.00879120879120876},{"fecha":"2009-09-01","indice":44.78511213434304,"variacion_mensual":0.008141268203187835},{"fecha":"2009-10-01","indice":45.1391345744405,"variacion_mensual":0.00790491355777978},{"fecha":"2009-11-01","indice":45.602674747805516,"variacion_mensual":0.010269141793150194},{"fecha":"2009-12-01","indice":46.31071962800043,"variacion_mensual":0.015526389276738328},{"fecha":"2010-01-01","indice":47.12318839340394,"variacion_mensual":0.01754385964912286},{"fecha":"2010-02-01","indice":47.98914256342649,"variacion_mensual":0.01837639174143324},{"fecha":"2010-03-01","indice":48.51890276155794,"variacion_mensual":0.011039167816579987},{"fecha":"2010-04-01","indice":49.112336060426344,"variacion_mensual":0.012230971128609047},{"fecha":"2010-05-01","indice":49.4663585005238,"variacion_mensual":0.007208421926048869},{"fecha":"2010-06-01","indice":49.83311556076865,"variacion_mensual":0.007414272474513428},{"fecha":"2010-07-01","indice":50.299202658163146,"variacion_mensual":0.009352959214964818},{"fecha":"2010-08-01","indice":50.668506642437464,"variacion_mensual":0.007342143906020393},{"fecha":"2010-09-01","indice":51.14223451192039,"variacion_mensual":0.009349552628933333},{"fecha":"2010-10-01","indice":51.990360213736594,"variacion_mensual":0.016583665338645304},{"fecha":"2010-11-01","indice":52.72896818228525,"variacion_mensual":0.014206633027972426},{"fecha":"2010-12-01","indice":53.20524297579765,"variacion_mensual":0.009032507366082188},{"fecha":"2011-01-01","indice":53.785941654518666,"variacion_mensual":0.010914313068453918},{"fecha":"2011-02-01","indice":54.336077244885935,"variacion_mensual":0.01022824131073019},{"fecha":"2011-03-01","indice":55.316642996235004,"variacion_mensual":0.01804631105277954},{"fecha":"2011-04-01","indice":55.91517014316236,"variacion_mensual":0.010820019337906883},{"fecha":"2011-05-01","indice":56.49841574591285,"variacion_mensual":0.010430900974765622},{"fecha":"2011-06-01","indice":56.91611128674725,"variacion_mensual":0.007393048731010099},{"fecha":"2011-07-01","indice":57.481528421291394,"variacion_mensual":0.009934219358303187},{"fecha":"2011-08-01","indice":58.102977884484055,"variacion_mensual":0.010811289822322712},{"fecha":"2011-09-01","indice":58.84922662512114,"variacion_mensual":0.012843554113882494},{"fecha":"2011-10-01","indice":59.287297558191376,"variacion_mensual":0.007443953951354665},{"fecha":"2011-11-01","indice":59.82979237647021,"variacion_mensual":0.009150270641807623},{"fecha":"2011-12-01","indice":60.62697959769686,"variacion_mensual":0.01332425184113073},{"fecha":"2012-01-01","indice":61.19494365627049,"variacion_mensual":0.00936817341623275},{"fecha":"2012-02-01","indice":61.87242544811166,"variacion_mensual":0.011070878594914069},{"fecha":"2012-03-01","indice":62.81733426304803,"variacion_mensual":0.01527188902152865},{"fecha":"2012-04-01","indice":63.693476129188504,"variacion_mensual":0.013947453778786922},{"fecha":"2012-05-01","indice":64.4728348822088,"variacion_mensual":0.012236084452974971},{"fecha":"2012-06-01","indice":65.11465973763728,"variacion_mensual":0.009954965631666202},{"fecha":"2012-07-01","indice":65.77431306127211,"variacion_mensual":0.010130642259250644},{"fecha":"2012-08-01","indice":66.47726409340805,"variacion_mensual":0.010687318489835285},{"fecha":"2012-09-01","indice":67.29737363090001,"variacion_mensual":0.012336692080763267},{"fecha":"2012-10-01","indice":67.92646386618111,"variacion_mensual":0.009347916587821192},{"fecha":"2012-11-01","indice":68.62432105025812,"variacion_mensual":0.010273715785526827},{"fecha":"2012-12-01","indice":69.3018028420993,"variacion_mensual":0.009872327790974023},{"fecha":"2013-01-01","indice":70.76373723501972,"variacion_mensual":0.021095185593531518},{"fecha":"2013-02-01","indice":71.49725135550943,"variacion_mensual":0.01036567808810851},{"fecha":"2013-03-01","indice":72.19256161555695,"variacion_mensual":0.009724992875463023},{"fecha":"2013-04-01","indice":72.99738960887204,"variacion_mensual":0.011148350679132113},{"fecha":"2013-05-01","indice":73.63157369221209,"variacion_mensual":0.008687763860298015},{"fecha":"2013-06-01","indice":74.54337249476525,"variacion_mensual":0.012383258388100948},{"fecha":"2013-07-01","indice":75.39480160975863,"variacion_mensual":0.011421929093068162},{"fecha":"2013-08-01","indice":76.37055444508293,"variacion_mensual":0.012941911305434095},{"fecha":"2013-09-01","indice":77.28747927529251,"variacion_mensual":0.012006261272712537},{"fecha":"2013-10-01","indice":78.36221550016076,"variacion_mensual":0.013905696432925607},{"fecha":"2013-11-01","indice":80.29645236012946,"variacion_mensual":0.02468328450928925},{"fecha":"2013-12-01","indice":82.6099411073469,"variacion_mensual":0.028811842605965143},{"fecha":"2014-01-01","indice":85.38043403915617,"variacion_mensual":0.03353704039334904},{"fecha":"2014-02-01","indice":90.39276892040343,"variacion_mensual":0.05870589600128473},{"fecha":"2014-03-01","indice":93.34879501412011,"variacion_mensual":0.032702019520163716},{"fecha":"2014-04-01","indice":95.48158064546175,"variacion_mensual":0.022847489686599776},{"fecha":"2014-05-01","indice":97.91680649164154,"variacion_mensual":0.025504666237377904},{"fecha":"2014-06-01","indice":99.93982141082311,"variacion_mensual":0.02066054839476683},{"fecha":"2014-07-01","indice":101.11402989906203,"variacion_mensual":0.011749155358323993},{"fecha":"2014-08-01","indice":103.69663952256131,"variacion_mensual":0.025541555668163962},{"fecha":"2014-09-01","indice":106.04701945485648,"variacion_mensual":0.02266592189599148},{"fecha":"2014-10-01","indice":107.52813467446026,"variacion_mensual":0.013966589794013773},{"fecha":"2014-11-01","indice":108.94390954239829,"variacion_mensual":0.01316655284892887},{"fecha":"2014-12-01","indice":110.21006038505548,"variacion_mensual":0.011622043379712288},{"fecha":"2015-01-01","indice":113.70291393654529,"variacion_mensual":0.03169269247549966},{"fecha":"2015-02-01","indice":115.35923032591874,"variacion_mensual":0.014567053139005859},{"fecha":"2015-03-01","indice":117.49756868553304,"variacion_mensual":0.01853634385018821},{"fecha":"2015-04-01","indice":119.89210842914042,"variacion_mensual":0.020379483340766447},{"fecha":"2015-05-01","indice":121.33970414817972,"variacion_mensual":0.012074153486881567},{"fecha":"2015-06-01","indice":122.90079715697895,"variacion_mensual":0.012865475647549252},{"fecha":"2015-07-01","indice":125.16313461652508,"variacion_mensual":0.018407833894327652},{"fecha":"2015-08-01","indice":127.24670000215993,"variacion_mensual":0.016646797733361973},{"fecha":"2015-09-01","indice":129.51380206105563,"variacion_mensual":0.017816588240459064},{"fecha":"2015-10-01","indice":131.12757000268587,"variacion_mensual":0.01246020050333696},{"fecha":"2015-11-01","indice":133.9650794156696,"variacion_mensual":0.021639304479794896},{"fecha":"2015-12-01","indice":141.22049758890526,"variacion_mensual":0.05415902565715203},{"fecha":"2016-01-01","indice":145.57509944215965,"variacion_mensual":0.030835480171799823},{"fecha":"2016-02-01","indice":150.0910506509215,"variacion_mensual":0.03102145371060616},{"fecha":"2016-03-01","indice":154.70359068310762,"variacion_mensual":0.03073161265899782},{"fecha":"2016-04-01","indice":161.676467200409,"variacion_mensual":0.045072493059223895},{"fecha":"2016-05-01","indice":169.175700780278,"variacion_mensual":0.04638419993784981},{"fecha":"2016-06-01","indice":173.68834848445923,"variacion_mensual":0.026674325469720817},{"fecha":"2016-07-01","indice":176.5727126751027,"variacion_mensual":0.016606549695540318},{"fecha":"2016-08-01","indice":177.06630160122035,"variacion_mensual":0.002795386210245665},{"fecha":"2016-09-01","indice":180.1868189613392,"variacion_mensual":0.017623440100684507},{"fecha":"2016-10-01","indice":184.238324805355,"variacion_mensual":0.02248502896810156},{"fecha":"2016-11-01","indice":186.39258083004515,"variacion_mensual":0.01169276819557541},{"fecha":"2016-12-01","indice":189.80248669687708,"variacion_mensual":0.01829421456394309},{"fecha":"2017-01-01","indice":192.60133488736193,"variacion_mensual":0.014746109174821997},{"fecha":"2017-02-01","indice":197.06581901421592,"variacion_mensual":0.023179923075117514},{"fecha":"2017-03-01","indice":203.76960612524095,"variacion_mensual":0.0340180105538315},{"fecha":"2017-04-01","indice":208.31846059295174,"variacion_mensual":0.022323517987834496},{"fecha":"2017-05-01","indice":211.17921913577086,"variacion_mensual":0.01373262136575093},{"fecha":"2017-06-01","indice":213.04530606166855,"variacion_mensual":0.008836508315233083},{"fecha":"2017-07-01","indice":217.62773159341427,"variacion_mensual":0.021509159795425337},{"fecha":"2017-08-01","indice":220.8456153246988,"variacion_mensual":0.014786184222589815},{"fecha":"2017-09-01","indice":223.71663061820956,"variacion_mensual":0.013000100949659643},{"fecha":"2017-10-01","indice":226.3425209709914,"variacion_mensual":0.011737573311047855},{"fecha":"2017-11-01","indice":231.20200122867848,"variacion_mensual":0.02146958616896333},{"fecha":"2017-12-01","indice":238.29393862493117,"variacion_mensual":0.030674204196174504},{"fecha":"2018-01-01","indice":243.85545282835247,"variacion_mensual":0.023338882371552794},{"fecha":"2018-02-01","indice":249.91390399204417,"variacion_mensual":0.024844435887829697},{"fecha":"2018-03-01","indice":254.2614948365426,"variacion_mensual":0.017396354404662695},{"fecha":"2018-04-01","indice":262.049695924664,"variacion_mensual":0.03063067450747181},{"fecha":"2018-05-01","indice":267.4739003569852,"variacion_mensual":0.020699144157299898},{"fecha":"2018-06-01","indice":275.92926879978415,"variacion_mensual":0.031611938329362044},{"fecha":"2018-07-01","indice":285.63785746769963,"variacion_mensual":0.0351850628610193},{"fecha":"2018-08-01","indice":295.1773447342788,"variacion_mensual":0.03339713912977338},{"fecha":"2018-09-01","indice":312.5915105463086,"variacion_mensual":0.05899560424498773},{"fecha":"2018-10-01","indice":329.7070689644779,"variacion_mensual":0.05475375319136755},{"fecha":"2018-11-01","indice":340.19951023293794,"variacion_mensual":0.03182352535362365},{"fecha":"2018-12-01","indice":349.2315118867699,"variacion_mensual":0.026549131853975005},{"fecha":"2019-01-01","indice":363.0981944640666,"variacion_mensual":0.03970627536553062},{"fecha":"2019-02-01","indice":377.24315710785976,"variacion_mensual":0.038956301243949554},{"fecha":"2019-03-01","indice":391.22663033545336,"variacion_mensual":0.03706753313667033},{"fecha":"2019-04-01","indice":403.1453175948829,"variacion_mensual":0.030464918119735396},{"fecha":"2019-05-01","indice":414.98997491855766,"variacion_mensual":0.02938061489672905},{"fecha":"2019-06-01","indice":425.08210617255065,"variacion_mensual":0.024318976033032014},{"fecha":"2019-07-01","indice":435.0802574739285,"variacion_mensual":0.023520517933350416},{"fecha":"2019-08-01","indice":452.4159024944591,"variacion_mensual":0.03984470617256042},{"fecha":"2019-09-01","indice":477.19295988671377,"variacion_mensual":0.05476610626559064},{"fecha":"2019-10-01","indice":491.2363943482112,"variacion_mensual":0.029429257432530775},{"fecha":"2019-11-01","indice":512.0754265569778,"variacion_mensual":0.04242159670684931},{"fecha":"2019-12-01","indice":530.4138789596623,"variacion_mensual":0.03581201411524004},{"fecha":"2020-01-01","indice":551.2219831397945,"variacion_mensual":0.03922993911783412},{"fecha":"2020-02-01","indice":561.3790220687292,"variacion_mensual":0.018426403952686465},{"fecha":"2020-03-01","indice":575.3669448252879,"variacion_mensual":0.024917074216653123},{"fecha":"2020-04-01","indice":583.0605346218725,"variacion_mensual":0.013371622867422106},{"fecha":"2020-05-01","indice":587.5426472314243,"variacion_mensual":0.007687216581136802},{"fecha":"2020-06-01","indice":595.5660434796418,"variacion_mensual":0.013655853385324157},{"fecha":"2020-07-01","indice":606.5006361723467,"variacion_mensual":0.018360000225698947},{"fecha":"2020-08-01","indice":619.956452386872,"variacion_mensual":0.02218598862392951},{"fecha":"2020-09-01","indice":632.2882529503684,"variacion_mensual":0.0198913980425848},{"fecha":"2020-10-01","indice":654.8041022273001,"variacion_mensual":0.03561010215177807},{"fecha":"2020-11-01","indice":676.529615082729,"variacion_mensual":0.03317864500471246},{"fecha":"2020-12-01","indice":705.840065284564,"variacion_mensual":0.0433247112149715},{"fecha":"2021-01-01","indice":746.890593815333,"variacion_mensual":0.05815839954369717},{"fecha":"2021-02-01","indice":775.2089142017519,"variacion_mensual":0.03791495116006316},{"fecha":"2021-03-01","indice":806.6438820655477,"variacion_mensual":0.04055031784066232},{"fecha":"2021-04-01","indice":835.8810546776647,"variacion_mensual":0.03624545262433565},{"fecha":"2021-05-01","indice":867.290384196657,"variacion_mensual":0.03757631464814626},{"fecha":"2021-06-01","indice":896.144069618896,"variacion_mensual":0.03326877127660666},{"fecha":"2021-07-01","indice":919.2333332443715,"variacion_mensual":0.025765124613606805},{"fecha":"2021-08-01","indice":938.8178025427277,"variacion_mensual":0.021305220981526096},{"fecha":"2021-09-01","indice":967.4504710333152,"variacion_mensual":0.0304986424554774},{"fecha":"2021-10-01","indice":994.2891868943301,"variacion_mensual":0.027741694964858565},{"fecha":"2021-11-01","indice":1020.945253844846,"variacion_mensual":0.026809169104791586},{"fecha":"2021-12-01","indice":1057.8321757794336,"variacion_mensual":0.03613016642731104},{"fecha":"2022-01-01","indice":1096.8515249345226,"variacion_mensual":0.036886143235659086},{"fecha":"2022-02-01","indice":1148.5723464938394,"variacion_mensual":0.04715389492885502},{"fecha":"2022-03-01","indice":1227.996010121385,"variacion_mensual":0.06914990063098458},{"fecha":"2022-04-01","indice":1292.7801226804115,"variacion_mensual":0.05275596339488331},{"fecha":"2022-05-01","indice":1357.4732989820147,"variacion_mensual":0.05004190207339376},{"fecha":"2022-06-01","indice":1427.117736061631,"variacion_mensual":0.05130446184970516},{"fecha":"2022-07-01","indice":1520.7854889584953,"variacion_mensual":0.06563421540492942},{"fecha":"2022-08-01","indice":1615.7260154400092,"variacion_mensual":0.06242861151084078},{"fecha":"2022-09-01","indice":1702.4235271616215,"variacion_mensual":0.053658547855963024},{"fecha":"2022-10-01","indice":1818.2683495569634,"variacion_mensual":0.06804700507663042},{"fecha":"2022-11-01","indice":1902.0170121837807,"variacion_mensual":0.04605957236577507},{"fecha":"2022-12-01","indice":1999.817956191903,"variacion_mensual":0.05141959476788971},{"fecha":"2023-01-01","indice":2107.6614563865674,"variacion_mensual":0.05392665860447732},{"fecha":"2023-02-01","indice":2266.6520153750344,"variacion_mensual":0.07543458106457224},{"fecha":"2023-03-01","indice":2447.654311446243,"variacion_mensual":0.07985447031279769},{"fecha":"2023-04-01","indice":2607.3179767421398,"variacion_mensual":0.06523129698064123},{"fecha":"2023-05-01","indice":2815.3861722748925,"variacion_mensual":0.07980161890063564},{"fecha":"2023-06-01","indice":2966.466536504757,"variacion_mensual":0.05366239477825818},{"fecha":"2023-07-01","indice":3168.0786771880994,"variacion_mensual":0.06796373335156236},{"fecha":"2023-08-01","indice":3553.150459625535,"variacion_mensual":0.12154741774885935},{"fecha":"2023-09-01","indice":4045.2581998766236,"variacion_mensual":0.13849898726296872},{"fecha":"2023-10-01","indice":4377.205476650404,"variacion_mensual":0.08205836571418468},{"fecha":"2023-11-01","indice":4941.826425895697,"variacion_mensual":0.12899119135649095},{"fecha":"2023-12-01","indice":6137.249190605009,"variacion_mensual":0.241898978573017},{"fecha":"2024-01-01","indice":7550.830202306134,"variacion_mensual":0.23032811081959248},{"fecha":"2024-02-01","indice":8559.287160338585,"variacion_mensual":0.1335557721486642},{"fecha":"2024-03-01","indice":9501.664677,"variacion_mensual":0.1101},{"fecha":"2024-04-01","indice":10142.001156071941,"variacion_mensual":0.06739203089},{"fecha":"2024-05-01","indice":10556.2366219785,"variacion_mensual":0.04084356327},{"fecha":"2024-06-01","indice":10946.9732265999,"variacion_mensual":0.03701476375},{"fecha":"2024-07-01","indice":11423.79,"variacion_mensual":0.04355695072},{"fecha":"2024-08-01","indice":11964.14,"variacion_mensual":0.04730041431},{"fecha":"2024-09-01","indice":12401.3,"variacion_mensual":0.03653919128},{"fecha":"2024-10-01","indice":12678.06,"variacion_mensual":0.02231701515},{"fecha":"2024-11-01","indice":13111.38,"variacion_mensual":0.03417873082},{"fecha":"2024-12-01","indice":13568.62,"variacion_mensual":0.03487352209},{"fecha":"2025-01-01","indice":13871.69,"variacion_mensual":0.02233609608},{"fecha":"2025-02-01","indice":14379.13,"variacion_mensual":0.03658097896},{"fecha":"2025-03-01","indice":14776.63,"variacion_mensual":0.02764423161},{"fecha":"2025-04-01","indice":15144.5,"variacion_mensual":0.02489539225},{"fecha":"2025-05-01","indice":15445.25,"variacion_mensual":0.01985869458},{"fecha":"2025-06-01","indice":15782.79,"variacion_mensual":0.02185396805},{"fecha":"2025-07-01","indice":16088.51,"variacion_mensual":0.01937046619},{"fecha":"2025-08-01","indice":16396.71,"variacion_mensual":0.01915652848},{"fecha":"2025-09-01","indice":16694.71,"variacion_mensual":0.01817437766},{"fecha":"2025-10-01","indice":17079.2583,"variacion_mensual":0.02303414075},{"fecha":"2025-11-01","indice":17524.5947,"variacion_mensual":0.02607469201},{"fecha":"2025-12-01","indice":18051.1144,"variacion_mensual":0.03004461495},{"fecha":"2026-01-01","indice":18478.6117,"variacion_mensual":0.02368259879},{"fecha":"2026-02-01","indice":18964.6999,"variacion_mensual":0.02630545021},{"fecha":"2026-03-01","indice":19578.605321084866},{"fecha":"2026-04-01","indice":20142.734626946632},{"fecha":"2026-05-01","indice":20524.35151032371},{"fecha":"2026-06-01","indice":20922.560432108487},{"fecha":"2026-07-01","indice":21304.177315485565}]};
 /*
-  Adaptador de datos: para producción en GitHub Pages, reemplazar LIVE_DATA_URL por un endpoint
-  de SOLO LECTURA que devuelva el mismo esquema JSON. No se deben exponer credenciales privadas
-  de Google en el navegador. Si LIVE_DATA_URL queda vacío, se usa el snapshot embebido.
+  Fuente tarifaria viva: este módulo intenta leer directamente el Excel maestro alojado en Google Drive.
+  No escribe ni modifica el archivo. Si Google impide la lectura directa desde el navegador, se conserva
+  el snapshot embebido como respaldo para que el módulo siga funcionando.
 */
-const LIVE_DATA_URL = "";
+const TARIFF_DRIVE_FILE_ID = "1-2JKAodJZ2z2T2i-G76BVYlRELIuuF7e";
+const TARIFF_DRIVE_VIEW_URL = "https://docs.google.com/spreadsheets/d/1-2JKAodJZ2z2T2i-G76BVYlRELIuuF7e/edit?usp=drivesdk";
+const TARIFF_DRIVE_DOWNLOAD_URLS = [
+  `https://drive.usercontent.google.com/download?id=${encodeURIComponent(TARIFF_DRIVE_FILE_ID)}&export=download&confirm=t`,
+  `https://drive.google.com/uc?export=download&id=${encodeURIComponent(TARIFF_DRIVE_FILE_ID)}`,
+  `https://docs.google.com/spreadsheets/d/${encodeURIComponent(TARIFF_DRIVE_FILE_ID)}/export?format=xlsx`
+];
+let TARIFF_SOURCE={mode:'snapshot',label:'respaldo embebido',url:TARIFF_DRIVE_VIEW_URL,error:''};
+
 const IPC_OFFICIAL_PORTAL = "https://datosestadistica.cba.gov.ar";
 const IPC_OFFICIAL_LANDING = "https://datosestadistica.cba.gov.ar/dataset/indic";
 const IPC_CKAN_DATASET_ID = "indic";
@@ -198,14 +207,225 @@ async function fetchCkanJson(url, timeoutMs=10000){
     return await fetchJsonp(url,timeoutMs);
   }
 }
-async function waitForCostosAuth(){
-  if(window.ERSEP_COSTOS_AUTH?.isUnlocked()) return;
-  await new Promise(resolve=>document.addEventListener('ersep-costos-authenticated',resolve,{once:true}));
+
+function liveText(v){
+  if(v==null)return '';
+  if(v instanceof Date&&!Number.isNaN(v.getTime()))return v.toISOString().slice(0,10);
+  return String(v).trim();
+}
+function liveNumber(v){
+  if(v==null||v==='')return null;
+  if(typeof v==='number')return Number.isFinite(v)?v:null;
+  let s=String(v).trim();
+  if(!s||s==='-'||s.startsWith('#'))return null;
+  s=s.replace(/\s+/g,'');
+  if(s.includes(',')&&s.includes('.')){
+    if(s.lastIndexOf(',')>s.lastIndexOf('.'))s=s.replace(/\./g,'').replace(',','.');
+    else s=s.replace(/,/g,'');
+  }else if(s.includes(','))s=s.replace(',','.');
+  s=s.replace(/[^0-9+\-.eE]/g,'');
+  const n=Number(s);return Number.isFinite(n)?n:null;
+}
+function livePercent(v){
+  if(v==null||v==='')return null;
+  if(typeof v==='number')return Number.isFinite(v)?v:null;
+  const raw=String(v).trim();
+  if(!raw||raw==='-'||raw.startsWith('#'))return null;
+  const n=liveNumber(raw);if(n==null)return null;
+  return raw.includes('%')?n/100:n;
+}
+function excelSerialIso(n){
+  if(!Number.isFinite(n)||n<1)return null;
+  const ms=Date.UTC(1899,11,30)+Math.round(n*86400000);
+  const d=new Date(ms);return Number.isNaN(d.getTime())?null:d.toISOString().slice(0,10);
+}
+function liveIsoDate(v){
+  if(v==null||v==='')return null;
+  if(v instanceof Date&&!Number.isNaN(v.getTime()))return v.toISOString().slice(0,10);
+  if(typeof v==='number')return excelSerialIso(v);
+  const s=String(v).trim();if(!s)return null;
+  let m=s.match(/^Date\((\d{4}),(\d{1,2}),(\d{1,2})/);
+  if(m)return `${m[1]}-${String(Number(m[2])+1).padStart(2,'0')}-${String(Number(m[3])).padStart(2,'0')}`;
+  m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);if(m)return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  m=s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);if(m)return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  const n=liveNumber(s);return n!=null&&n>20000&&n<80000?excelSerialIso(n):null;
+}
+function liveYear(v){const n=liveNumber(v);return n!=null&&n>=1900&&n<=2200?Math.trunc(n):null;}
+function liveNorm(s){return liveText(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();}
+function energySegment(company,obs){
+  if(!liveNorm(company).includes('face/fecescor'))return 'General';
+  const s=liveText(obs);const m=s.match(/grupo\s*["“”']*\s*([A-Za-z0-9-]+)/i);
+  return m?`Grupo ${m[1].toUpperCase()}`:'General';
+}
+function waterService(marker){const n=liveNorm(marker);return n.includes('cloac')||n.includes('saneam')?'Saneamiento':'Agua';}
+function splitSourceLink(target){
+  const u=liveText(target);if(!u)return {fuente_url:'',drive_url:''};
+  if(/drive\.google\.com|docs\.google\.com/i.test(u))return {fuente_url:'',drive_url:u};
+  return {fuente_url:u,drive_url:''};
+}
+const EMBEDDED_LINKS=new Map((EMBEDDED_DATA.registros||[]).map(r=>[r.id,{fuente_url:r.fuente_url||'',drive_url:r.drive_url||''}]));
+function withFallbackLink(record,target){
+  const live=splitSourceLink(target),old=EMBEDDED_LINKS.get(record.id)||{};
+  record.fuente_url=live.fuente_url||old.fuente_url||'';
+  record.drive_url=live.drive_url||old.drive_url||'';
+  return record;
+}
+function rowCell(row,idx){return Array.isArray(row)&&idx<row.length?row[idx]:null;}
+function isSecondHeader(row,aIdx,bIdx){return liveNorm(rowCell(row,aIdx))==='ano'&&liveNorm(rowCell(row,bIdx)).includes('periodo medido');}
+
+function parseTariffMatrices(source){
+  const records=[];
+  const get=source.getMatrix,link=source.getLink||(()=> '');
+  const agua=get('Agua y Saneam.')||[];
+  for(let i=4;i<agua.length;i++){
+    const r=agua[i],row=i+1,fecha=liveIsoDate(rowCell(r,7)),otorgado=livePercent(rowCell(r,6)),empresa=liveText(rowCell(r,9));
+    // La fecha de vigencia, el porcentaje y el prestador identifican el registro.
+    // No se exige el año porque la planilla contiene al menos una fila histórica con ese campo deteriorado.
+    if(!fecha||otorgado==null||!empresa||empresa==='-')continue;
+    const marker=liveText(rowCell(r,8));
+    records.push(withFallbackLink({
+      id:`agua-${row}`,gerencia:'Agua y Saneamiento',servicio:waterService(marker),empresa,segmento:'General',fecha,
+      periodo:liveText(rowCell(r,2))||'-',solicitado:livePercent(rowCell(r,5)),otorgado,
+      instrumento:liveText(rowCell(r,1)),mesa:waterService(marker)==='Saneamiento'?'':marker,
+      observaciones:liveText(rowCell(r,11)),expediente:liveText(rowCell(r,13))
+    },link('Agua y Saneam.',`B${row}`)));
+  }
+
+  const energia=get('Energia Electrica')||[];
+  for(let i=2;i<energia.length;i++){
+    const r=energia[i],row=i+1,year=liveYear(rowCell(r,0)),fecha=liveIsoDate(rowCell(r,6)),otorgado=livePercent(rowCell(r,5)),empresa=liveText(rowCell(r,9));
+    if(!year||!fecha||otorgado==null||!empresa||empresa==='-')continue;
+    const obs=liveText(rowCell(r,10));
+    records.push(withFallbackLink({
+      id:`energia-${row}`,gerencia:'Energía Eléctrica',servicio:'Energía Eléctrica',empresa,segmento:energySegment(empresa,obs),fecha,
+      periodo:liveText(rowCell(r,1))||'-',solicitado:livePercent(rowCell(r,2)),otorgado,
+      instrumento:liveText(rowCell(r,8)),mesa:liveText(rowCell(r,7)),observaciones:obs,expediente:liveText(rowCell(r,13))
+    },link('Energia Electrica',`I${row}`)));
+  }
+
+  const transporte=get('Transporte')||[];
+  let seenTransportHeader=false;
+  for(let i=0;i<transporte.length;i++){
+    const r=transporte[i],row=i+1;
+    if(liveNorm(rowCell(r,1))==='ano'&&liveNorm(rowCell(r,2)).includes('periodo medido')){if(seenTransportHeader)break;seenTransportHeader=true;continue;}
+    if(!seenTransportHeader)continue;
+    // La hoja Transporte contiene una segunda tabla auxiliar más abajo.
+    // El primer renglón completamente vacío después de la tabla principal marca su fin.
+    if(Array.from({length:11},(_,k)=>rowCell(r,k+1)).every(v=>liveText(v)===''))break;
+    const fecha=liveIsoDate(rowCell(r,5)),otorgado=livePercent(rowCell(r,4));
+    if(!fecha||otorgado==null)continue;
+    records.push(withFallbackLink({
+      id:`transporte-${row}`,gerencia:'Transporte',servicio:'Transporte Interurbano',empresa:'Sistema interurbano',segmento:'General',fecha,
+      periodo:liveText(rowCell(r,2))||'-',solicitado:livePercent(rowCell(r,3)),otorgado,
+      instrumento:liveText(rowCell(r,7)),mesa:liveText(rowCell(r,6)),observaciones:liveText(rowCell(r,9)),expediente:liveText(rowCell(r,11))
+    },link('Transporte',`H${row}`)));
+  }
+
+  const vial=get('Vial')||[];
+  let seenVialHeader=false;
+  for(let i=0;i<vial.length;i++){
+    const r=vial[i],row=i+1;
+    if(isSecondHeader(r,0,1)){if(seenVialHeader)break;seenVialHeader=true;continue;}
+    if(!seenVialHeader)continue;
+    const fecha=liveIsoDate(rowCell(r,4)),otorgado=livePercent(rowCell(r,3));
+    if(!fecha||otorgado==null)continue;
+    records.push(withFallbackLink({
+      id:`vial-${row}`,gerencia:'Vial',servicio:'Red de Accesos a Córdoba',empresa:'Caminos de las Sierras S.A.',segmento:'General',fecha,
+      periodo:liveText(rowCell(r,1))||'-',solicitado:livePercent(rowCell(r,2)),otorgado,
+      instrumento:liveText(rowCell(r,6)),mesa:liveText(rowCell(r,5)),observaciones:liveText(rowCell(r,8)),expediente:liveText(rowCell(r,10))
+    },link('Vial',`G${row}`)));
+  }
+
+  records.sort((a,b)=>a.fecha.localeCompare(b.fecha)||a.gerencia.localeCompare(b.gerencia,'es')||a.id.localeCompare(b.id,'es'));
+  return records;
+}
+
+async function fetchDriveArrayBuffer(url,timeoutMs=15000){
+  const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),timeoutMs);
+  try{
+    const sep=url.includes('?')?'&':'?';
+    const res=await fetch(`${url}${sep}_=${Date.now()}`,{cache:'no-store',redirect:'follow',signal:ctrl.signal,credentials:'omit'});
+    if(!res.ok)throw new Error(`HTTP ${res.status}`);
+    const buf=await res.arrayBuffer();const b=new Uint8Array(buf);
+    if(b.length<4||b[0]!==0x50||b[1]!==0x4b)throw new Error(`La respuesta no es un XLSX (${res.headers.get('content-type')||'sin MIME'})`);
+    return buf;
+  }finally{clearTimeout(timer)}
+}
+async function loadDriveWorkbookBinary(){
+  if(!window.XLSX)throw new Error('SheetJS no está disponible');
+  let lastError=null;
+  for(const url of TARIFF_DRIVE_DOWNLOAD_URLS){
+    try{
+      const buf=await fetchDriveArrayBuffer(url);
+      const wb=XLSX.read(buf,{type:'array',cellDates:true,cellNF:true,cellText:true});
+      const wanted=['Agua y Saneam.','Energia Electrica','Transporte','Vial'];
+      for(const name of wanted)if(!wb.Sheets[name])throw new Error(`Falta la hoja ${name}`);
+      const matrices=new Map();
+      for(const name of wanted)matrices.set(name,XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,raw:true,defval:null,blankrows:true}));
+      const getLink=(sheet,addr)=>{
+        const c=wb.Sheets[sheet]?.[addr],l=c?.l;if(!l)return '';
+        const target=l.Target||l.target||'';const loc=l.location||l.Location||'';
+        return target&&loc&&!String(target).includes('#')?`${target}#${loc}`:target;
+      };
+      const recs=parseTariffMatrices({getMatrix:n=>matrices.get(n)||[],getLink});
+      if(recs.length<700)throw new Error(`Lectura incompleta: ${recs.length} registros`);
+      return recs;
+    }catch(e){lastError=e;console.debug('No se pudo leer XLSX desde',url,e);}
+  }
+  throw lastError||new Error('No se pudo descargar el Excel');
+}
+function gvizToMatrix(payload){
+  if(!payload||payload.status!=='ok'||!payload.table)throw new Error('Respuesta GViz inválida');
+  return (payload.table.rows||[]).map(r=>(r?.c||[]).map(c=>c?c.v:null));
+}
+function fetchGvizSheet(sheetName,range,timeoutMs=12000){
+  return new Promise((resolve,reject)=>{
+    const cb=`__ersep_gviz_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const script=document.createElement('script');
+    const timer=setTimeout(()=>{cleanup();reject(new Error(`Timeout GViz: ${sheetName}`));},timeoutMs);
+    function cleanup(){clearTimeout(timer);try{delete window[cb]}catch(_){window[cb]=undefined}script.remove();}
+    window[cb]=(payload)=>{cleanup();try{resolve(gvizToMatrix(payload))}catch(e){reject(e)}};
+    script.onerror=()=>{cleanup();reject(new Error(`No se pudo cargar GViz: ${sheetName}`))};
+    const tqx=encodeURIComponent(`out:json;responseHandler:${cb}`);
+    script.src=`https://docs.google.com/spreadsheets/d/${encodeURIComponent(TARIFF_DRIVE_FILE_ID)}/gviz/tq?sheet=${encodeURIComponent(sheetName)}&range=${encodeURIComponent(range)}&headers=0&tqx=${tqx}&_=${Date.now()}`;
+    document.head.appendChild(script);
+  });
+}
+async function loadDriveWorkbookGviz(){
+  const defs=[['Agua y Saneam.','A1:U1200'],['Energia Electrica','A1:Q900'],['Transporte','A1:L250'],['Vial','A1:K160']];
+  const matrices=new Map();
+  for(const [name,range] of defs)matrices.set(name,await fetchGvizSheet(name,range));
+  const recs=parseTariffMatrices({getMatrix:n=>matrices.get(n)||[],getLink:()=>''});
+  if(recs.length<700)throw new Error(`Lectura GViz incompleta: ${recs.length} registros`);
+  return recs;
+}
+function livePayload(records,modeLabel){
+  const dates=records.map(r=>r.fecha).filter(Boolean).sort();
+  if(!dates.length)throw new Error('La fuente en vivo no devolvió fechas tarifarias');
+  return {
+    metadata:{...EMBEDDED_DATA.metadata,fuente_tarifaria:'AJUSTES TARIFARIOS.xlsx',modo_fuente:modeLabel,registros:records.length,fecha_min:dates[0],fecha_max:dates[dates.length-1]},
+    registros:records,
+    ipc:EMBEDDED_DATA.ipc
+  };
 }
 async function loadData(){
-  await waitForCostosAuth();
-  const payload=await fetchJson('../../assets/data/costos-tarifas.enc.json',12000);
-  return await window.ERSEP_COSTOS_AUTH.decryptPayload(payload);
+  try{
+    const recs=await loadDriveWorkbookBinary();
+    TARIFF_SOURCE={mode:'live',label:'Drive en vivo',url:TARIFF_DRIVE_VIEW_URL,error:''};
+    return livePayload(recs,'Google Drive en vivo · XLSX de solo lectura');
+  }catch(binaryError){
+    console.warn('Lectura binaria directa de Drive no disponible; se intenta Google Visualization.',binaryError);
+    try{
+      const recs=await loadDriveWorkbookGviz();
+      TARIFF_SOURCE={mode:'live',label:'Drive en vivo',url:TARIFF_DRIVE_VIEW_URL,error:''};
+      return livePayload(recs,'Google Drive en vivo · Google Visualization de solo lectura');
+    }catch(gvizError){
+      const msg=`${binaryError?.message||binaryError}; ${gvizError?.message||gvizError}`;
+      TARIFF_SOURCE={mode:'error',label:'sin conexión con Drive',url:TARIFF_DRIVE_VIEW_URL,error:msg};
+      console.warn('No se pudo leer AJUSTES TARIFARIOS.xlsx desde Drive.',gvizError);
+      throw new Error('No se pudo actualizar la fuente tarifaria desde Google Drive. '+msg);
+    }
+  }
 }
 
 const $=id=>document.getElementById(id);
@@ -214,6 +434,7 @@ let DATA_ISSUES=[];
 let EVENT_VIEW='individual';
 let LAST_SERIES=null;
 let CHART_WINDOW={signature:'',from:null,to:null};
+let COMPANY_OPTIONS=[],SELECTED_COMPANY='',COMPANY_ACTIVE_INDEX=-1;
 let RANGE_RAF=null;
 let IPC_SOURCE={mode:'snapshot',label:'respaldo oficial embebido hasta julio 2026',url:IPC_OFFICIAL_LANDING,itemId:null};
 const fmtPct=v=>v==null||Number.isNaN(v)?'—':new Intl.NumberFormat('es-AR',{style:'percent',minimumFractionDigits:2,maximumFractionDigits:2}).format(v);
@@ -238,19 +459,50 @@ function gerenciaColor(g){
 }
 
 function setOptions(sel, vals, allLabel, keep=true){ const old=keep?sel.value:''; sel.innerHTML=`<option value="">${allLabel}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join(''); if(vals.includes(old))sel.value=old; }
+function hideCompanyOptions(){const host=$('empresaOptions');host.hidden=true;$('empresa').setAttribute('aria-expanded','false');COMPANY_ACTIVE_INDEX=-1;}
+function renderCompanyOptions(query=''){
+  const host=$('empresaOptions'),input=$('empresa');
+  if(input.disabled){hideCompanyOptions();return}
+  const q=normalizeText(query),matches=COMPANY_OPTIONS.filter(v=>!q||normalizeText(v).includes(q)).slice(0,18);
+  COMPANY_ACTIVE_INDEX=-1;
+  host.innerHTML=matches.length?matches.map((v,i)=>`<button type="button" class="search-option" role="option" data-company-index="${i}" data-company="${esc(v)}">${esc(v)}</button>`).join(''):'<div class="search-option-empty">No hay prestadores que coincidan con la búsqueda.</div>';
+  host.hidden=false;input.setAttribute('aria-expanded','true');
+}
+function selectCompany(name){
+  if(name&&!COMPANY_OPTIONS.includes(name))return;
+  SELECTED_COMPANY=name||'';$('empresa').value=SELECTED_COMPANY;hideCompanyOptions();$('segmento').value='';cascade('empresa');update();
+}
+function setCompanyOptions(vals,keep=true){
+  COMPANY_OPTIONS=unique(vals).sort((a,b)=>a.localeCompare(b,'es'));
+  const input=$('empresa'),g=$('gerencia').value,sv=$('servicio').value;
+  const enabled=!!g&&!!sv;
+  input.disabled=!enabled;
+  input.placeholder=enabled?'Buscar prestador…':'Primero elegí gerencia y servicio';
+  if(!keep||!COMPANY_OPTIONS.includes(SELECTED_COMPANY))SELECTED_COMPANY='';
+  input.value=SELECTED_COMPANY;
+  if(!enabled)hideCompanyOptions();
+}
 function cascade(changed){
   const g=$('gerencia').value;
-  if(changed==='gerencia'){$('servicio').value='';$('empresa').value='';$('segmento').value='';}
-  if(changed==='servicio'){$('empresa').value='';$('segmento').value='';}
+  if(changed==='gerencia'){$('servicio').value='';SELECTED_COMPANY='';$('empresa').value='';$('segmento').value='';}
+  if(changed==='servicio'){SELECTED_COMPANY='';$('empresa').value='';$('segmento').value='';}
   if(changed==='empresa'){$('segmento').value='';}
   let base=records.filter(r=>!g||r.gerencia===g);
   setOptions($('servicio'),unique(base.map(r=>r.servicio)),'Todos',changed!=='gerencia');
   const sv=$('servicio').value; base=base.filter(r=>!sv||r.servicio===sv);
-  setOptions($('empresa'),unique(base.map(r=>r.empresa)),'Todas',!['gerencia','servicio'].includes(changed));
-  const ep=$('empresa').value; base=base.filter(r=>!ep||r.empresa===ep);
+  setCompanyOptions(base.map(r=>r.empresa),!['gerencia','servicio'].includes(changed));
+  const ep=SELECTED_COMPANY; base=base.filter(r=>!ep||r.empresa===ep);
   setOptions($('segmento'),unique(base.map(r=>r.segmento)),'Todos',changed!=='empresa');
 }
-function currentFilters(){return {g:$('gerencia').value,s:$('servicio').value,e:$('empresa').value,sg:$('segmento').value,from:$('desde').value,to:$('hasta').value}}
+function currentFilters(){return {g:$('gerencia').value,s:$('servicio').value,e:SELECTED_COMPANY,sg:$('segmento').value,from:$('desde').value,to:$('hasta').value}}
+function trimDateYear(input){
+  const raw=String(input?.value||'');
+  const m=raw.match(/^(\d{5,})-(\d{2})-(\d{2})$/);
+  if(!m)return false;
+  const next=`${m[1].slice(-4)}-${m[2]}-${m[3]}`;
+  if(!Number.isNaN(Date.parse(`${next}T00:00:00Z`))){input.value=next;return true}
+  return false;
+}
 function validateRange(){const f=currentFilters(); if(f.from&&f.to&&f.from>f.to)return 'La fecha inicial no puede ser posterior a la fecha final.'; return '';}
 function showRangeError(msg){const el=$('filterError');el.hidden=!msg;el.textContent=msg||'';}
 function filterRecords(){const f=currentFilters(); return records.filter(r=>(!f.g||r.gerencia===f.g)&&(!f.s||r.servicio===f.s)&&(!f.e||r.empresa===f.e)&&(!f.sg||r.segmento===f.sg)&&(!f.from||r.fecha>=f.from)&&(!f.to||r.fecha<=f.to));}
@@ -262,6 +514,25 @@ function seriesInfo(filtered){
   const segments=unique(base.map(r=>r.segmento)); if(!f.sg&&segments.length>1) return {ok:false,msg:'Esta serie tiene más de un segmento tarifario. Seleccioná uno.'};
   const calcRows=base.filter(r=>!f.from||r.fecha>f.from);
   return {ok:true,msg:'',rows:base,calcRows};
+}
+function fullSeriesRows(){
+  const f=currentFilters();if(!f.e||!f.g||!f.s)return [];
+  let base=records.filter(r=>r.gerencia===f.g&&r.servicio===f.s&&r.empresa===f.e&&(!f.sg||r.segmento===f.sg));
+  const segments=unique(base.map(r=>r.segmento));if(!f.sg&&segments.length>1)return [];
+  return base.filter(r=>Number.isFinite(r.otorgado)).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+}
+function firstSeriesActivityDate(){
+  const rows=fullSeriesRows();const meaningful=rows.find(r=>Math.abs(r.otorgado)>1e-12);return (meaningful||rows[0])?.fecha||null;
+}
+function renderActivityStartHint(){
+  const host=$('activityStartHint'),first=firstSeriesActivityDate(),f=currentFilters();
+  if(!first||!f.from||f.from>=first){host.hidden=true;return}
+  host.hidden=false;$('activityStartText').innerHTML=`No hay modificaciones tarifarias registradas entre <b>${fmtDate(f.from)}</b> y el primer ajuste de esta serie, el <b>${fmtDate(first)}</b>. Podés conservar el período para analizar el congelamiento o empezar directamente en la primera actividad.`;
+  $('activityStartBtn').dataset.date=first;
+}
+function setAnalysisStart(date){
+  if(!date)return;const to=$('hasta').value;if(to&&date>to)return;
+  $('desde').value=date;CHART_WINDOW={signature:'',from:null,to:null};update();
 }
 function compound(rows){return rows.reduce((acc,r)=>acc*(1+(Number.isFinite(r.otorgado)?r.otorgado:0)),1)-1}
 function ipcAtOrBefore(date){const d=monthStart(date);let ans=null; for(const x of ipc){if(x.fecha<=d)ans=x;else break;} return ans}
@@ -296,35 +567,52 @@ function isoToMs(s){return Date.parse(`${s}T00:00:00Z`)}
 function msToIso(ms){return new Date(ms).toISOString().slice(0,10)}
 function addDaysIso(s,days){return msToIso(isoToMs(s)+Math.round(days)*86400000)}
 function daysBetween(a,b){return Math.max(0,Math.round((isoToMs(b)-isoToMs(a))/86400000))}
+function axisTickPlan(from,to){
+  const days=Math.max(1,daysBetween(from,to));
+  const target=days/8;
+  const choices=[
+    {approx:7,kind:'day',step:7},
+    {approx:14,kind:'day',step:14},
+    {approx:30.44,kind:'month',step:1},
+    {approx:91.31,kind:'month',step:3},
+    {approx:182.62,kind:'month',step:6},
+    {approx:365.24,kind:'year',step:1},
+    {approx:730.48,kind:'year',step:2},
+    {approx:1095.72,kind:'year',step:3}
+  ];
+  return choices.reduce((best,x)=>Math.abs(x.approx-target)<Math.abs(best.approx-target)?x:best,choices[0]);
+}
 function dateLabelForAxis(ms,from,to){
-  const days=daysBetween(from,to),d=new Date(Number(ms));
-  if(days<=120)return new Intl.DateTimeFormat('es-AR',{day:'2-digit',month:'2-digit'}).format(d);
-  if(days<=900)return new Intl.DateTimeFormat('es-AR',{month:'short',year:'2-digit'}).format(d).replace('.','');
+  const d=new Date(Number(ms)),plan=axisTickPlan(from,to);
+  if(plan.kind==='day')return new Intl.DateTimeFormat('es-AR',{day:'2-digit',month:'2-digit'}).format(d);
+  if(plan.kind==='month')return new Intl.DateTimeFormat('es-AR',{month:'short',year:'2-digit'}).format(d).replace('.','');
   return new Intl.DateTimeFormat('es-AR',{year:'numeric'}).format(d);
 }
 function calendarTicks(from,to){
-  const a=isoToMs(from),b=isoToMs(to),days=daysBetween(from,to),ticks=[];
+  const a=isoToMs(from),b=isoToMs(to),plan=axisTickPlan(from,to),ticks=[];
   const push=ms=>{if(ms>=a&&ms<=b&&!ticks.includes(ms))ticks.push(ms)};
-  push(a);
-  const d=new Date(a);
-  if(days<=120){
-    d.setUTCDate(d.getUTCDate()+14);
-    while(d.getTime()<b){push(d.getTime());d.setUTCDate(d.getUTCDate()+14)}
-  }else if(days<=900){
-    d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+1);
-    while(d.getTime()<b){push(d.getTime());d.setUTCMonth(d.getUTCMonth()+1)}
-  }else if(days<=2500){
-    d.setUTCDate(1);d.setUTCMonth(Math.floor(d.getUTCMonth()/3)*3+3);
-    while(d.getTime()<b){push(d.getTime());d.setUTCMonth(d.getUTCMonth()+3)}
+  if(plan.kind==='day'){
+    push(a);let cur=a+plan.step*86400000;
+    while(cur<b){push(cur);cur+=plan.step*86400000}
+    if(!ticks.length||b-ticks[ticks.length-1]>plan.step*86400000*.55)push(b);
+  }else if(plan.kind==='month'){
+    const d=new Date(a);d.setUTCHours(0,0,0,0);d.setUTCDate(1);
+    let idx=d.getUTCFullYear()*12+d.getUTCMonth();
+    idx=Math.floor(idx/plan.step)*plan.step;
+    d.setUTCFullYear(Math.floor(idx/12),idx%12,1);
+    if(d.getTime()<a)d.setUTCMonth(d.getUTCMonth()+plan.step);
+    while(d.getTime()<=b){push(d.getTime());d.setUTCMonth(d.getUTCMonth()+plan.step)}
   }else{
-    const stepYears=days>4000?2:1;
-    d.setUTCMonth(0,1);d.setUTCFullYear(d.getUTCFullYear()+1);
-    while(d.getTime()<b){push(d.getTime());d.setUTCFullYear(d.getUTCFullYear()+stepYears)}
+    const d=new Date(a);d.setUTCHours(0,0,0,0);d.setUTCMonth(0,1);
+    let y=d.getUTCFullYear();y=Math.ceil(y/plan.step)*plan.step;d.setUTCFullYear(y);
+    if(d.getTime()<a)d.setUTCFullYear(d.getUTCFullYear()+plan.step);
+    while(d.getTime()<=b){push(d.getTime());d.setUTCFullYear(d.getUTCFullYear()+plan.step)}
   }
-  push(b);return ticks.sort((x,y)=>x-y).map(value=>({value}));
+  if(ticks.length<2){push(a);push(b)}
+  return ticks.sort((x,y)=>x-y).map(value=>({value}));
 }
 function timeScale(from,to){
-  const c=themeColors();return {type:'linear',min:isoToMs(from),max:isoToMs(to),afterBuildTicks:axis=>{axis.ticks=calendarTicks(from,to)},ticks:{color:c.muted,maxRotation:0,autoSkip:false,callback:v=>dateLabelForAxis(v,from,to)},grid:{color:c.line}};
+  const c=themeColors();return {type:'linear',min:isoToMs(from),max:isoToMs(to),afterBuildTicks:axis=>{axis.ticks=calendarTicks(from,to)},ticks:{color:c.muted,maxRotation:0,autoSkip:false,padding:7,callback:v=>dateLabelForAxis(v,from,to)},grid:{color:c.line}};
 }
 function chartDefaults(){const c=themeColors(); return {responsive:true,maintainAspectRatio:false,interaction:{mode:'nearest',axis:'x',intersect:false},plugins:{legend:{labels:{color:c.ink,usePointStyle:true,boxWidth:9}},tooltip:{mode:'nearest',intersect:false}},scales:{x:{ticks:{color:c.muted,maxRotation:0,autoSkip:true},grid:{color:c.line}},y:{ticks:{color:c.muted},grid:{color:c.line}}}}}
 function destroyCharts(){if(chart1)chart1.destroy();if(chart2)chart2.destroy();if(chart3)chart3.destroy();chart1=chart2=chart3=null}
@@ -350,6 +638,13 @@ function ipcIndexPoints(from,to){
   return points;
 }
 function chartWindowSignature(){const f=currentFilters();return [f.g,f.s,f.e,f.sg,f.from,f.to].join('¦')}
+function analysisSliderDomain(){
+  const f=currentFilters(),today=new Date().toISOString().slice(0,10);
+  const lo=DATA?.metadata?.fecha_min||records[0]?.fecha||f.from||today;
+  const candidates=[DATA?.metadata?.fecha_max,ipc.at(-1)?.fecha,today,f.from,f.to].filter(Boolean).sort();
+  const hi=candidates.at(-1)||today;
+  return [lo,hi<lo?lo:hi];
+}
 function ensureChartWindow(series){
   if(!series?.ok){$('chartRangeControls').hidden=true;return}
   const [from,to]=selectedRange(),sig=chartWindowSignature();
@@ -357,33 +652,40 @@ function ensureChartWindow(series){
   $('chartRangeControls').hidden=false;syncRangeControls();
 }
 function syncRangeControls(){
-  const [baseFrom,baseTo]=selectedRange(),total=Math.max(1,daysBetween(baseFrom,baseTo));
+  const [domainFrom,domainTo]=analysisSliderDomain(),total=Math.max(1,daysBetween(domainFrom,domainTo));
+  const [selectedFrom,selectedTo]=selectedRange();
   const start=$('chartRangeStart'),end=$('chartRangeEnd');start.max=end.max=String(total);start.min=end.min='0';
-  const a=Math.max(0,Math.min(total,daysBetween(baseFrom,CHART_WINDOW.from||baseFrom))),b=Math.max(0,Math.min(total,daysBetween(baseFrom,CHART_WINDOW.to||baseTo)));
+  const windowFrom=CHART_WINDOW.from||selectedFrom,windowTo=CHART_WINDOW.to||selectedTo;
+  const a=Math.max(0,Math.min(total,daysBetween(domainFrom,windowFrom))),b=Math.max(0,Math.min(total,daysBetween(domainFrom,windowTo)));
   start.value=String(Math.min(a,b-1<0?0:b-1));end.value=String(Math.max(b,Number(start.value)+1));
-  CHART_WINDOW.from=addDaysIso(baseFrom,Number(start.value));CHART_WINDOW.to=addDaysIso(baseFrom,Number(end.value));
+  CHART_WINDOW.from=addDaysIso(domainFrom,Number(start.value));CHART_WINDOW.to=addDaysIso(domainFrom,Number(end.value));
   const lp=100*Number(start.value)/total,rp=100*Number(end.value)/total;$('chartRangeFill').style.left=`${lp}%`;$('chartRangeFill').style.right=`${100-rp}%`;
-  $('chartRangeStartLabel').textContent=fmtDate(CHART_WINDOW.from);$('chartRangeEndLabel').textContent=fmtDate(CHART_WINDOW.to);$('chartRangeLabel').textContent=`${fmtDate(CHART_WINDOW.from)} — ${fmtDate(CHART_WINDOW.to)}`;
+  $('chartRangeStartLabel').textContent=fmtDate(domainFrom);$('chartRangeEndLabel').textContent=fmtDate(domainTo);$('chartRangeLabel').textContent=`${fmtDate(CHART_WINDOW.from)} — ${fmtDate(CHART_WINDOW.to)}`;
 }
 function onRangeInput(changed){
   const start=$('chartRangeStart'),end=$('chartRangeEnd'),total=Number(start.max)||1;let a=Number(start.value),b=Number(end.value);
   if(a>=b){if(changed==='start')a=Math.max(0,b-1);else b=Math.min(total,a+1);start.value=String(a);end.value=String(b)}
-  const [baseFrom]=selectedRange();CHART_WINDOW.from=addDaysIso(baseFrom,a);CHART_WINDOW.to=addDaysIso(baseFrom,b);syncRangeControls();
-  if(RANGE_RAF)cancelAnimationFrame(RANGE_RAF);RANGE_RAF=requestAnimationFrame(()=>{RANGE_RAF=null;if(LAST_SERIES?.ok){const filtered=filterRecords();renderKpis(filtered,LAST_SERIES);destroySeriesCharts();buildSeriesChart(LAST_SERIES.rows||[]);buildEventChart(filtered,LAST_SERIES);buildRealChart(LAST_SERIES.rows||[])}});
+  const [domainFrom]=analysisSliderDomain();CHART_WINDOW.from=addDaysIso(domainFrom,a);CHART_WINDOW.to=addDaysIso(domainFrom,b);
+  $('desde').value=CHART_WINDOW.from;$('hasta').value=CHART_WINDOW.to;CHART_WINDOW.signature=chartWindowSignature();syncRangeControls();
+  if(RANGE_RAF)cancelAnimationFrame(RANGE_RAF);RANGE_RAF=requestAnimationFrame(()=>{RANGE_RAF=null;update()});
 }
-function resetChartWindow(){const [from,to]=selectedRange();CHART_WINDOW={signature:chartWindowSignature(),from,to};syncRangeControls();if(LAST_SERIES?.ok){const filtered=filterRecords();renderKpis(filtered,LAST_SERIES);destroySeriesCharts();buildSeriesChart(LAST_SERIES.rows||[]);buildEventChart(filtered,LAST_SERIES);buildRealChart(LAST_SERIES.rows||[])}}
+function resetChartWindow(){
+  const [from,to]=analysisSliderDomain();$('desde').value=from;$('hasta').value=to;CHART_WINDOW={signature:'',from:null,to:null};update();
+}
 function seriesWindow(){const [from,to]=selectedRange();return [CHART_WINDOW.from||from,CHART_WINDOW.to||to]}
 function tariffTooltipAfterBody(items){
   const raw=items.find(x=>x.dataset.label==='Tarifa')?.raw;if(!raw||raw.kind!=='tariff'||!raw.rows?.length)return [];
   const lines=[`Ajuste vigente: ${fmtPct(raw.adjustment)}`];
   const inst=unique(raw.rows.map(r=>r.instrumento).filter(x=>x&&x!=='-'));if(inst.length)lines.push(`Instrumento: ${inst.join(' · ')}`);
-  if(raw.rows.length>1)lines.push(`${raw.rows.length} movimientos con la misma fecha de vigencia`);return lines;
+  if(raw.rows.length>1)lines.push(`${raw.rows.length} movimientos con la misma fecha de vigencia`);lines.push('Clic para usar esta fecha como inicio del análisis');return lines;
 }
 function buildSeriesChart(rows){
   const c=themeColors(),[from,to]=seriesWindow(),tariff=tariffIndexPoints(rows,from,to),ipcPoints=ipcIndexPoints(from,to);
   $('chart1Title').textContent='Evolución acumulada';$('chart1Sub').textContent='Índice base 100 en el inicio de la ventana visible: tarifa seleccionada versus IPC Córdoba.';
   const opt=chartDefaults();opt.scales.x=timeScale(from,to);opt.scales.y.ticks.callback=v=>new Intl.NumberFormat('es-AR',{maximumFractionDigits:1}).format(v);
   opt.plugins.tooltip.callbacks={title:items=>fmtDate(items[0]?.raw?.date||msToIso(items[0]?.parsed?.x||isoToMs(from))),label:ctx=>`${ctx.dataset.label}: ${new Intl.NumberFormat('es-AR',{maximumFractionDigits:2}).format(ctx.parsed.y)}`,afterBody:tariffTooltipAfterBody};
+  opt.onHover=(evt,elements,chart)=>{const hits=chart.getElementsAtEventForMode(evt,'nearest',{intersect:true},false),el=hits[0],raw=el?chart.data.datasets[el.datasetIndex]?.data?.[el.index]:null;evt.native.target.style.cursor=raw?.kind==='tariff'?'pointer':'default'};
+  opt.onClick=(evt,elements,chart)=>{const hits=chart.getElementsAtEventForMode(evt,'nearest',{intersect:true},false),el=hits[0];if(!el)return;const raw=chart.data.datasets[el.datasetIndex]?.data?.[el.index];if(raw?.kind==='tariff')setAnalysisStart(raw.date)};
   chart1=new Chart($('chart1'),{type:'line',data:{datasets:[
     {label:'Tarifa',data:tariff.points,parsing:false,borderColor:c.blue,backgroundColor:c.blue,tension:0,stepped:'before',pointRadius:ctx=>ctx.raw?.kind==='tariff'?4:0,pointHoverRadius:6,spanGaps:true,borderWidth:2.5},
     {label:'IPC Córdoba',data:ipcPoints,parsing:false,borderColor:c.teal,backgroundColor:c.teal,tension:.18,pointRadius:0,spanGaps:false,borderWidth:2.5}
@@ -400,7 +702,9 @@ function buildRealChart(rows){
   const hasReal=points.length>1;$('realChartCard').hidden=!hasReal;if(!hasReal)return;
   $('chart3Sub').textContent='Índice real base 100 en el inicio de la ventana visible: valores superiores a 100 indican ganancia relativa frente al IPC; inferiores, pérdida relativa.';
   const opt=chartDefaults();opt.scales.x=timeScale(from,to);opt.scales.y.ticks.callback=v=>new Intl.NumberFormat('es-AR',{maximumFractionDigits:1}).format(v);
-  opt.plugins.tooltip.callbacks={title:items=>fmtDate(items[0]?.raw?.date||from),label:ctx=>`${ctx.dataset.label}: ${new Intl.NumberFormat('es-AR',{maximumFractionDigits:2}).format(ctx.parsed.y)}`};
+  opt.plugins.tooltip.callbacks={title:items=>fmtDate(items[0]?.raw?.date||from),label:ctx=>`${ctx.dataset.label}: ${new Intl.NumberFormat('es-AR',{maximumFractionDigits:2}).format(ctx.parsed.y)}`,afterBody:items=>items[0]?.raw?.kind==='tariff'?['Clic para usar esta fecha como inicio del análisis']:[]};
+  opt.onHover=(evt,elements,chart)=>{const hits=chart.getElementsAtEventForMode(evt,'nearest',{intersect:true},false),el=hits[0],raw=el?chart.data.datasets[el.datasetIndex]?.data?.[el.index]:null;evt.native.target.style.cursor=raw?.kind==='tariff'?'pointer':'default'};
+  opt.onClick=(evt,elements,chart)=>{const hits=chart.getElementsAtEventForMode(evt,'nearest',{intersect:true},false),el=hits[0];if(!el)return;const raw=chart.data.datasets[el.datasetIndex]?.data?.[el.index];if(raw?.kind==='tariff')setAnalysisStart(raw.date)};
   chart3=new Chart($('chart3'),{type:'line',data:{datasets:[
     {label:'Tarifa real',data:points,parsing:false,borderColor:c.blue,backgroundColor:c.blue,tension:0,stepped:false,pointRadius:ctx=>ctx.raw?.kind==='tariff'?3:0,pointHoverRadius:5,spanGaps:false,borderWidth:2.5},
     {label:'Base real 100',data:[{x:isoToMs(from),y:100,date:from},{x:isoToMs(to),y:100,date:to}],parsing:false,borderColor:c.muted,backgroundColor:c.muted,borderDash:[6,5],pointRadius:0,borderWidth:1.5}
@@ -528,8 +832,8 @@ function renderResolutions(filtered){
 function clearForInvalidRange(msg){
   destroyCharts();$('realChartCard').hidden=true;setKpi('kpiTariff','—',msg);setKpi('kpiIpc','—',msg);setKpi('kpiGap','—',msg);setKpi('kpiEvents','—',msg);setKpi('kpiLatest','—',msg);$('tbody').innerHTML='<tr><td colspan="11"><div class="empty">Corregí el período para continuar.</div></td></tr>';$('tableMeta').textContent='Período inválido';$('resolutionMeta').textContent='Período inválido';$('resolutionGroups').innerHTML='<div class="resolution-empty">Corregí el período para ver instrumentos.</div>';
 }
-function update(){const err=validateRange();showRangeError(err);if(err){clearForInvalidRange(err);return;}const filtered=filterRecords(),series=seriesInfo(filtered);$('seriesHint').textContent=series.ok?'Serie lista para cálculo acumulado.':series.msg;renderKpis(filtered,series);renderCharts(filtered,series);renderTable(filtered);renderResolutions(filtered)}
-function reset(){$('gerencia').value='';cascade('gerencia');$('servicio').value='';$('empresa').value='';$('segmento').value='';$('desde').value=DATA.metadata.fecha_min;$('hasta').value=DATA.metadata.fecha_max;$('tableSearch').value='';EVENT_VIEW='individual';CHART_WINDOW={signature:'',from:null,to:null};update()}
+function update(){const err=validateRange();showRangeError(err);if(err){$('activityStartHint').hidden=true;clearForInvalidRange(err);return;}const filtered=filterRecords(),series=seriesInfo(filtered);$('seriesHint').textContent=series.ok?'Serie lista para cálculo acumulado.':series.msg;renderActivityStartHint();renderKpis(filtered,series);renderCharts(filtered,series);renderTable(filtered);renderResolutions(filtered)}
+function reset(){SELECTED_COMPANY='';$('gerencia').value='';cascade('gerencia');$('servicio').value='';$('empresa').value='';$('segmento').value='';$('desde').value=DATA.metadata.fecha_min;$('hasta').value=DATA.metadata.fecha_max;$('tableSearch').value='';EVENT_VIEW='individual';CHART_WINDOW={signature:'',from:null,to:null};update()}
 function initTheme(){const saved=localStorage.getItem('ersep-theme');document.documentElement.dataset.theme=saved||'dark';$('themeBtn').onclick=()=>{const next=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=next;localStorage.setItem('ersep-theme',next);update()}}
 
 function validIsoDate(s){if(!/^\d{4}-\d{2}-\d{2}$/.test(String(s||'')))return false;const d=new Date(`${s}T00:00:00Z`);return !Number.isNaN(d.getTime())&&d.toISOString().slice(0,10)===s;}
@@ -674,15 +978,94 @@ async function refreshOfficialIpc(){
   }
 }
 
-(async()=>{
-  DATA=await loadData();records=Array.isArray(DATA.registros)?DATA.registros:[];ipc=normalizeIpcSeries(Array.isArray(DATA.ipc)?DATA.ipc:[]);DATA_ISSUES=validateDataset(DATA);
-  $('driveFolderBtn').href=DATA.metadata.resoluciones_drive_folder;$('heroRange').textContent=`${fmtDate(DATA.metadata.fecha_min)} — ${fmtDate(DATA.metadata.fecha_max)}`;$('heroCount').textContent=new Intl.NumberFormat('es-AR').format(records.length);$('loadStatus').textContent=fmtDateTime(new Date());updateQualityStatus();setIpcStatus();
-  setOptions($('gerencia'),unique(records.map(r=>r.gerencia)),'Todas',false);cascade('gerencia');$('desde').min=DATA.metadata.fecha_min;$('hasta').min=DATA.metadata.fecha_min;$('desde').value=DATA.metadata.fecha_min;$('hasta').value=DATA.metadata.fecha_max;
-  ['gerencia','servicio','empresa','segmento'].forEach(id=>$(id).addEventListener('change',()=>{cascade(id);update()}));$('desde').addEventListener('change',update);$('hasta').addEventListener('change',update);$('resetBtn').onclick=reset;$('tableSearch').addEventListener('input',()=>{if(!validateRange())renderTable(filterRecords())});
-  $('chartRangeStart').addEventListener('input',()=>onRangeInput('start'));$('chartRangeEnd').addEventListener('input',()=>onRangeInput('end'));$('chartRangeReset').onclick=resetChartWindow;
+function setTariffSourceStatus(){
+  const label=$('tariffSourceStatus'),a=$('tariffSourceLink');
+  if(label){label.textContent=TARIFF_SOURCE.label;label.style.fontWeight='800';label.title=TARIFF_SOURCE.error||'Fuente tarifaria en vivo de solo lectura.';}
+  if(a)a.href=TARIFF_SOURCE.url||TARIFF_DRIVE_VIEW_URL;
+}
+
+let APP_STARTED=false;
+let APP_EVENTS_BOUND=false;
+
+function bindDashboardEvents(){
+  if(APP_EVENTS_BOUND)return;
+  APP_EVENTS_BOUND=true;
+  ['gerencia','servicio','segmento'].forEach(id=>$(id).addEventListener('change',()=>{cascade(id);update()}));
+  const empresaInput=$('empresa'),empresaOptions=$('empresaOptions');
+  empresaInput.addEventListener('focus',()=>{if(!empresaInput.disabled)renderCompanyOptions(empresaInput.value)});
+  empresaInput.addEventListener('input',()=>{if(empresaInput.value===''){if(SELECTED_COMPANY){SELECTED_COMPANY='';$('segmento').value='';cascade('empresa');update()}}renderCompanyOptions(empresaInput.value)});
+  empresaInput.addEventListener('keydown',e=>{
+    const opts=[...empresaOptions.querySelectorAll('.search-option')];
+    if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();if(!opts.length)return;COMPANY_ACTIVE_INDEX=e.key==='ArrowDown'?Math.min(opts.length-1,COMPANY_ACTIVE_INDEX+1):Math.max(0,COMPANY_ACTIVE_INDEX-1);opts.forEach((o,i)=>o.classList.toggle('active',i===COMPANY_ACTIVE_INDEX));opts[COMPANY_ACTIVE_INDEX]?.scrollIntoView({block:'nearest'});}
+    else if(e.key==='Enter'){if(COMPANY_ACTIVE_INDEX>=0&&opts[COMPANY_ACTIVE_INDEX]){e.preventDefault();selectCompany(opts[COMPANY_ACTIVE_INDEX].dataset.company)}else{const exact=COMPANY_OPTIONS.find(v=>normalizeText(v)===normalizeText(empresaInput.value));if(exact){e.preventDefault();selectCompany(exact)}}}
+    else if(e.key==='Escape'){hideCompanyOptions()}
+  });
+  empresaOptions.addEventListener('mousedown',e=>{const btn=e.target.closest('.search-option');if(btn){e.preventDefault();selectCompany(btn.dataset.company)}});
+  empresaInput.addEventListener('blur',()=>setTimeout(()=>{if(!COMPANY_OPTIONS.includes(empresaInput.value))empresaInput.value=SELECTED_COMPANY;hideCompanyOptions()},120));
+  for(const id of ['desde','hasta']){
+    $(id).addEventListener('input',()=>{trimDateYear($(id))});
+    $(id).addEventListener('change',()=>{trimDateYear($(id));CHART_WINDOW={signature:'',from:null,to:null};update()});
+  }
+  $('resetBtn').onclick=reset;
+  $('activityStartBtn').onclick=()=>setAnalysisStart($('activityStartBtn').dataset.date);
+  $('tableSearch').addEventListener('input',()=>{if(!validateRange())renderTable(filterRecords())});
+  $('chartRangeStart').addEventListener('input',()=>onRangeInput('start'));
+  $('chartRangeEnd').addEventListener('input',()=>onRangeInput('end'));
+  $('chartRangeReset').onclick=resetChartWindow;
   document.querySelectorAll('[data-event-mode]').forEach(btn=>btn.addEventListener('click',()=>{EVENT_VIEW=btn.dataset.eventMode;updateEventModeButtons();const filtered=filterRecords(),series=seriesInfo(filtered);if(chart2)chart2.destroy();chart2=null;buildEventChart(filtered,series)}));
-  initTheme();update();
+  $('refreshDataBtn').addEventListener('click',()=>refreshTariffData(true));
+}
+
+function applyTariffData(payload,{resetDates=true}={}){
+  DATA=payload;
+  records=Array.isArray(DATA.registros)?DATA.registros:[];
+  ipc=normalizeIpcSeries(Array.isArray(DATA.ipc)?DATA.ipc:[]);
+  DATA_ISSUES=validateDataset(DATA);
+  $('driveFolderBtn').href=DATA.metadata.resoluciones_drive_folder;
+  $('heroRange').textContent=`${fmtDate(DATA.metadata.fecha_min)} — ${fmtDate(DATA.metadata.fecha_max)}`;
+  $('heroCount').textContent=new Intl.NumberFormat('es-AR').format(records.length);
+  $('loadStatus').textContent=fmtDateTime(new Date());
+  updateQualityStatus();setIpcStatus();setTariffSourceStatus();
+  SELECTED_COMPANY=''; COMPANY_OPTIONS=[]; COMPANY_ACTIVE_INDEX=-1;
+  $('empresa').value=''; $('tableSearch').value='';
+  setOptions($('gerencia'),unique(records.map(r=>r.gerencia)),'Todas',false);
+  $('gerencia').value=''; cascade('gerencia');
+  $('desde').min=DATA.metadata.fecha_min;$('hasta').min=DATA.metadata.fecha_min;
+  if(resetDates||!$('desde').value||!$('hasta').value){$('desde').value=DATA.metadata.fecha_min;$('hasta').value=DATA.metadata.fecha_max;}
+  CHART_WINDOW={signature:'',from:null,to:null};
+  update();
+}
+
+async function refreshTariffData(userTriggered=false){
+  const btn=$('refreshDataBtn');
+  const previousText=btn?.textContent;
+  try{
+    if(btn){btn.disabled=true;btn.textContent='↻ Actualizando…';}
+    $('tariffSourceStatus').textContent='actualizando desde Drive…';
+    const payload=await loadData();
+    applyTariffData(payload,{resetDates:true});
+    if(userTriggered&&btn)btn.textContent='✓ Datos actualizados';
+  }catch(e){
+    setTariffSourceStatus();
+    $('loadStatus').textContent='Error de actualización';
+    const msg='No se pudieron cargar los datos tarifarios desde Google Drive. Revisá que AJUSTES TARIFARIOS.xlsx siga compartido para lectura y volvé a intentar.';
+    $('filterError').hidden=false;$('filterError').textContent=msg;
+    console.error(e);
+  }finally{
+    if(btn){setTimeout(()=>{btn.disabled=false;btn.textContent=previousText||'↻ Actualizar datos';},userTriggered?1200:0);}
+  }
+}
+
+async function startDashboard(){
+  if(APP_STARTED)return;
+  APP_STARTED=true;
+  bindDashboardEvents();
+  initTheme();
+  await refreshTariffData(false);
   refreshOfficialIpc();
-})();
+}
+
+document.addEventListener('ersep-costos-authenticated',startDashboard,{once:true});
+if(window.ERSEP_COSTOS_AUTH?.isUnlocked?.())startDashboard();
 </script>
 </body></html>
