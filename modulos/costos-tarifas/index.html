@@ -68,7 +68,7 @@ footer{padding:0 0 34px;color:var(--muted);font-size:.8rem;display:flex;justify-
     <img src="https://ersep-innova.github.io/portal/assets/img/institucional/logo-ersep.png" alt="ERSeP" />
     <div class="brandcopy"><strong>Innovación y Análisis de Datos</strong><span>Ente Regulador de los Servicios Públicos</span></div>
   </a>
-  <div class="top-actions"><button class="icon-btn" id="refreshDataBtn" type="button" title="Volver a leer AJUSTES TARIFARIOS.xlsx desde Google Drive">↻ Actualizar datos</button><a class="icon-btn" id="driveBtn" href="#resoluciones">Resoluciones ↓</a><button class="icon-btn" id="themeBtn" aria-label="Cambiar tema">◐</button></div>
+  <div class="top-actions"><button class="icon-btn" id="refreshDataBtn" type="button" title="Intentar volver a leer AJUSTES TARIFARIOS.xlsx desde Google Drive">↻ Actualizar datos</button><button class="icon-btn" id="loadXlsxBtn" type="button" title="Cargar manualmente la última versión de AJUSTES TARIFARIOS.xlsx">↑ Cargar XLSX</button><input id="xlsxFileInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden><a class="icon-btn" id="driveBtn" href="#resoluciones">Resoluciones ↓</a><button class="icon-btn" id="themeBtn" aria-label="Cambiar tema">◐</button></div>
 </div></div>
 
 <main class="shell" data-protected hidden>
@@ -174,7 +174,19 @@ const TARIFF_DRIVE_DOWNLOAD_URLS = [
   `https://drive.google.com/uc?export=download&id=${encodeURIComponent(TARIFF_DRIVE_FILE_ID)}`,
   `https://docs.google.com/spreadsheets/d/${encodeURIComponent(TARIFF_DRIVE_FILE_ID)}/export?format=xlsx`
 ];
-let TARIFF_SOURCE={mode:'snapshot',label:'respaldo embebido',url:TARIFF_DRIVE_VIEW_URL,error:''};
+let TARIFF_SOURCE={mode:'offline',label:'sin datos cargados',url:TARIFF_DRIVE_VIEW_URL,error:''};
+const TARIFF_CACHE_KEY='ersep_costos_tarifas_cache_v2';
+function saveTariffCache(payload){
+  try{localStorage.setItem(TARIFF_CACHE_KEY,JSON.stringify({savedAt:new Date().toISOString(),payload}));}catch(e){console.debug('No se pudo guardar caché tarifaria.',e);}
+}
+function readTariffCache(){
+  try{
+    const raw=localStorage.getItem(TARIFF_CACHE_KEY);if(!raw)return null;
+    const cached=JSON.parse(raw);if(!cached?.payload||!Array.isArray(cached.payload.registros)||cached.payload.registros.length<1)return null;
+    return cached;
+  }catch(e){console.debug('No se pudo leer caché tarifaria.',e);return null;}
+}
+
 
 const IPC_OFFICIAL_PORTAL = "https://datosestadistica.cba.gov.ar";
 const IPC_OFFICIAL_LANDING = "https://datosestadistica.cba.gov.ar/dataset/indic";
@@ -351,28 +363,34 @@ async function fetchDriveArrayBuffer(url,timeoutMs=15000){
     return buf;
   }finally{clearTimeout(timer)}
 }
-async function loadDriveWorkbookBinary(){
+function parseWorkbookArrayBuffer(buf){
   if(!window.XLSX)throw new Error('SheetJS no está disponible');
+  const wb=XLSX.read(buf,{type:'array',cellDates:true,cellNF:true,cellText:true});
+  const wanted=['Agua y Saneam.','Energia Electrica','Transporte','Vial'];
+  for(const name of wanted)if(!wb.Sheets[name])throw new Error(`Falta la hoja ${name}`);
+  const matrices=new Map();
+  for(const name of wanted)matrices.set(name,XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,raw:true,defval:null,blankrows:true}));
+  const getLink=(sheet,addr)=>{
+    const c=wb.Sheets[sheet]?.[addr],l=c?.l;if(!l)return '';
+    const target=l.Target||l.target||'';const loc=l.location||l.Location||'';
+    return target&&loc&&!String(target).includes('#')?`${target}#${loc}`:target;
+  };
+  const recs=parseTariffMatrices({getMatrix:n=>matrices.get(n)||[],getLink});
+  if(recs.length<700)throw new Error(`Lectura incompleta: ${recs.length} registros`);
+  return recs;
+}
+async function loadDriveWorkbookBinary(){
   let lastError=null;
   for(const url of TARIFF_DRIVE_DOWNLOAD_URLS){
-    try{
-      const buf=await fetchDriveArrayBuffer(url);
-      const wb=XLSX.read(buf,{type:'array',cellDates:true,cellNF:true,cellText:true});
-      const wanted=['Agua y Saneam.','Energia Electrica','Transporte','Vial'];
-      for(const name of wanted)if(!wb.Sheets[name])throw new Error(`Falta la hoja ${name}`);
-      const matrices=new Map();
-      for(const name of wanted)matrices.set(name,XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,raw:true,defval:null,blankrows:true}));
-      const getLink=(sheet,addr)=>{
-        const c=wb.Sheets[sheet]?.[addr],l=c?.l;if(!l)return '';
-        const target=l.Target||l.target||'';const loc=l.location||l.Location||'';
-        return target&&loc&&!String(target).includes('#')?`${target}#${loc}`:target;
-      };
-      const recs=parseTariffMatrices({getMatrix:n=>matrices.get(n)||[],getLink});
-      if(recs.length<700)throw new Error(`Lectura incompleta: ${recs.length} registros`);
-      return recs;
-    }catch(e){lastError=e;console.debug('No se pudo leer XLSX desde',url,e);}
+    try{return parseWorkbookArrayBuffer(await fetchDriveArrayBuffer(url));}
+    catch(e){lastError=e;console.debug('No se pudo leer XLSX desde',url,e);}
   }
   throw lastError||new Error('No se pudo descargar el Excel');
+}
+async function loadWorkbookFromFile(file){
+  if(!file)throw new Error('No se seleccionó ningún archivo');
+  if(!/\.xlsx$/i.test(file.name||''))throw new Error('Seleccioná un archivo .xlsx');
+  return parseWorkbookArrayBuffer(await file.arrayBuffer());
 }
 function gvizToMatrix(payload){
   if(!payload||payload.status!=='ok'||!payload.table)throw new Error('Respuesta GViz inválida');
@@ -409,24 +427,38 @@ function livePayload(records,modeLabel){
   };
 }
 async function loadData(){
+  let binaryError=null,gvizError=null;
   try{
     const recs=await loadDriveWorkbookBinary();
     TARIFF_SOURCE={mode:'live',label:'Drive en vivo',url:TARIFF_DRIVE_VIEW_URL,error:''};
-    return livePayload(recs,'Google Drive en vivo · XLSX de solo lectura');
-  }catch(binaryError){
-    console.warn('Lectura binaria directa de Drive no disponible; se intenta Google Visualization.',binaryError);
-    try{
-      const recs=await loadDriveWorkbookGviz();
-      TARIFF_SOURCE={mode:'live',label:'Drive en vivo',url:TARIFF_DRIVE_VIEW_URL,error:''};
-      return livePayload(recs,'Google Drive en vivo · Google Visualization de solo lectura');
-    }catch(gvizError){
-      const msg=`${binaryError?.message||binaryError}; ${gvizError?.message||gvizError}`;
-      TARIFF_SOURCE={mode:'error',label:'sin conexión con Drive',url:TARIFF_DRIVE_VIEW_URL,error:msg};
-      console.warn('No se pudo leer AJUSTES TARIFARIOS.xlsx desde Drive.',gvizError);
-      throw new Error('No se pudo actualizar la fuente tarifaria desde Google Drive. '+msg);
-    }
+    const payload=livePayload(recs,'Google Drive en vivo · XLSX de solo lectura');
+    saveTariffCache(payload);
+    return payload;
+  }catch(e){
+    binaryError=e;
+    console.warn('Lectura binaria directa de Drive no disponible; se intenta Google Visualization.',e);
   }
+  try{
+    const recs=await loadDriveWorkbookGviz();
+    TARIFF_SOURCE={mode:'live',label:'Drive en vivo',url:TARIFF_DRIVE_VIEW_URL,error:''};
+    const payload=livePayload(recs,'Google Drive en vivo · Google Visualization de solo lectura');
+    saveTariffCache(payload);
+    return payload;
+  }catch(e){
+    gvizError=e;
+    console.warn('Google Visualization tampoco pudo leer el XLSX.',e);
+  }
+  const cached=readTariffCache();
+  if(cached){
+    const when=new Date(cached.savedAt);const stamp=Number.isNaN(when.getTime())?'':` · guardado ${when.toLocaleString('es-AR')}`;
+    TARIFF_SOURCE={mode:'cache',label:`última carga guardada${stamp}`,url:TARIFF_DRIVE_VIEW_URL,error:`${binaryError?.message||binaryError}; ${gvizError?.message||gvizError}`};
+    return cached.payload;
+  }
+  const msg=`${binaryError?.message||binaryError}; ${gvizError?.message||gvizError}`;
+  TARIFF_SOURCE={mode:'offline',label:'sin conexión con Drive',url:TARIFF_DRIVE_VIEW_URL,error:msg};
+  throw new Error(msg||'No se pudo leer AJUSTES TARIFARIOS.xlsx desde Drive');
 }
+
 
 const $=id=>document.getElementById(id);
 let DATA=null, records=[], ipc=[], chart1=null, chart2=null, chart3=null;
@@ -1014,6 +1046,27 @@ function bindDashboardEvents(){
   $('chartRangeReset').onclick=resetChartWindow;
   document.querySelectorAll('[data-event-mode]').forEach(btn=>btn.addEventListener('click',()=>{EVENT_VIEW=btn.dataset.eventMode;updateEventModeButtons();const filtered=filterRecords(),series=seriesInfo(filtered);if(chart2)chart2.destroy();chart2=null;buildEventChart(filtered,series)}));
   $('refreshDataBtn').addEventListener('click',()=>refreshTariffData(true));
+  $('loadXlsxBtn').addEventListener('click',()=>$('xlsxFileInput').click());
+  $('xlsxFileInput').addEventListener('change',async event=>{
+    const file=event.target.files?.[0];if(!file)return;
+    const btn=$('loadXlsxBtn'),oldText=btn.textContent;
+    try{
+      btn.disabled=true;btn.textContent='↑ Cargando…';
+      $('filterError').hidden=true;
+      const recs=await loadWorkbookFromFile(file);
+      TARIFF_SOURCE={mode:'manual',label:'XLSX cargado manualmente',url:TARIFF_DRIVE_VIEW_URL,error:''};
+      const payload=livePayload(recs,'XLSX cargado manualmente desde este equipo');
+      saveTariffCache(payload);
+      applyTariffData(payload,{resetDates:true});
+      btn.textContent='✓ XLSX cargado';
+      $('loadStatus').textContent=`${recs.length} registros · actualizado ${new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}`;
+    }catch(e){
+      $('filterError').hidden=false;$('filterError').textContent=`No se pudo leer el XLSX: ${e.message||e}`;
+      console.error(e);
+    }finally{
+      event.target.value='';setTimeout(()=>{btn.disabled=false;btn.textContent=oldText;},1200);
+    }
+  });
 }
 
 function applyTariffData(payload,{resetDates=true}={}){
@@ -1048,7 +1101,10 @@ async function refreshTariffData(userTriggered=false){
   }catch(e){
     setTariffSourceStatus();
     $('loadStatus').textContent='Error de actualización';
-    const msg='No se pudieron cargar los datos tarifarios desde Google Drive. Revisá que AJUSTES TARIFARIOS.xlsx siga compartido para lectura y volvé a intentar.';
+    const hasData=Array.isArray(records)&&records.length>0;
+    const msg=hasData
+      ?'Drive no respondió en esta actualización. Se conservan los últimos datos cargados. Para forzar una actualización inmediata, usá “Cargar XLSX”.'
+      :'Google Drive no permite leer directamente este XLSX desde GitHub Pages. Usá “Cargar XLSX” y elegí AJUSTES TARIFARIOS.xlsx; la página guardará esa última carga en este navegador.';
     $('filterError').hidden=false;$('filterError').textContent=msg;
     console.error(e);
   }finally{
