@@ -246,7 +246,7 @@ async function renderBenchmark(){const scope=$('benchScope')?.value||'tariff';if
   <header class="topbar">
     <div class="top-main">
       <div class="brand"><h1>Portal de Innovación y Análisis de Datos · Agua</h1><p>ERSeP · Base territorial, revisiones técnicas y estructura tarifaria unificada</p></div>
-      <div id="statusbar" class="statusbar" role="status" aria-live="polite"><span class="statuschip ok">Base integrada</span><span class="statuschip">version beta (20)</span></div>
+      <div id="statusbar" class="statusbar" role="status" aria-live="polite"><span class="statuschip ok">Base integrada</span><span class="statuschip">version beta (21)</span></div>
       <a id="portalHomeTop" class="portal-top-link" href="../../" target="_top" title="Volver al Portal de Innovación">← Portal</a>
     </div>
     <div class="global-search-shell">
@@ -552,7 +552,7 @@ async function renderBenchmark(){const scope=$('benchScope')?.value||'tariff';if
     <div class="actions"><button id="addReview" class="btn primary">Agregar a la sesión</button></div><div id="adminMsg" class="small"></div>
   </div></div></div></div></section>
 </div>
-<script id="embeddedData" type="application/json">{"so{"source":{"name":"mapa_agua.json no cargado","transport":"respaldo mínimo","jsonLive":false},"prestadoras":[],"unidades":[],"relaciones":[],"localidades":[],"cobertura":[],"servicios":[],"revisiones":[],"catalogoETU":[],"etu":[],"cargosEspeciales":[],"controlETU":[],"technicalProfiles":[],"ajustesLegacy":[],"datosTecnicos":[],"datosEconomicos":[]}ript>
+<script id="embeddedData" type="application/json">{"source":{"name":"Respaldo mínimo","transport":"HTML","jsonLive":false},"prestadoras":[],"unidades":[],"relaciones":[],"localidades":[],"cobertura":[],"servicios":[],"revisiones":[],"catalogoETU":[],"etu":[],"cargosEspeciales":[],"controlETU":[],"technicalProfiles":[],"ajustesLegacy":[],"datosTecnicos":[],"datosEconomicos":[]}</script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
@@ -816,29 +816,23 @@ function revisionLabel(r){return r.NRO_IT||r.INSTRUMENTO_APROBATORIO||r.ID_REVIS
 /* ============================================================
    FUENTE DE DATOS · GITHUB JSON
    ============================================================
-   Estructura esperada del repositorio:
+   Estructura esperada:
 
-     modulos/agua/
+     portal/modulos/mapa-agua/
        index.html
        mapa_agua.json
        mapa_agua_unificada.db
 
-   El navegador lee únicamente mapa_agua.json.
-   La SQLite queda versionada como base maestra.
-
-   Ruta por defecto:
-     <meta name="ersep-data-url" content="./mapa_agua.json">
-
-   Para pruebas se puede sobrescribir:
-     ?data=https://dominio/ruta/mapa_agua.json
+   La web lee ./mapa_agua.json.
+   La SQLite queda como base maestra/versionada del repositorio.
    ============================================================ */
 const ERSEP_DATA = (() => {
-  const metaPath =
+  const configured =
     document.querySelector('meta[name="ersep-data-url"]')?.content ||
     './mapa_agua.json';
 
-  const queryPath = new URLSearchParams(location.search).get('data');
-  const dataUrl = queryPath || metaPath;
+  const queryOverride = new URLSearchParams(location.search).get('data');
+  const dataUrl = queryOverride || configured;
 
   async function load(timeoutMs = 15000){
     const controller = new AbortController();
@@ -856,6 +850,10 @@ const ERSEP_DATA = (() => {
       }
 
       const raw = await response.json();
+
+      if (!raw || typeof raw !== 'object') {
+        throw new Error('El archivo JSON no contiene un objeto válido.');
+      }
 
       raw.source = {
         ...(raw.source || {}),
@@ -877,7 +875,7 @@ async function loadPrimaryData(){
   try {
     const raw = await ERSEP_DATA.load();
     initData(raw);
-    console.info('ERSeP Agua: mapa_agua.json cargado', ERSEP_DATA.dataUrl);
+    console.info('ERSeP Agua: mapa_agua.json cargado correctamente.', ERSEP_DATA.dataUrl);
     return {mode:'json', ok:true};
   } catch (err) {
     const fallback = {
@@ -1015,7 +1013,7 @@ function renderSummary(){
   $('summaryReviews').innerHTML=latest.map(r=>{const pid=String(r.ID_PRESTADORA||rowProviderId(r)||'');return`<tr class="summary-review-row" ${pid?`onclick="openProviderProfile('${esc(pid)}')"`:''}><td>${esc(providerName(pid))}</td><td>${esc(state.urs.get(String(r.ID_UR))?.['Unidad regulada']||r.ID_UR||'—')}</td><td>${esc(r.NRO_IT||r.ID_REVISION)}</td><td>${esc(fmtDate(revDate(r)))}</td><td>${esc(r.ESTADO_REVISION||'—')}</td></tr>`}).join('')||'<tr><td colspan="5" class="muted">Sin revisiones.</td></tr>';
 }
 window.openProviderProfile=function(pid){activatePanel('providerPanel');$('profileProvider').value=String(pid);renderProviderProfile()}
-function renderStatus(){const srcDate=sourceEmbeddedDate(),live=!!state.raw?.source?.jsonLive,mode=live?'GitHub JSON sincronizado':'JSON no disponible',modeClass=live?'ok':'';$('statusbar').innerHTML=`<span class="statuschip ${modeClass}">${esc(mode)}</span><span class="statuschip ok">Fuente · ${esc(state.sourceName)}</span><span class="statuschip">${state.prest.size} prestadoras</span><span class="statuschip">Datos: ${esc(srcDate)}</span><span class="statuschip">version beta (20)</span>`}
+function renderStatus(){const srcDate=sourceEmbeddedDate(),live=!!state.raw?.source?.jsonLive,mode=live?'GitHub JSON sincronizado':'JSON no disponible',modeClass=live?'ok':'';$('statusbar').innerHTML=`<span class="statuschip ${modeClass}">${esc(mode)}</span><span class="statuschip ok">Fuente · ${esc(state.sourceName)}</span><span class="statuschip">${state.prest.size} prestadoras</span><span class="statuschip">Datos: ${esc(srcDate)}</span><span class="statuschip">version beta (21)</span>`}
 function renderKpis(){const waterSv=[...state.services.values()].filter(s=>norm(s.TIPO_SERVICIO)==='AGUA');const waterRevs=state.revisions.filter(r=>isWaterService(String(r.ID_SERVICIO)));const waterETU=state.etu.filter(r=>isWaterService(String(r.ID_SERVICIO)));const cards=[['Prestadoras',state.prest.size,'entidades en maestro'],['UR de Agua',new Set(waterSv.map(s=>s.ID_UR)).size,`${waterSv.length} servicios de Agua`],['Localidades',state.locs.size,`${state.coverage.length} coberturas totales`],['Revisiones Agua',waterRevs.length,`${new Set(waterRevs.map(r=>r.ID_UR)).size} UR con revisión`],['Registros ETU Agua',waterETU.length,`${state.charges.filter(r=>isWaterService(String(r.ID_SERVICIO))).length} cargos especiales`]];$('mainKpis').innerHTML=cards.map(([a,b,c])=>`<div class="kpi"><span>${esc(a)}</span><strong>${fmtInt(b)}</strong><small>${esc(c)}</small></div>`).join('')}
 /* MAP */
 let map,layer,markers=new Map(),legendControl;
@@ -1698,14 +1696,11 @@ function renderSourceInfo(){
     <div class="notice info">
       <b>Fuente activa:</b> ${esc(state.sourceName)}.
       ${state.raw?.source?.jsonLive
-        ? `Datos cargados desde <code>${esc(state.raw?.source?.dataUrl||'./mapa_agua.json')}</code>.
-           La SQLite <code>mapa_agua_unificada.db</code> queda como base maestra/versionada
-           y el navegador consume únicamente el JSON.`
+        ? `Datos cargados correctamente desde <code>${esc(state.raw?.source?.dataUrl||'./mapa_agua.json')}</code>.
+           La SQLite <code>mapa_agua_unificada.db</code> queda como base maestra/versionada del repositorio.`
         : `No se pudo cargar <code>${esc(state.raw?.source?.dataUrl||'./mapa_agua.json')}</code>.
            Verificá que <b>index.html</b> y <b>mapa_agua.json</b> estén en la misma carpeta.
-           ${state.raw?.source?.jsonError
-             ? `<br><b>Detalle:</b> ${esc(state.raw.source.jsonError)}`
-             : ''}`
+           ${state.raw?.source?.jsonError?`<br><b>Detalle:</b> ${esc(state.raw.source.jsonError)}`:''}`
       }
     </div>
     ${leg.name
@@ -1713,10 +1708,6 @@ function renderSourceInfo(){
            <b>Histórico legacy:</b> ${esc(leg.name)} · hoja ${esc(leg.sheet||'—')} ·
            ${fmtInt(leg.records)} registros · ${fmtInt(leg.mappedToUR)} vinculados a UR ·
            ${fmtInt(leg.unmapped)} pendientes · ${fmtInt(leg.cuitAlerts)} alertas CUIT.
-           <br><b>Agua:</b> ${fmtInt(leg.waterRecords)} registros
-           (${fmtInt(leg.waterSeriesEvents)} utilizables en series con fecha y %).
-           <b>Saneamiento:</b> ${fmtInt(leg.sanitationRecords)} registros preservados
-           pero excluidos de las series de Agua.
          </div>`
       : ''
     }
@@ -1730,14 +1721,14 @@ function renderSourceInfo(){
 function rowsFromSheet(wb,name){const ws=wb.Sheets[name];return ws?XLSX.utils.sheet_to_json(ws,{defval:null,raw:true}):[]}
 async function loadExcel(file){if(!window.XLSX)return alert('No se pudo cargar el lector XLSX.');const wb=XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:false});const raw={source:{name:file.name,embeddedAt:new Date().toISOString().slice(0,10),sheets:{}},prestadoras:rowsFromSheet(wb,'01_Prestadoras'),unidades:rowsFromSheet(wb,'02_Unidades_Reguladas'),relaciones:rowsFromSheet(wb,'03_Relaciones_Prestadoras'),localidades:rowsFromSheet(wb,'04_Localidades'),cobertura:rowsFromSheet(wb,'05_Cobertura'),servicios:rowsFromSheet(wb,'06_Servicio'),revisiones:rowsFromSheet(wb,'07_Revisiones_Tarifarias'),catalogoETU:rowsFromSheet(wb,'10_Catalogo_ETU'),etu:rowsFromSheet(wb,'08_ETU_Cuadro_Tarifario'),cargosEspeciales:rowsFromSheet(wb,'09_ETU_Cargos_Especiales'),controlETU:rowsFromSheet(wb,'11_Control_Carga_ETU'),datosTecnicos:rowsFromSheet(wb,'12_Datos_Tecnicos'),datosEconomicos:rowsFromSheet(wb,'13_Datos_Economicos')};for(const [k,v] of Object.entries(raw)){if(Array.isArray(v))raw.source.sheets[k]=v.length}initData(raw);alert(`Base reemplazada en la sesión: ${file.name}`)}
 function downloadText(text,name,type='text/plain;charset=utf-8'){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
-function exportSnapshot(){downloadText(JSON.stringify(state.raw,null,2),'snapshot_base_agua_beta20.json','application/json;charset=utf-8')}
+function exportSnapshot(){downloadText(JSON.stringify(state.raw,null,2),'snapshot_base_agua_beta21.json','application/json;charset=utf-8')}
 const TECH_TEMPLATE_COLS=['ID_PRESTADORA','ID_UR','PERIODO','FECHA_CORTE','VOLUMEN_CAPTADO_M3','VOLUMEN_PRODUCIDO_M3','VOLUMEN_INGRESADO_RED_M3','VOLUMEN_FACTURADO_M3','USUARIOS_AGUA','USUARIOS_MICROMEDIDOS','PORC_MICROMEDICION','LONGITUD_RED_KM','CAPACIDAD_RESERVA_M3','CANTIDAD_POZOS','CANTIDAD_PLANTAS','ESTACIONES_BOMBEO','HORAS_SERVICIO_DIA','HORAS_BOMBEO_DIA','PRESION_MEDIA_MCA','ROTURAS_RED','FUENTES_ABASTECIMIENTO','FUENTE_DOCUMENTAL','OBSERVACIONES'];
 const ECON_TEMPLATE_COLS=['ID_PRESTADORA','ID_UR','PERIODO','FECHA_CORTE','FACTURACION_TOTAL','RECAUDACION_TOTAL','INGRESOS_OPERATIVOS','OTROS_INGRESOS','COSTOS_OPERATIVOS','COSTO_PERSONAL','COSTO_ENERGIA','COSTO_INSUMOS','COSTO_MANTENIMIENTO','OTROS_COSTOS_OPERATIVOS','USUARIOS_AGUA','VOLUMEN_FACTURADO_M3','ACTIVO_TOTAL','PASIVO_TOTAL','PATRIMONIO_NETO','ACTIVO_CORRIENTE','PASIVO_CORRIENTE','ACTIVO_NO_CORRIENTE','ACTIVO_RAPIDO','DISPONIBILIDADES','INVERSIONES','CREDITOS','RESULTADO_ANTES_IMPUESTOS','CAPITAL_CORRIENTE','IMPACTO_CARGA_FINANCIERA','DEUDA_USUARIOS','FUENTE_DOCUMENTAL','OBSERVACIONES'];
 function downloadTemplate(cols,name){downloadText('\ufeff'+cols.join(';')+'\r\n',name,'text/csv;charset=utf-8')}
 function downloadFullTemplate(){if(!window.XLSX)return alert('No se pudo cargar el generador XLSX.');const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([TECH_TEMPLATE_COLS]),'12_Datos_Tecnicos');XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([ECON_TEMPLATE_COLS]),'13_Datos_Economicos');XLSX.writeFile(wb,'Plantilla_Datos_Tecnicos_Economicos.xlsx')}
 function exportETUCSV(){const rows=filteredETU();if(!rows.length)return alert('No hay registros filtrados.');const cols=uniq(rows.flatMap(r=>Object.keys(r)));const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';const csv='\ufeff'+[cols.map(q).join(';'),...rows.map(r=>cols.map(c=>q(r[c])).join(';'))].join('\r\n');downloadText(csv,`ETU_${state.etuMode}_${new Date().toISOString().slice(0,10)}.csv`,'text/csv;charset=utf-8')}
 /* ADMIN */
-function addReview(){const urid=$('fUR').value,s=serviceForUR(urid,'Agua');if(!urid||!s)return adminMsg('Seleccioná una UR de Agua válida.',true);const it=$('fIT').value.trim();if(!it)return adminMsg('Ingresá el Informe Técnico.',true);const u=state.urs.get(urid);const r={ID_REVISION:`REV-M-${Date.now()}`,ID_SERVICIO:s.ID_SERVICIO,ID_UR:urid,ID_PRESTADORA:u?.ID_PRESTADORA||'',TIPO_REVISION:'Revisión tarifaria / carga manual de sesión',PERIODO_REFERENCIA:$('fPeriod').value,FECHA_IT:$('fITDate').value,NRO_IT:it,EXPEDIENTE:$('fExp').value,ESTADO_REVISION:$('fStatus').value,FECHA_VIGENCIA_DESDE:$('fEffective').value,FECHA_VIGENCIA_HASTA:null,INSTRUMENTO_APROBATORIO:$('fInstrument').value,FECHA_INSTRUMENTO:null,AMBITO_APLICACION:'General',FUENTE_DOCUMENTAL:'Carga manual en version beta (20)',OBSERVACIONES:$('fObs').value};state.revisions.push(r);buildView();populateAll();renderAll();$('reviewForm').reset();$('fStatus').value='Propuesta / valor según Informe Técnico';adminMsg(`Revisión ${it} agregada a la sesión para ${u?.['Unidad regulada']||urid}.`,false)}
+function addReview(){const urid=$('fUR').value,s=serviceForUR(urid,'Agua');if(!urid||!s)return adminMsg('Seleccioná una UR de Agua válida.',true);const it=$('fIT').value.trim();if(!it)return adminMsg('Ingresá el Informe Técnico.',true);const u=state.urs.get(urid);const r={ID_REVISION:`REV-M-${Date.now()}`,ID_SERVICIO:s.ID_SERVICIO,ID_UR:urid,ID_PRESTADORA:u?.ID_PRESTADORA||'',TIPO_REVISION:'Revisión tarifaria / carga manual de sesión',PERIODO_REFERENCIA:$('fPeriod').value,FECHA_IT:$('fITDate').value,NRO_IT:it,EXPEDIENTE:$('fExp').value,ESTADO_REVISION:$('fStatus').value,FECHA_VIGENCIA_DESDE:$('fEffective').value,FECHA_VIGENCIA_HASTA:null,INSTRUMENTO_APROBATORIO:$('fInstrument').value,FECHA_INSTRUMENTO:null,AMBITO_APLICACION:'General',FUENTE_DOCUMENTAL:'Carga manual en version beta (21)',OBSERVACIONES:$('fObs').value};state.revisions.push(r);buildView();populateAll();renderAll();$('reviewForm').reset();$('fStatus').value='Propuesta / valor según Informe Técnico';adminMsg(`Revisión ${it} agregada a la sesión para ${u?.['Unidad regulada']||urid}.`,false)}
 function adminMsg(t,b){$('adminMsg').textContent=t;$('adminMsg').className='small '+(b?'badtxt':'oktxt')}
 
 /* ============================================================
@@ -1802,7 +1793,7 @@ const ERSEP_PORTAL = (() => {
 
     message('ERSEP_MODULE_READY', {
       panels: [...document.querySelectorAll('.panel')].map(x => x.id),
-      version: 'version beta (20)'
+      version: 'version beta (21)'
     });
   }
 
@@ -1814,7 +1805,7 @@ const ERSEP_PORTAL = (() => {
     if (msg.type === 'ERSEP_PORTAL_PING') {
       message('ERSEP_MODULE_READY', {
         panels: [...document.querySelectorAll('.panel')].map(x => x.id),
-        version: 'version beta (20)'
+        version: 'version beta (21)'
       });
       return;
     }
