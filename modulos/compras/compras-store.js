@@ -1,16 +1,12 @@
 /* =============================================================
    ERSeP · Compras y Contrataciones
-   Registro local de pedidos de provisión.
-
-   IMPORTANTE: los pedidos se guardan en el navegador de cada
-   equipo (localStorage). No se comparten entre computadoras ni
-   entre navegadores. Para consolidar, usar Exportar / Importar
-   desde la página de registro.
+   Base compartida: Supabase.
+   Se mantiene localStorage como copia local de respaldo.
    ============================================================= */
+
 window.ComprasStore = (function () {
   "use strict";
 
-  /* Etapas del trámite. Nada se borra: cada cambio queda asentado en el historial. */
   var ESTADOS = {
     pendiente: { nombre: 'Pendiente de analizar', etapa: 'analizar', color: '#b7791f' },
     aprobado:  { nombre: 'Aprobado · pendiente de entregar', etapa: 'entregar', color: '#0f4c8a' },
@@ -27,21 +23,89 @@ window.ComprasStore = (function () {
   var KEY_PEDIDOS = "ersep.compras.pedidos";
   var KEY_CONTADOR = "ersep.compras.contadores";
   var memoria = { pedidos: [], contadores: {} };
+
   var hayStorage = (function () {
     try {
       var t = "__ersep_test__";
       window.localStorage.setItem(t, "1");
       window.localStorage.removeItem(t);
       return true;
-    } catch (e) { return false; }
+    } catch (e) {
+      return false;
+    }
   })();
+
+  function config() {
+    return window.CONFIG_SUPABASE_COMPRAS || {};
+  }
+
+  function enNube() {
+    var c = config();
+    return !!(c.url && c.key);
+  }
+
+  function headers(extra) {
+    var c = config();
+    var h = {
+      "apikey": c.key,
+      "Authorization": "Bearer " + c.key,
+      "Content-Type": "application/json"
+    };
+
+    if (extra) {
+      Object.keys(extra).forEach(function (k) {
+        h[k] = extra[k];
+      });
+    }
+
+    return h;
+  }
+
+  function api(ruta, opciones) {
+    var c = config();
+    opciones = opciones || {};
+    opciones.headers = headers(opciones.headers);
+
+    return fetch(c.url + "/rest/v1/" + ruta, opciones)
+      .then(function (r) {
+        if (!r.ok) {
+          return r.text().then(function (texto) {
+            throw new Error(texto || ("HTTP " + r.status));
+          });
+        }
+
+        if (r.status === 204) return null;
+
+        var tipo = r.headers.get("content-type") || "";
+        return tipo.indexOf("application/json") >= 0 ? r.json() : r.text();
+      });
+  }
+
+  function rpc(nombre, datos) {
+    var c = config();
+
+    return fetch(c.url + "/rest/v1/rpc/" + nombre, {
+      method: "POST",
+      headers: headers(),
+      body: JSON.stringify(datos || {})
+    }).then(function (r) {
+      if (!r.ok) {
+        return r.text().then(function (texto) {
+          throw new Error(texto || ("HTTP " + r.status));
+        });
+      }
+      return r.json();
+    });
+  }
 
   function leerJSON(clave, porDefecto) {
     if (!hayStorage) return porDefecto;
     try {
       var crudo = window.localStorage.getItem(clave);
       return crudo ? JSON.parse(crudo) : porDefecto;
-    } catch (e) { return porDefecto; }
+    } catch (e) {
+      return porDefecto;
+    }
   }
 
   function escribirJSON(clave, valor) {
@@ -49,75 +113,73 @@ window.ComprasStore = (function () {
     try {
       window.localStorage.setItem(clave, JSON.stringify(valor));
       return true;
-    } catch (e) { return false; }
+    } catch (e) {
+      return false;
+    }
   }
 
   function normalizar(p) {
-    if (!p.estado || !ESTADOS[p.estado]) p.estado = 'pendiente';
+    if (!p.estado || !ESTADOS[p.estado]) p.estado = "pendiente";
+
     if (!Array.isArray(p.historial) || !p.historial.length) {
-      p.historial = [{ estado: p.estado, fecha: p.registrado || new Date().toISOString(), nota: 'Pedido registrado' }];
+      p.historial = [{
+        estado: p.estado,
+        fecha: p.registrado || new Date().toISOString(),
+        nota: "Pedido registrado"
+      }];
     }
+
     p.etapa = ESTADOS[p.estado].etapa;
     return p;
   }
 
-  /* ═════ Base compartida ═════
-     Si está configurada, la planilla manda: al abrir se trae todo y se fusiona
-     con lo local (gana la versión más reciente de cada pedido). */
-  function enNube() {
-    return window.ERSePNube && window.ERSePNube.configurada();
-  }
-
-  function fusionar(remotos) {
-    var locales = pedidos();
-    var porId = {};
-    locales.forEach(function (p) { porId[p.id] = p; });
-
-    remotos.forEach(function (r) {
-      var p = r.datos || {};
-      if (!p.id) return;
-      var actual = porId[p.id];
-      var fechaR = ultimoMovimiento(p), fechaL = actual ? ultimoMovimiento(actual) : '';
-      if (!actual || fechaR >= fechaL) porId[p.id] = p;
+  function desdeFila(r) {
+    return normalizar({
+      id: r.id,
+      numero: r.numero,
+      anio: r.anio,
+      numeroTexto: r.numero_texto,
+      provisional: !!r.provisional,
+      fecha: r.fecha || "",
+      area: r.area || "",
+      tipo: r.tipo || "Libre",
+      numerado: r.numerado || "",
+      items: Array.isArray(r.items) ? r.items : [],
+      observaciones: r.observaciones || "",
+      afectacion: r.afectacion || "",
+      partida: r.partida || "",
+      codigo: r.codigo || "",
+      total: Number(r.total) || 0,
+      registrado: r.registrado,
+      estado: r.estado || "pendiente",
+      etapa: r.etapa || "analizar",
+      historial: Array.isArray(r.historial) ? r.historial : [],
+      actualizadoEn: r.actualizado_en || r.registrado
     });
-
-    var lista = Object.keys(porId).map(function (k) { return normalizar(porId[k]); });
-    lista.sort(function (a, b) { return String(a.registrado).localeCompare(String(b.registrado)); });
-    guardarPedidos(lista);
-    return lista;
   }
 
-  function ultimoMovimiento(p) {
-    var h = p.historial || [];
-    return h.length ? String(h[h.length - 1].fecha) : String(p.registrado || '');
-  }
-
-  /* Trae la planilla y devuelve la lista ya fusionada */
-  function sincronizar() {
-    if (!enNube()) return Promise.resolve({ nube: false, pedidos: pedidos() });
-
-    return window.ERSePNube.sincronizarPendientes()
-      .then(function () { return window.ERSePNube.listar('compras'); })
-      .then(function (remotos) {
-        var lista = fusionar(remotos);
-
-        // Lo que sólo existía en este equipo se sube para que lo vean los demás
-        var idsRemotos = {};
-        remotos.forEach(function (r) { idsRemotos[r.id] = true; });
-        lista.forEach(function (p) {
-          if (!idsRemotos[p.id]) window.ERSePNube.guardar('compras', p.id, p);
-        });
-
-        return { nube: true, pedidos: lista };
-      })
-      .catch(function (e) {
-        return { nube: false, error: e.message, pedidos: pedidos() };
-      });
-  }
-
-  function subir(pedido) {
-    if (!enNube()) return;
-    window.ERSePNube.guardar('compras', pedido.id, pedido);
+  function aFila(p) {
+    return {
+      id: p.id,
+      numero: Number(p.numero),
+      anio: Number(p.anio),
+      numero_texto: p.numeroTexto,
+      provisional: !!p.provisional,
+      fecha: p.fecha || null,
+      area: p.area || null,
+      tipo: p.tipo || "Libre",
+      numerado: p.numerado || null,
+      items: p.items || [],
+      observaciones: p.observaciones || null,
+      afectacion: p.afectacion || null,
+      partida: p.partida || null,
+      codigo: p.codigo || null,
+      total: Number(p.total) || 0,
+      registrado: p.registrado || new Date().toISOString(),
+      estado: p.estado || "pendiente",
+      etapa: p.etapa || "analizar",
+      historial: p.historial || []
+    };
   }
 
   function pedidos() {
@@ -144,33 +206,153 @@ window.ComprasStore = (function () {
     return String(n).padStart(4, "0");
   }
 
-  /* Próximo número disponible del ejercicio, sin consumirlo. */
   function proximoNumero(anio) {
     anio = anio || new Date().getFullYear();
     var c = contadores();
     var siguiente = (Number(c[anio]) || 0) + 1;
-    return { anio: anio, numero: siguiente, texto: pad(siguiente) + "/" + anio };
+
+    return {
+      anio: anio,
+      numero: siguiente,
+      texto: pad(siguiente) + "/" + anio
+    };
   }
 
-  /* Registra el pedido y consume el número. Devuelve el pedido guardado. */
-  /* Con base compartida el número lo asigna el servidor: evita que dos equipos
-     tomen el mismo correlativo. Sin base, se usa el contador local. */
-  function pedirNumero(anio) {
-    if (!enNube()) return Promise.resolve(proximoNumero(anio));
-    return window.ERSePNube.numero('compras-' + anio)
-      .then(function (n) { return { anio: anio, numero: n, texto: pad(n) + "/" + anio }; })
-      .catch(function () {
-        // Sin conexión se usa el contador local y el número queda marcado como
-        // provisional: al sincronizar puede coincidir con otro equipo.
-        var local = proximoNumero(anio);
-        local.provisional = true;
-        return local;
+  function ultimoMovimiento(p) {
+    if (p.actualizadoEn) return String(p.actualizadoEn);
+
+    var h = p.historial || [];
+    return h.length
+      ? String(h[h.length - 1].fecha)
+      : String(p.registrado || "");
+  }
+
+  function fusionar(remotos) {
+    var locales = pedidos();
+    var porId = {};
+
+    locales.forEach(function (p) {
+      porId[p.id] = p;
+    });
+
+    remotos.forEach(function (p) {
+      if (!p.id) return;
+
+      var actual = porId[p.id];
+      var fechaR = ultimoMovimiento(p);
+      var fechaL = actual ? ultimoMovimiento(actual) : "";
+
+      if (!actual || fechaR >= fechaL) {
+        porId[p.id] = p;
+      }
+    });
+
+    var lista = Object.keys(porId).map(function (id) {
+      return normalizar(porId[id]);
+    });
+
+    lista.sort(function (a, b) {
+      return String(a.registrado || "").localeCompare(String(b.registrado || ""));
+    });
+
+    guardarPedidos(lista);
+    return lista;
+  }
+
+  function subir(pedido) {
+    if (!enNube()) return Promise.resolve(false);
+
+    return api("compras_pedidos?on_conflict=id", {
+      method: "POST",
+      headers: {
+        "Prefer": "resolution=merge-duplicates,return=minimal"
+      },
+      body: JSON.stringify(aFila(pedido))
+    }).then(function () {
+      return true;
+    }).catch(function (e) {
+      console.error("Compras · error al guardar en Supabase:", e);
+      return false;
+    });
+  }
+
+  function sincronizar() {
+    if (!enNube()) {
+      return Promise.resolve({
+        nube: false,
+        pedidos: pedidos()
+      });
+    }
+
+    return api("compras_pedidos?select=*&order=registrado.asc")
+      .then(function (filas) {
+        var remotos = (filas || []).map(desdeFila);
+        var lista = fusionar(remotos);
+
+        var idsRemotos = {};
+        remotos.forEach(function (p) {
+          idsRemotos[p.id] = true;
+        });
+
+        var faltantes = lista.filter(function (p) {
+          return !idsRemotos[p.id];
+        });
+
+        return Promise.all(faltantes.map(subir)).then(function () {
+          return {
+            nube: true,
+            pedidos: lista
+          };
+        });
+      })
+      .catch(function (e) {
+        console.error("Compras · error de sincronización:", e);
+
+        return {
+          nube: false,
+          error: e.message,
+          pedidos: pedidos()
+        };
       });
   }
 
+  function pedirNumero(anio) {
+    anio = Number(anio) || new Date().getFullYear();
+
+    if (!enNube()) {
+      var sinNube = proximoNumero(anio);
+      sinNube.provisional = true;
+      return Promise.resolve(sinNube);
+    }
+
+    return rpc("compras_siguiente_numero", {
+      p_anio: anio
+    }).then(function (n) {
+      n = Number(n);
+
+      return {
+        anio: anio,
+        numero: n,
+        texto: pad(n) + "/" + anio,
+        provisional: false
+      };
+    }).catch(function (e) {
+      console.error("Compras · no se pudo obtener número de Supabase:", e);
+
+      var local = proximoNumero(anio);
+      local.provisional = true;
+      return local;
+    });
+  }
+
   function registrar(datos, prox) {
-    var anio = Number(String(datos.fecha || "").slice(0, 4)) || new Date().getFullYear();
+    var anio =
+      Number(String(datos.fecha || "").slice(0, 4)) ||
+      new Date().getFullYear();
+
     prox = prox || proximoNumero(anio);
+
+    var ahora = new Date().toISOString();
 
     var pedido = {
       id: "P" + Date.now() + "-" + Math.random().toString(36).slice(2, 7),
@@ -188,45 +370,78 @@ window.ComprasStore = (function () {
       partida: datos.partida || "",
       codigo: datos.codigo || "",
       total: Number(datos.total) || 0,
-      registrado: new Date().toISOString(),
-      estado: 'pendiente',
-      etapa: 'analizar',
-      historial: [{ estado: 'pendiente', fecha: new Date().toISOString(), nota: 'Pedido registrado' }]
+      registrado: ahora,
+      actualizadoEn: ahora,
+      estado: "pendiente",
+      etapa: "analizar",
+      historial: [{
+        estado: "pendiente",
+        fecha: ahora,
+        nota: "Pedido registrado"
+      }]
     };
 
     var lista = pedidos();
     lista.push(pedido);
+
     var ok = guardarPedidos(lista);
 
     var c = contadores();
-    if (!c[prox.anio] || prox.numero > c[prox.anio]) c[prox.anio] = prox.numero;
+    if (!c[prox.anio] || prox.numero > c[prox.anio]) {
+      c[prox.anio] = prox.numero;
+    }
     guardarContadores(c);
 
     subir(pedido);
 
-    return { ok: ok, pedido: pedido, persistido: (hayStorage && ok) || enNube() };
+    return {
+      ok: ok,
+      pedido: pedido,
+      persistido: (hayStorage && ok) || enNube()
+    };
   }
 
-  /* Los pedidos no se borran: cambian de estado y queda el historial completo. */
   function cambiarEstado(id, estado, nota) {
-    if (!ESTADOS[estado]) return { ok: false, mensaje: 'Estado desconocido.' };
+    if (!ESTADOS[estado]) {
+      return {
+        ok: false,
+        mensaje: "Estado desconocido."
+      };
+    }
 
     var lista = pedidos();
     var pedido = null;
-    lista.forEach(function (p) { if (p.id === id) pedido = p; });
-    if (!pedido) return { ok: false, mensaje: 'No se encontró el pedido.' };
+
+    lista.forEach(function (p) {
+      if (p.id === id) pedido = p;
+    });
+
+    if (!pedido) {
+      return {
+        ok: false,
+        mensaje: "No se encontró el pedido."
+      };
+    }
+
+    var ahora = new Date().toISOString();
 
     pedido.estado = estado;
     pedido.etapa = ESTADOS[estado].etapa;
+    pedido.actualizadoEn = ahora;
+
     pedido.historial.push({
       estado: estado,
-      fecha: new Date().toISOString(),
-      nota: (nota || '').trim()
+      fecha: ahora,
+      nota: (nota || "").trim()
     });
 
     var ok = guardarPedidos(lista);
     subir(pedido);
-    return { ok: ok, pedido: pedido };
+
+    return {
+      ok: ok,
+      pedido: pedido
+    };
   }
 
   function vaciar() {
@@ -234,7 +449,6 @@ window.ComprasStore = (function () {
     return guardarContadores({});
   }
 
-  /* Copia de seguridad completa (pedidos + contadores). */
   function exportar() {
     return {
       formato: "ersep-compras-v1",
@@ -244,39 +458,57 @@ window.ComprasStore = (function () {
     };
   }
 
-  /* Importa una copia sin pisar lo existente: sólo agrega los que faltan. */
   function importar(datos) {
     if (!datos || !Array.isArray(datos.pedidos)) {
-      return { ok: false, agregados: 0, mensaje: "El archivo no tiene el formato esperado." };
+      return {
+        ok: false,
+        agregados: 0,
+        mensaje: "El archivo no tiene el formato esperado."
+      };
     }
 
     var lista = pedidos();
     var existentes = {};
-    lista.forEach(function (p) { existentes[p.id] = true; });
+
+    lista.forEach(function (p) {
+      existentes[p.id] = true;
+    });
 
     var agregados = 0;
+
     datos.pedidos.forEach(function (p) {
       if (p && p.id && !existentes[p.id]) {
+        p = normalizar(p);
         lista.push(p);
         existentes[p.id] = true;
         agregados++;
+        subir(p);
       }
     });
 
     lista.sort(function (a, b) {
       return String(a.registrado || "").localeCompare(String(b.registrado || ""));
     });
+
     guardarPedidos(lista);
 
-    // El contador de cada ejercicio queda en el número más alto conocido.
     var c = contadores();
+
     lista.forEach(function (p) {
       var anio = p.anio || new Date().getFullYear();
-      if (!c[anio] || Number(p.numero) > Number(c[anio])) c[anio] = Number(p.numero) || 0;
+
+      if (!c[anio] || Number(p.numero) > Number(c[anio])) {
+        c[anio] = Number(p.numero) || 0;
+      }
     });
+
     guardarContadores(c);
 
-    return { ok: true, agregados: agregados, mensaje: "Se agregaron " + agregados + " pedido(s)." };
+    return {
+      ok: true,
+      agregados: agregados,
+      mensaje: "Se agregaron " + agregados + " pedido(s)."
+    };
   }
 
   return {
