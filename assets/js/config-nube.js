@@ -12,3 +12,12 @@ window.CONFIG_NUBE = {
   url: 'https://script.google.com/macros/s/AKfycbypZcqKOtfgs4FB_ElNb7gqcsQy-ccPmpL7G_0JI4jmislf030ZBokcmtdjx7BiV9Z3kw/exec',
   token: 'ErsepObserv4'
 };
+// =============================================================================
+// ERSeP · Portal de Innovación — Supabase
+// Base compartida del módulo Compras y Contrataciones
+// =============================================================================
+
+window.CONFIG_SUPABASE_COMPRAS = {
+  url: 'https://hynrtftqgtlsutornmtv.supabase.co',
+  key: 'sb_publishable_CCWe14cLH_ZwwV-V9cdadA_mgOctetl'
+};
