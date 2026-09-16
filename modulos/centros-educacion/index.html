@@ -1,365 +1,658 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Centros de Formación Habilitados · ERSeP Innova</title>
-  <meta name="description" content="Mapa interactivo de instituciones y centros de formación habilitados en la Provincia de Córdoba.">
-  <link rel="preconnect" href="https://unpkg.com">
-  <link rel="preconnect" href="https://tile.openstreetmap.org">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
-  <style>
-    :root{
-      --bg:#eef4f7;--ink:#102332;--muted:#6b7f8e;--line:#d8e3ea;
-      --navy:#092235;--navy-2:#0f3149;--green:#2aa66f;--green-dark:#18764d;
-      --soft:#f7fafc;--card:#ffffff;--shadow:0 12px 32px rgba(17,45,66,.10)
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
-    body{display:flex;flex-direction:column;min-height:100vh} a{color:inherit}
-    .topbar{background:linear-gradient(105deg,var(--navy) 0%,var(--navy-2) 68%,#17465f 100%);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:16px 24px;gap:18px;border-bottom:1px solid rgba(255,255,255,.08);box-shadow:0 5px 22px rgba(5,26,40,.16)}
-    .brand{display:flex;align-items:center;gap:13px;min-width:0}
-    .brand-mark{width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#39c786,#20855c);display:grid;place-items:center;font-size:22px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18),0 8px 20px rgba(0,0,0,.18)}
-    .brand h1{font-size:18px;margin:0;font-weight:750;letter-spacing:.1px}
-    .brand p{font-size:12px;margin:3px 0 0;color:#bdd0db}
-    .portal-link{text-decoration:none;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);padding:9px 13px;border-radius:12px;font-size:13px;white-space:nowrap;transition:.18s ease}
-    .portal-link:hover{background:rgba(255,255,255,.11);transform:translateY(-1px)}
-    .hero{background:rgba(255,255,255,.96);border-bottom:1px solid var(--line);padding:16px 22px;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
-    .hero-title h2{margin:0;font-size:22px;letter-spacing:-.2px}.hero-title p{margin:5px 0 0;color:var(--muted);font-size:13px}
-    .stats{display:flex;gap:9px;flex-wrap:wrap}
-    .stat{background:linear-gradient(180deg,#fff,#f7fafc);border:1px solid var(--line);border-radius:14px;padding:9px 12px;min-width:102px;box-shadow:0 4px 12px rgba(32,67,92,.05)}
-    .stat b{display:block;font-size:19px;line-height:1.1;color:var(--navy)}.stat span{font-size:11px;color:var(--muted)}
-    .app{flex:1;display:grid;grid-template-columns:370px minmax(0,1fr);min-height:0;padding:16px;gap:16px}
-    .sidebar{background:rgba(255,255,255,.98);border:1px solid var(--line);border-radius:18px;overflow:auto;padding:16px;box-shadow:var(--shadow)}
-    .section{border-bottom:1px solid var(--line);padding-bottom:15px;margin-bottom:15px}.section:last-child{border-bottom:0;margin-bottom:0}
-    .section h3{font-size:12px;margin:0 0 11px;color:#415969;text-transform:uppercase;letter-spacing:.8px}
-    .field{margin-bottom:10px}.field label{display:block;font-size:12px;font-weight:700;margin-bottom:6px;color:#435765}
-    input,select{width:100%;border:1px solid #cfdce4;border-radius:11px;padding:10px 11px;font:inherit;background:#fff;color:var(--ink);outline:none;transition:border-color .15s,box-shadow .15s,background .15s}
-    input:hover,select:hover{background:#fbfdfe} input:focus,select:focus{border-color:#4aa880;box-shadow:0 0 0 3px rgba(42,166,111,.12)}
-    .buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-    button{border:0;border-radius:11px;padding:10px 12px;font:inherit;font-weight:750;cursor:pointer;transition:.16s ease}
-    button:active{transform:translateY(1px)}
-    .btn-primary{background:linear-gradient(180deg,#2bad74,#258d62);color:#fff;box-shadow:0 5px 12px rgba(42,166,111,.18)}
-    .btn-secondary{background:#edf3f7;color:#274154}.btn-secondary:hover{background:#e4edf2}
-    .visible-note{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.45}
-    .result-list{display:flex;flex-direction:column;gap:8px}
-    .result-item{border:1px solid var(--line);border-radius:13px;padding:11px;background:#fff;cursor:pointer;text-align:left;box-shadow:0 3px 8px rgba(32,67,92,.03)}
-    .result-item:hover{border-color:#9fcbb9;background:#fbfefc;transform:translateY(-1px)}
-    .result-item strong{display:block;font-size:13px;line-height:1.3}.result-item span{display:block;font-size:11px;color:var(--muted);margin-top:4px}
-    .detail-empty{padding:14px;border:1px dashed #c8d8e1;border-radius:13px;background:#f8fbfd;color:var(--muted);font-size:13px;line-height:1.45}
-    .detail-card{border:1px solid var(--line);border-radius:14px;padding:14px;background:linear-gradient(180deg,#fff,#fbfdfe);box-shadow:0 5px 14px rgba(32,67,92,.04)}
-    .detail-card h4{font-size:15px;line-height:1.32;margin:0 0 11px}
-    .detail-row{display:grid;grid-template-columns:92px minmax(0,1fr);gap:7px;margin:7px 0;font-size:12px;align-items:start}
-    .detail-row b{color:#5a6c79}.detail-row span,.detail-row a{overflow-wrap:anywhere}
-    .detail-links{display:flex;gap:6px;flex-wrap:wrap;margin-top:11px}
-    .chip{text-decoration:none;background:#eaf4f0;color:#246447;padding:7px 9px;border-radius:999px;font-size:11px;font-weight:750}
-    .missing{color:#a35d00;font-size:12px;margin-top:9px;line-height:1.4}
-    .map-wrap{position:relative;min-height:640px;background:#dce7ee;border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)}
-    #map{height:100%;min-height:640px;width:100%;background:#dce7ee}
-    .map-badge{position:absolute;z-index:500;left:16px;bottom:16px;background:rgba(7,28,43,.90);color:#fff;padding:9px 11px;border-radius:11px;font-size:11px;box-shadow:0 8px 20px rgba(0,0,0,.18);backdrop-filter:blur(6px)}
-    .legend{position:absolute;z-index:500;right:16px;bottom:16px;background:rgba(255,255,255,.96);border:1px solid var(--line);padding:9px 11px;border-radius:11px;font-size:11px;box-shadow:0 8px 20px rgba(0,0,0,.12)}
-    .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--green);margin-right:6px}
-    .leaflet-control-zoom a{border-radius:8px!important}
-    .leaflet-popup-content-wrapper{border-radius:14px;box-shadow:0 10px 28px rgba(0,0,0,.17)}
-    .leaflet-popup-content{margin:13px 14px;min-width:230px}.popup-title{font-weight:800;line-height:1.28;margin-bottom:7px}
-    .popup-meta{font-size:12px;color:#5e6e7b;line-height:1.5}.popup-more{margin-top:8px;font-size:11px;color:#1f6c4d;font-weight:800}
-    @media (max-width:900px){.app{grid-template-columns:1fr;padding:12px}.sidebar{border-radius:16px;max-height:none}.map-wrap,#map{min-height:560px}}
-    @media (max-width:560px){.topbar{padding:12px 14px}.portal-link{display:none}.hero{padding:13px 14px}.app{padding:10px;gap:10px}.sidebar{padding:12px}.buttons{grid-template-columns:1fr}.map-wrap,#map{min-height:520px}.legend{display:none}}
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mapa de Instituciones Habilitadas · Córdoba</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+
+<style>
+:root {
+  --bg:#eef3f8;
+  --panel:#fff;
+  --panel2:#f7fafc;
+  --text:#17243a;
+  --muted:#68788f;
+  --line:#d8e2ec;
+  --primary:#115a83;
+  --primary2:#0c4160;
+  --primary-soft:#eaf3f8;
+  --teal:#1c8b79;
+  --teal-soft:#e9f7f3;
+  --gold:#b37a20;
+  --gold-soft:#fff7e9;
+  --shadow:0 10px 28px rgba(21,52,78,.10);
+  --radius:16px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-width:320px;min-height:100%;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+button,input,select{font:inherit}
+button{cursor:pointer}
+a{color:var(--primary)}
+.app{min-height:100vh;display:flex;flex-direction:column}
+.header{background:linear-gradient(116deg,#103c5a,#135f89 55%,#176d89);color:#fff;padding:20px clamp(14px,3vw,36px);box-shadow:0 3px 16px rgba(15,58,85,.15)}
+.header-inner{max-width:1540px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.brand-kicker{font-size:11px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:rgba(255,255,255,.68)}
+h1{margin:4px 0 0;font-size:clamp(22px,3vw,34px);line-height:1.1;letter-spacing:-.03em}
+.subtitle{margin:7px 0 0;font-size:13px;color:rgba(255,255,255,.75);max-width:780px}
+.version{flex:0 0 auto;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.10);padding:8px 11px;border-radius:999px;font-size:11px;font-weight:800}
+.main{width:min(1540px,calc(100% - 24px));margin:14px auto 22px;display:grid;gap:12px}
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px;box-shadow:0 3px 14px rgba(30,58,83,.04)}
+.kpi-label{font-size:10px;font-weight:850;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.kpi-value{font-size:25px;font-weight:900;letter-spacing:-.03em;margin-top:2px}
+.kpi-note{font-size:10.5px;color:var(--muted);margin-top:1px}
+
+.toolbar{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;box-shadow:0 3px 14px rgba(30,58,83,.04)}
+.search{position:relative;flex:1 1 340px;min-width:220px}
+.search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:17px;height:17px;color:var(--muted)}
+.search input{width:100%;height:42px;border:1px solid var(--line);border-radius:10px;padding:0 12px 0 38px;outline:none;background:#fff}
+.search input:focus,select:focus{border-color:#7ba9c3;box-shadow:0 0 0 3px rgba(17,90,131,.11)}
+select{height:42px;border:1px solid var(--line);border-radius:10px;background:#fff;padding:0 10px;color:var(--text);outline:none;min-width:165px}
+.btn{height:40px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--primary2);padding:0 11px;font-size:11px;font-weight:800;display:inline-flex;align-items:center;gap:6px;justify-content:center}
+.btn:hover{background:#f6fafc}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.btn.active{background:var(--primary-soft);border-color:#a9c8da;color:var(--primary2)}
+.workspace{display:grid;grid-template-columns:minmax(330px,400px) minmax(0,1fr);gap:12px;height:680px;min-height:0}
+
+.side,.map-panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;min-width:0}
+.side{display:flex;flex-direction:column;height:680px;min-height:0}
+.side-head{padding:11px 13px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fbfdfe}
+.result-text{font-size:11px;color:var(--muted);font-weight:750}
+.side-actions{display:flex;gap:6px}
+.icon-btn{width:34px;height:34px;border:1px solid var(--line);background:#fff;border-radius:8px;color:var(--primary2);font-weight:900}
+.detail{display:none;padding:14px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fbfdfe)}
+.detail.show{display:block}
+.detail-head{display:flex;align-items:start;justify-content:space-between;gap:10px}
+.detail h2{margin:0;font-size:16px;line-height:1.22;letter-spacing:-.015em}
+.badges{display:flex;gap:6px;flex-wrap:wrap;margin:9px 0 11px}
+.badge{font-size:9.5px;font-weight:850;padding:5px 8px;border-radius:999px;background:var(--primary-soft);color:var(--primary2)}
+
+.info{display:grid;gap:7px}
+.info-row{display:grid;grid-template-columns:88px 1fr;gap:7px;font-size:11px;line-height:1.35}
+.info-key{color:var(--muted);font-weight:750}
+.info-val{overflow-wrap:anywhere}
+
+.detail-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:11px}
+.detail-actions a,.detail-actions button{text-decoration:none;border:1px solid var(--line);background:#fff;color:var(--primary2);font-size:10.5px;font-weight:800;padding:7px 9px;border-radius:8px}
+.detail-actions .main-action{background:var(--primary);border-color:var(--primary);color:#fff}
+
+.list{overflow-y:auto;overflow-x:hidden;flex:1;min-height:0;background:#fff;scrollbar-width:thin;scrollbar-color:#9aaabd #eef3f7}
+.list::-webkit-scrollbar{width:10px}.list::-webkit-scrollbar-track{background:#eef3f7}.list::-webkit-scrollbar-thumb{background:#9aaabd;border-radius:10px;border:2px solid #eef3f7}.item{border-bottom:1px solid #edf1f4;padding:11px 12px;background:#fff;transition:.15s}
+.item:hover{background:#f8fbfd}
+.item.active{background:#edf6fb;box-shadow:inset 3px 0 0 var(--primary)}
+.item-top{display:flex;gap:8px;justify-content:space-between;align-items:start}
+.item-name{font-size:12px;font-weight:850;line-height:1.25}
+.item-status{width:8px;height:8px;border-radius:50%;background:var(--primary);margin-top:4px;flex:0 0 auto}
+
+.item-meta{display:flex;gap:6px;flex-wrap:wrap;color:var(--muted);font-size:10px;margin-top:6px}
+.item-meta span{display:inline-flex;align-items:center;gap:3px}
+.item-bottom{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px}
+.small-btn{border:0;background:transparent;color:var(--primary);font-size:10.5px;font-weight:850;padding:4px 0}
+.empty{padding:28px 16px;text-align:center;color:var(--muted);font-size:12px}
+
+.map-panel{position:relative;height:680px;min-height:0}
+#map{width:100%;height:680px;background:#dfe9ef}
+.map-tools{position:absolute;z-index:550;right:11px;top:11px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:calc(100% - 22px)}
+.map-tools .btn{background:rgba(255,255,255,.95);box-shadow:0 3px 12px rgba(15,48,72,.12)}
+.legend{position:absolute;z-index:550;left:11px;bottom:11px;background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:10px;padding:9px 10px;box-shadow:0 3px 14px rgba(15,48,72,.12);font-size:10px;color:var(--muted);min-width:185px}
+.legend-title{font-size:10px;font-weight:850;color:var(--text);margin-bottom:5px}
+.legend-row{display:flex;gap:7px;align-items:center;margin-top:4px}
+.legend-dot{width:10px;height:10px;border-radius:50%;background:var(--primary);border:2px solid #fff;box-shadow:0 0 0 1px #b9c7d2}
+
+.legend-cluster{display:inline-flex;width:20px;height:20px;border-radius:50%;align-items:center;justify-content:center;background:#daeaf2;color:var(--primary2);font-size:8px;font-weight:900;border:2px solid rgba(17,90,131,.20)}
+.tile-warning{display:none;position:absolute;z-index:560;left:50%;top:12px;transform:translateX(-50%);background:#fff7e9;border:1px solid #ecd39e;color:#765118;padding:8px 10px;border-radius:9px;font-size:10.5px;box-shadow:0 3px 14px rgba(0,0,0,.08)}
+.tile-warning.show{display:block}
+
+.marker-pin{width:26px;height:26px;border-radius:50% 50% 50% 8px;background:var(--primary);border:3px solid #fff;box-shadow:0 2px 10px rgba(10,65,99,.30);transform:rotate(-45deg)}
+
+.marker-pin.selected{transform:rotate(-45deg) scale(1.25);box-shadow:0 2px 14px rgba(5,55,85,.45)}
+.marker-pin::after{content:"";position:absolute;width:7px;height:7px;border-radius:50%;background:#fff;left:6.5px;top:6.5px}
+
+.marker-cluster-small div,.marker-cluster-medium div,.marker-cluster-large div{background:var(--primary);color:#fff;font-weight:900}
+.marker-cluster-small,.marker-cluster-medium,.marker-cluster-large{background:rgba(17,90,131,.20)}
+.marker-cluster-medium{width:44px!important;height:44px!important}
+.marker-cluster-medium div{width:34px!important;height:34px!important;margin-left:5px!important;margin-top:5px!important;line-height:34px!important}
+.marker-cluster-large{width:52px!important;height:52px!important}
+.marker-cluster-large div{width:40px!important;height:40px!important;margin-left:6px!important;margin-top:6px!important;line-height:40px!important}
+
+.popup-name{font-size:12px;font-weight:850;line-height:1.25;color:var(--text)}
+.popup-meta{font-size:10.5px;color:var(--muted);line-height:1.35;margin-top:5px}
+.popup-tip{font-size:10px;color:var(--primary);font-weight:800;margin-top:7px}
+
+.footer{width:min(1540px,calc(100% - 24px));margin:0 auto 18px;color:var(--muted);font-size:10.5px;line-height:1.45}
+.footer strong{color:#506176}
+
+@media(max-width:980px){.kpis{grid-template-columns:1fr 1fr}.workspace{grid-template-columns:1fr;height:auto}.side{height:560px;min-height:0}.map-panel,#map{height:560px;min-height:0}}
+@media(max-width:620px){
+  .header-inner{align-items:flex-start;flex-direction:column;gap:10px}
+  .main{width:min(100% - 14px,1540px)}
+  .kpis{gap:6px}
+  .kpi{padding:10px}
+  .kpi-value{font-size:22px}
+  .toolbar{gap:6px}
+  select{flex:1 1 calc(50% - 6px);min-width:140px}
+  .cluster-switch{width:100%;justify-content:flex-end}
+  .workspace{min-height:0}
+  .map-panel,#map{height:500px;min-height:0}
+  .side{height:520px;min-height:0}
+  .legend{max-width:210px}
+}
+@media print{
+  .toolbar,.map-tools,.legend,.footer,.header .version{display:none!important}
+  .header{background:#fff;color:#111;padding:0 0 14px;box-shadow:none}
+  .subtitle,.brand-kicker{color:#555}
+  .main{width:100%;margin:0}
+  .workspace{display:block}
+  .map-panel{display:none}
+  .side{box-shadow:none;border:1px solid #ccc;max-height:none}
+  .list{overflow:visible}
+}
+</style>
 </head>
+
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <div class="brand-mark">⌖</div>
+<div class="app">
+  <header class="header">
+    <div class="header-inner">
       <div>
-        <h1>ERSeP · Centros de Formación</h1>
-        <p>Mapa interactivo · Provincia de Córdoba</p>
+        <div class="brand-kicker">Provincia de Córdoba · Explorador geográfico</div>
+        <h1>Instituciones habilitadas</h1>
+        <div class="subtitle">Mapa interactivo de instituciones relevadas. Búsqueda, filtros territoriales, fichas de contacto y navegación sincronizada entre mapa y listado.</div>
       </div>
+      <div class="version">Base actualizada · agosto 2026</div>
     </div>
-    <a class="portal-link" href="https://ersep-innova.github.io/portal/" target="_blank" rel="noopener">← Volver al portal</a>
   </header>
 
-  <section class="hero">
-    <div class="hero-title">
-      <h2>Instituciones habilitadas</h2>
-      <p>Seleccioná un centro en el mapa o utilizá los filtros para consultar sus datos.</p>
-    </div>
-    <div class="stats">
-      <div class="stat"><b id="statTotal">67</b><span>instituciones</span></div>
-      <div class="stat"><b id="statMapped">66</b><span>georreferenciadas</span></div>
-      <div class="stat"><b id="statVisible">66</b><span>visibles</span></div>
-    </div>
-  </section>
+  <main class="main">
+    <section class="kpis" aria-label="Indicadores">
+      <div class="kpi">
+        <div class="kpi-label">Instituciones visibles</div>
+        <div id="kpiInstitutions" class="kpi-value">70</div>
+        <div class="kpi-note">de 70 registros</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Municipios</div>
+        <div id="kpiMunicipalities" class="kpi-value">36</div>
+        <div class="kpi-note">localidades representadas</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Departamentos</div>
+        <div id="kpiDepartments" class="kpi-value">19</div>
+        <div class="kpi-note">con instituciones visibles</div>
+      </div>
+    </section>
 
-  <main class="app">
-    <aside class="sidebar">
-      <section class="section">
-        <h3>Buscar y filtrar</h3>
-        <div class="field">
-          <label for="search">Institución, municipio o dirección</label>
-          <input id="search" type="search" placeholder="Ej.: CEDER, Río Cuarto, Belgrano…">
+    <section class="toolbar" aria-label="Herramientas de búsqueda y filtros">
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m21 21-4.35-4.35m1.35-5.65a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <input id="search" type="search" placeholder="Buscar institución, municipio, dirección, departamento…" aria-label="Buscar instituciones">
+      </div>
+      <select id="departmentFilter" aria-label="Departamento"><option value="">Todos los departamentos</option></select>
+      <select id="municipalityFilter" aria-label="Municipio"><option value="">Todos los municipios</option></select>
+
+      <button id="resetBtn" class="btn" type="button">Restablecer</button>
+      <button id="exportBtn" class="btn" type="button">Exportar CSV</button>
+    </section>
+
+    <section id="workspace" class="workspace">
+      <aside class="side">
+        <div class="side-head">
+          <div id="resultText" class="result-text">70 instituciones</div>
+          <div class="side-actions">
+            <button id="closeDetailTop" class="icon-btn" type="button" title="Cerrar ficha" aria-label="Cerrar ficha">×</button>
+          </div>
         </div>
-        <div class="field">
-          <label for="department">Departamento</label>
-          <select id="department"><option value="">Todos los departamentos</option></select>
+
+        <div id="detail" class="detail" aria-live="polite">
+          <div class="detail-head">
+            <h2 id="detailName"></h2>
+          </div>
+          <div id="detailBadges" class="badges"></div>
+          <div id="detailInfo" class="info"></div>
+          <div id="detailActions" class="detail-actions"></div>
         </div>
-        <div class="field">
-          <label for="municipality">Municipio / localidad</label>
-          <select id="municipality"><option value="">Todos los municipios</option></select>
+
+        <div id="list" class="list" aria-label="Listado de instituciones"></div>
+      </aside>
+
+      <section class="map-panel" aria-label="Mapa interactivo de Córdoba">
+        <div id="map"></div>
+
+        <div class="map-tools">
+          <button id="clusterBtn" class="btn active" type="button">Desagrupar puntos</button>
+          <button id="fitVisibleBtn" class="btn" type="button">Ver resultados</button>
+          <button id="cordobaBtn" class="btn" type="button">Vista Córdoba</button>
         </div>
-        <div class="buttons">
-          <button class="btn-primary" id="fitBtn" type="button">Ver selección</button>
-          <button class="btn-secondary" id="clearBtn" type="button">Limpiar</button>
+
+        <div id="tileWarning" class="tile-warning">Si el fondo del mapa no carga, los puntos y filtros siguen funcionando.</div>
+
+        <div class="legend" aria-label="Leyenda">
+          <div class="legend-title">Leyenda</div>
+          <div class="legend-row"><span class="legend-dot"></span><span>Institución habilitada</span></div>
+          <div class="legend-row"><span class="legend-cluster">12</span><span>Agrupación de puntos</span></div>
         </div>
-        <div style="margin-top:8px">
-          <button class="btn-secondary" id="clusterBtn" type="button" style="width:100%">Desagrupar puntos</button>
-        </div>
-        <div class="visible-note" id="visibleNote">Mostrando 66 centros georreferenciados.</div>
       </section>
-
-      <section class="section">
-        <h3>Datos del centro</h3>
-        <div id="detail">
-          <div class="detail-empty">Tocá un punto del mapa o un resultado para ver dirección, teléfono, correo y enlaces disponibles.</div>
-        </div>
-      </section>
-
-      <section class="section">
-        <h3>Resultados</h3>
-        <div class="result-list" id="resultList"></div>
-      </section>
-    </aside>
-
-    <section class="map-wrap">
-      <div id="map" aria-label="Mapa de instituciones habilitadas"></div>
-      <div class="map-badge">Datos: instituciones habilitadas · agosto 2026</div>
-      <div class="legend"><span class="dot"></span>Centro habilitado</div>
     </section>
   </main>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <script>
-    const DATA = [{"institucion": "MINISTERIO DE DESARROLLO SOCIAL Y PROMOCIÓN DEL EMPLEO", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "correo": "", "direccion": "Juan B. Justo 3600", "telefono": "0351 432-2900", "web": "https://desarrolloyempleo.cba.gov.ar", "instagram": "", "facebook": "", "lat": -31.3839278, "lon": -64.1756313}, {"institucion": "ACADEMIA SANTO DOMINGO", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "correo": "muicich.asd@gmail.com", "direccion": "Ituzaingó 159", "telefono": "", "web": "https://asd.edu.ar", "instagram": "", "facebook": "", "lat": -31.4186775, "lon": -64.182026}, {"institucion": "UNIVERSIDAD NACIONAL DE CÓRDOBA", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "correo": "lbt@fcefyn.unc.edu.ar", "direccion": "Av. Velez Sarsfield 1661 Ciudad Universitaria", "telefono": "", "web": "https://efn.uncor.edu", "instagram": "", "facebook": "", "lat": -31.43785, "lon": -64.18775}, {"institucion": "ESCUELA DE CAPACITACIÓN LABORAL SAN JUAN BOSCO", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "correo": "cfp@sapsalesianos.com.ar", "direccion": "Ismael Galindez 1250 (B° San Vicente)", "telefono": "351-4554740", "web": "https://facebook.com/escuelasanjuanbosco", "instagram": "", "facebook": "", "lat": -31.4302, "lon": -64.1509}, {"institucion": "INSTITUTO TÉCNICO DE OFICIOS CELSIUS", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "correo": "", "direccion": "La Rioja 337", "telefono": "0351 428-3996", "web": "https://celsiusinstituto.com.ar", "instagram": "", "facebook": "", "lat": -31.410154, "lon": -64.186741}, {"institucion": "UNIVERSIDAD TECNOLÓGICA NACIONAL - FACULTAD REGIONAL CÓRDOBA", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "correo": "", "direccion": "Maestro Marcelo López y Av. Cruz roja Argentina", "telefono": "351-5986000", "web": "https://frc.utn.edu.ar", "instagram": "", "facebook": "", "lat": -31.442087, "lon": -64.192759}, {"institucion": "FUNDACIÓN INTEGRAL DE FORMACIÓN Y DESARROLLO", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "correo": "info@integralcapacitando.com.ar", "direccion": "La Noria 1243, B° Quintas de Santa Ana", "telefono": "0351 4257440", "web": "https://integralcapacitando.com.ar", "instagram": "", "facebook": "", "lat": -31.4216, "lon": -64.2186}, {"institucion": "FUNDACIÓN UNIVERSITARIA DE OFICIOS (FUO)", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "correo": "contacto@fuoficios.com.ar", "direccion": "Ruta 5 Km 4, Córdoba", "telefono": "+54 9 351 372 2487", "web": "", "instagram": "", "facebook": "", "lat": -31.495272, "lon": -64.25557}, {"institucion": "ARSOLAR S.A.S.", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "correo": "info@energiasolarcba.com", "direccion": "Oncativo 1069", "telefono": "", "web": "https://arsolar.com.ar", "instagram": "", "facebook": "", "lat": -31.4109, "lon": -64.1672}, {"institucion": "AMBOX EDUCACION ONLINE S.A.S.", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "correo": "info@ambox.com.ar", "direccion": "Ayacucho 346", "telefono": "3515943973 / 3517034440", "web": "https://ambox.com", "instagram": "", "facebook": "", "lat": -31.421, "lon": -64.1893}, {"institucion": "INSTITUTO TESLA", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "correo": "administracion@institutotesla.com.ar", "direccion": "Ituzaingó 32", "telefono": "351 873-0543", "web": "https://institutotesla.ar", "instagram": "", "facebook": "", "lat": -31.4171634, "lon": -64.1816295}, {"institucion": "ELECTRICISTAS PROFESIONALES ASOCIADOS DE CÓRDOBA (EPAC)", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "correo": "fabian.e.lucca@hotmail.com", "direccion": "Diagonal Ica 1538", "telefono": "", "web": "", "instagram": "", "facebook": "", "lat": -31.3993, "lon": -64.1645}, {"institucion": "ESCUELA SALVADOR CÁMPOLI (B° SANTA ISABEL II)", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "correo": "", "direccion": "Cajamarca Esq. Colorado", "telefono": "0351-152067677", "web": "", "instagram": "", "facebook": "", "lat": -31.4796087, "lon": -64.2345363}, {"institucion": "ESCUELA DE OFICIOS DE ARGÜELLO", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "correo": "", "direccion": "Antequera y Castro 7384", "telefono": "03543-403005", "web": "", "instagram": "", "facebook": "", "lat": -31.337, "lon": -64.2675}, {"institucion": "FUNDACIÓN CRECER", "seccion": "CAPITAL", "departamento": "Colón", "municipio": "Río Ceballos", "correo": "crecerfund@gmail.com", "direccion": "Amuchastegui 344 (Rio Ceballos)", "telefono": "", "web": "", "instagram": "", "facebook": "", "lat": -31.1705, "lon": -64.315}, {"institucion": "MUNICIPALIDAD DE CÓRDOBA (SECRETARÍA DE PARTICIPACIÓN CIUDADANA)", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "correo": "alejandroestrella@live.com.ar", "direccion": "Caseros 621, 8° piso Centro", "telefono": "", "web": "https://cordoba.gob.ar/areas-de-gobierno/secretaria-de-participacion-ciudadana", "instagram": "", "facebook": "", "lat": -31.4159049, "lon": -64.1933225}, {"institucion": "FUNDACIÓN ARGENTINA DE CAPACITACIÓN Y FORMACIÓN DE OFICIOS", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "correo": "", "direccion": "Santiago Morales 4980 (B° Ferreyra)", "telefono": "351 3036306", "web": "", "instagram": "https://instagram.com/fundacion.fadcyf", "facebook": "", "lat": -31.4637, "lon": -64.1155}, {"institucion": "FUNDACIÓN BRUNER", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "correo": "admbrunerinstituto@gmail.com", "direccion": "27 de abril 991", "telefono": "3512195068", "web": "https://brunerinstituto.com", "instagram": "", "facebook": "https://facebook.com/share/1B2meJ9cvB", "lat": -31.4133155, "lon": -64.1976736}, {"institucion": "FUNDACIÓN UN MUNDO IDEAL", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "correo": "fundacionunmundoideal88@gmail.com", "direccion": "AV. Los Sauces 3291 (Bº Gral. Urquiza)", "telefono": "3518019121", "web": "", "instagram": "https://instagram.com/funda.unmundoideal", "facebook": "", "lat": -31.4548, "lon": -64.183}, {"institucion": "INSTITUTO CEEL", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "correo": "institutoer.f@gmail.com", "direccion": "Domingo F Sarmiento 398", "telefono": "3513 21-7788", "web": "https://cecalcapacitacion.com", "instagram": "", "facebook": "", "lat": -31.4139, "lon": -64.1783}, {"institucion": "INSTITUTO TÉCNICO SALESIANO VILLADA", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "", "correo": "formaciones@portalsea.com.ar", "direccion": "", "telefono": "3513 69-7444", "web": "", "instagram": "", "facebook": "", "lat": -31.3625421, "lon": -64.2762959}, {"institucion": "MUNICIPALIDAD DE EMBALSE", "seccion": "CALAMUCHITA", "departamento": "Calamuchita", "municipio": "Embalse", "correo": "", "direccion": "Juan Domingo Perón 163", "telefono": "", "web": "", "instagram": "", "facebook": "", "lat": -32.1827, "lon": -64.4184}, {"institucion": "CEDER JESUS MARIA", "seccion": "COLÓN", "departamento": "Colón", "municipio": "Jesús María", "correo": "", "direccion": "Av. Las Heras 1381 Bº17 de octubre", "telefono": "03525-429060", "web": "", "instagram": "", "facebook": "", "lat": -30.98979, "lon": -64.0847}, {"institucion": "MUNICIPALIDAD DE CRUZ DEL EJE", "seccion": "CRUZ DEL EJE", "departamento": "Cruz del Eje", "municipio": "Cruz del Eje", "correo": "adolforomero671@yahoo.com.ar", "direccion": "Ruta 38 y Sarmiento", "telefono": "3549 523767", "web": "", "instagram": "", "facebook": "", "lat": -30.73683, "lon": -64.79255}, {"institucion": "CEDER CRUZ DEL EJE", "seccion": "CRUZ DEL EJE", "departamento": "Cruz del Eje", "municipio": "Cruz del Eje", "correo": "", "direccion": "Pellegrini 253", "telefono": "03549-426722", "web": "", "instagram": "", "facebook": "", "lat": -30.7267, "lon": -64.803}, {"institucion": "CEDER VILLA HUIDOBRO", "seccion": "GENERAL ROCA", "departamento": "General Roca", "municipio": "Villa Huidobro", "correo": "", "direccion": "Av. Carlos Pellegrini 222 esq. Dorrego", "telefono": "02336-481714", "web": "", "instagram": "", "facebook": "", "lat": -34.8388, "lon": -64.5865}, {"institucion": "CEDER VILLA VALERIA", "seccion": "GENERAL ROCA", "departamento": "General Roca", "municipio": "Villa Valeria", "correo": "", "direccion": "Osvaldo Depino 1051 esq. J. Croto", "telefono": "03583-497060", "web": "", "instagram": "", "facebook": "", "lat": -34.34, "lon": -64.921}, {"institucion": "MUNICIPALIDAD DE VILLA MARIA", "seccion": "GENERAL SAN MARTIN", "departamento": "General San Martín", "municipio": "Villa María", "correo": "pspsanmarengo@gmail.com", "direccion": "Bv. Sarmiento esq. San Martín", "telefono": "0353 – 154012120", "web": "", "instagram": "", "facebook": "", "lat": -32.41523, "lon": -63.24252}, {"institucion": "FUNDACIÓN CIEP PARA EL DESARROLLO EDUCATIVO, LABORAL Y EMPRESARIAL (VILLA MARÍA)", "seccion": "GENERAL SAN MARTIN", "departamento": "General San Martín", "municipio": "Villa María", "correo": "consultas@ciep.com.ar", "direccion": "Corrientes 570", "telefono": "", "web": "", "instagram": "", "facebook": "", "lat": -32.4155541, "lon": -63.2480428}, {"institucion": "CEDER VILLA MARÍA", "seccion": "GENERAL SAN MARTIN", "departamento": "General San Martín", "municipio": "Villa María", "correo": "", "direccion": "Lisandro de la Torre 173", "telefono": "0353-4619129", "web": "", "instagram": "", "facebook": "", "lat": -32.4081975, "lon": -63.2429312}, {"institucion": "MUTUAL YRIGOYEN", "seccion": "GENERAL SAN MARTIN", "departamento": "General San Martín", "municipio": "", "correo": "adm.mutualyrigoyen@gmail.com", "direccion": "Mendoza 1267", "telefono": "3534297052", "web": "https://mutualyrigoyen.com.ar", "instagram": "", "facebook": "", "lat": -32.4129, "lon": -63.2505}, {"institucion": "CEDER DEAN FUNES", "seccion": "ISCHILIN", "departamento": "Ischilín", "municipio": "Deán Funes", "correo": "cederdeanfunes255@gmail.com", "direccion": "9 de julio 255", "telefono": "03521-426237", "web": "", "instagram": "", "facebook": "", "lat": -30.4235, "lon": -64.3502}, {"institucion": "MUNICIPALIDAD DE GENERAL DEHEZA", "seccion": "JUAREZ CELMAN", "departamento": "Juárez Celman", "municipio": "General Deheza", "correo": "belendema@yahoo.com.ar", "direccion": "", "telefono": "", "web": "", "instagram": "", "facebook": "", "lat": -32.75717, "lon": -63.78876}, {"institucion": "ASOCIACIÓN CIVIL EMPRESARIAL GENERAL DEHEZA", "seccion": "JUAREZ CELMAN", "departamento": "Juárez Celman", "municipio": "General Deheza", "correo": "aegd2019@gmail.com", "direccion": "General Paz 316, General Deheza", "telefono": "", "web": "", "instagram": "", "facebook": "", "lat": -32.7564, "lon": -63.7905}, {"institucion": "CEDER ALEJO LEDESMA", "seccion": "MARCOS JUAREZ", "departamento": "Marcos Juárez", "municipio": "Alejo Ledesma", "correo": "", "direccion": "Roque Sáenz Peña 960", "telefono": "03468-490238", "web": "", "instagram": "", "facebook": "", "lat": -33.6065, "lon": -62.6235}, {"institucion": "CEDER CORRAL DE BUSTOS", "seccion": "MARCOS JUAREZ", "departamento": "Marcos Juárez", "municipio": "Corral de Bustos", "correo": "", "direccion": "Mitre 271", "telefono": "03468-423977", "web": "", "instagram": "", "facebook": "", "lat": -33.2823, "lon": -62.1845}, {"institucion": "CEDER SALSACATE", "seccion": "POCHO", "departamento": "Pocho", "municipio": "Salsacate", "correo": "", "direccion": "Av. San Martín (sobre ruta 15)", "telefono": "0351 – 156612575", "web": "", "instagram": "", "facebook": "", "lat": -31.3145, "lon": -65.0905}, {"institucion": "CEDER VILLA CARLOS PAZ", "seccion": "PUNILLA", "departamento": "Punilla", "municipio": "Villa Carlos Paz", "correo": "", "direccion": "Cárcano 1600 esq, Carlos Gardel Pje 1 – Bº Obrero", "telefono": "03541 – 438265", "web": "", "instagram": "", "facebook": "", "lat": -31.432, "lon": -64.491}, {"institucion": "ASOCIACIÓN CIVIL DE ELECTRICISTAS HABILITADOS AGRUPADOS DE PUNILLA (LA CUMBRE)", "seccion": "PUNILLA", "departamento": "Punilla", "municipio": "La Cumbre", "correo": "ehapunilla@gmail.com", "direccion": "Rivadavia 274", "telefono": "", "web": "", "instagram": "", "facebook": "", "lat": -30.9829, "lon": -64.4915}, {"institucion": "FUNDACIÓN INGENIAR (VALLE HERMOSO)", "seccion": "PUNILLA", "departamento": "Punilla", "municipio": "Valle Hermoso", "correo": "", "direccion": "Av. General Paz 738 (Valle Hermoso)", "telefono": "3548 581777", "web": "", "instagram": "https://instagram.com/fundacioningeniar", "facebook": "https://facebook.com/share/16F6x2gi4G", "lat": -31.1175, "lon": -64.4818}, {"institucion": "MUNICIPALIDAD DE TANTI", "seccion": "PUNILLA", "departamento": "Punilla", "municipio": "Tanti", "correo": "casascristian01@gmail.com", "direccion": "Belgrano 142.", "telefono": "", "web": "", "instagram": "", "facebook": "", "lat": -31.35535, "lon": -64.59367}, {"institucion": "FUNDACIÓN PUERTO MARÍA PIHUEN (BIALET MASSÉ)", "seccion": "PUNILLA", "departamento": "Punilla", "municipio": "Bialet Massé", "correo": "claudiaottonello@hotmail.com", "direccion": "Rio Negro 868 (B° Playas de Oro)", "telefono": "1166609267/351 5926305", "web": "", "instagram": "", "facebook": "", "lat": -31.442, "lon": -64.508}, {"institucion": "MUNICIPALIDAD DE COSQUIN", "seccion": "PUNILLA", "departamento": "Punilla", "municipio": "Cosquín", "correo": "elisarmiento097@gmail.com", "direccion": "Salta 141", "telefono": "", "web": "", "instagram": "", "facebook": "", "lat": -31.24417, "lon": -64.46667}, {"institucion": "MUNICIPALIDAD DE PILAR", "seccion": "RIO SEGUNDO", "departamento": "Río Segundo", "municipio": "Pilar", "correo": "pilaroficinadeempleo@gmail.com", "direccion": "Zenón López 1267", "telefono": "3572 40-0353", "web": "", "instagram": "https://instagram.com/pilarmunicipalidad", "facebook": "", "lat": -31.6812, "lon": -63.88484}, {"institucion": "FUNDACION SAN MARTÍN DE PORRES", "seccion": "RIO CUARTO", "departamento": "RIO CUARTO", "municipio": "", "correo": "lbessone0@gmail.com", "direccion": "Sabattini 4200", "telefono": "", "web": "", "instagram": "", "facebook": "", "lat": -33.116, "lon": -64.305}, {"institucion": "MUNICIPALIDAD DE VICUÑA MACKENNA", "seccion": "RIO CUARTO", "departamento": "Río Cuarto", "municipio": "Vicuña Mackenna", "correo": "planificacion@mvm.gov.ar", "direccion": "SUM Municipal Barrio Sur, San Martin y Manuel Dopazzo (Vicuña Mackenna)", "telefono": "03583-484555 – 03583-15403748", "web": "", "instagram": "", "facebook": "", "lat": -33.92, "lon": -64.392}, {"institucion": "CEDER RIO CUARTO", "seccion": "RIO CUARTO", "departamento": "Río Cuarto", "municipio": "Río Cuarto", "correo": "", "direccion": "Belgrano 1135", "telefono": "0358-4672938", "web": "", "instagram": "", "facebook": "", "lat": -33.13, "lon": -64.354}, {"institucion": "FUNDACIÓN EDUCATIVA SABERES", "seccion": "ROQUE SAENZ PEÑA", "departamento": "Presidente Roque Sáenz Peña", "municipio": "Laboulaye", "correo": "info@fundacionsaberes.com.ar", "direccion": "Daireaux 25 (Laboulaye)", "telefono": "03385-421730", "web": "https://fundacionsaberes.com.ar", "instagram": "", "facebook": "", "lat": -34.126, "lon": -63.392}, {"institucion": "CEDER MINA CLAVERO", "seccion": "SAN ALBERTO", "departamento": "San Alberto", "municipio": "Mina Clavero", "correo": "", "direccion": "Las Moras 609", "telefono": "03544-476263", "web": "", "instagram": "", "facebook": "", "lat": -31.7295, "lon": -65.0067}, {"institucion": "CERTIFICACIONES ELÉCTRICAS (VILLA DOLORES)", "seccion": "SAN JAVIER", "departamento": "San Javier", "municipio": "Villa Dolores", "correo": "izqbrisena@gmail.com", "direccion": "Jhon F. Kennedy 43 (Villa Dolores)", "telefono": "", "web": "", "instagram": "", "facebook": "", "lat": -31.945, "lon": -65.189}, {"institucion": "CEDER VILLA DOLORES", "seccion": "SAN JAVIER", "departamento": "San Javier", "municipio": "Villa Dolores", "correo": "", "direccion": "Libertador Urquiza 54", "telefono": "03544 423437", "web": "", "instagram": "", "facebook": "", "lat": -31.944, "lon": -65.19}, {"institucion": "ASOCIACION CIVIL TRASLASIERRA ELECTRICISTAS PROFESIONALES HABILITADOS (TRASLAEA)", "seccion": "SAN JAVIER", "departamento": "SAN JAVIER", "municipio": "", "correo": "traslaea@gmail.com", "direccion": "Dorrego 1435", "telefono": "3544307583", "web": "", "instagram": "", "facebook": "https://facebook.com/traslaea.arg", "lat": -31.946, "lon": -65.181}, {"institucion": "MUNICIPALIDAD DE LAS VARILLAS", "seccion": "SAN JUSTO", "departamento": "San Justo", "municipio": "Las Varillas", "correo": "capacitacionlasvarillas@gmail.com", "direccion": "Tucumán Nº 52 (Las Varillas", "telefono": "03533- 422-7000", "web": "", "instagram": "", "facebook": "", "lat": -31.87142, "lon": -62.71748}, {"institucion": "CEDER SAN FRANCISCO", "seccion": "SAN JUSTO", "departamento": "San Justo", "municipio": "San Francisco", "correo": "", "direccion": "Belgrano 2158", "telefono": "03564-443771", "web": "", "instagram": "", "facebook": "", "lat": -31.42677, "lon": -62.0896}, {"institucion": "CEDER MIRAMAR", "seccion": "SAN JUSTO", "departamento": "San Justo", "municipio": "Miramar", "correo": "", "direccion": "Juan B Justo 138", "telefono": "03563-493933 - 8/10", "web": "", "instagram": "", "facebook": "", "lat": -30.918, "lon": -62.678}, {"institucion": "UNIVERSIDAD TECNOLÓGICA NACIONAL – FACULTAD REGIONAL SAN FRANCISCO", "seccion": "SAN JUSTO", "departamento": "San Justo", "municipio": "San Francisco", "correo": "capacitacionyoficios@sanfrancisco.utn.edu.ar", "direccion": "Av. De la Universidad 501", "telefono": "", "web": "", "instagram": "", "facebook": "", "lat": -31.42046, "lon": -62.110691}, {"institucion": "CEDER ALTA GRACIA", "seccion": "SANTA MARIA", "departamento": "Santa María", "municipio": "Alta Gracia", "correo": "", "direccion": "Italia 406", "telefono": "03547 429289", "web": "", "instagram": "", "facebook": "", "lat": -31.654195, "lon": -64.4237248}, {"institucion": "FUNDACIÓN EFFETÁ (ALTA GRACIA)", "seccion": "SANTA MARIA", "departamento": "Santa María", "municipio": "Alta Gracia", "correo": "effeta@effeta.org.ar", "direccion": "Hnos Maure (ex San Juan) 650", "telefono": "3547 427625 / 3547 452733 (móvil)", "web": "https://effeta.org.ar", "instagram": "", "facebook": "https://facebook.com/www.facebook.com/FundacionEffeta", "lat": -31.666582, "lon": -64.433334}, {"institucion": "ASOCIACIÓN CIVIL DE ELECTRICISTAS DE ALTA GRACIA Y ZONAS", "seccion": "SANTA MARIA", "departamento": "Santa María", "municipio": "Alta Gracia", "correo": "asocelectagr@gmail.com", "direccion": "Uruguay 1962 B° Parque Casino", "telefono": "3547-634200/351-2319206", "web": "", "instagram": "", "facebook": "", "lat": -31.6715, "lon": -64.443}, {"institucion": "COMUNA POTRERO DE GARAY", "seccion": "SANTA MARIA", "departamento": "Santa María", "municipio": "Potrero de Garay", "correo": "info@potrerodegaray.gob.ar", "direccion": "Rio Yuspe/esquina Rio los Molinos", "telefono": "3547-540578", "web": "https://Potrerodegaray.gob.ar", "instagram": "", "facebook": "", "lat": -31.79198, "lon": -64.54706}, {"institucion": "MUNICIPALIDAD DE MALAGUEÑO", "seccion": "SANTA MARIA", "departamento": "Santa María", "municipio": "Malagueño", "correo": "secdesarrollohumano@malagueno.gob.ar", "direccion": "Brig. Juan Manuel de Rosas 650", "telefono": "0351-4986001", "web": "https://malagueño.gob.ar", "instagram": "", "facebook": "", "lat": -31.4615, "lon": -64.3575}, {"institucion": "MUNICIPALIDAD DE VILLA ASCASUBI", "seccion": "TERCERO ARRIBA", "departamento": "Tercero Arriba", "municipio": "Villa Ascasubi", "correo": "educacionupva@gmail.com", "direccion": "J. R. Bernard 88", "telefono": "03571 49-8000", "web": "", "instagram": "", "facebook": "", "lat": -32.16251, "lon": -63.8916}, {"institucion": "MUNICIPALIDAD DE TANCACHA", "seccion": "TERCERO ARRIBA", "departamento": "Tercero Arriba", "municipio": "Tancacha", "correo": "administracion@tancacha.gob.ar", "direccion": "Bartolomé Mitre 543", "telefono": "03571- 460101 cel: 03571-15363401", "web": "", "instagram": "https://instagram.com/municipalidaddetancacha", "facebook": "", "lat": -32.244, "lon": -63.979}, {"institucion": "CEDER RIO TERCERO", "seccion": "TERCERO ARRIBA", "departamento": "Tercero Arriba", "municipio": "Río Tercero", "correo": "", "direccion": "San Agustín 755 - Bº Medialuna", "telefono": "03571-439231", "web": "", "instagram": "", "facebook": "", "lat": -32.1650198, "lon": -64.1139367}, {"institucion": "FUNDACIÓN PARA EL DESARROLLO Y CAPACITACIÓN DE LOS TRABAJADORES DEL SINDICATO REGIONAL LUZ Y FUERZA (SIRELYF)", "seccion": "TERCERO ARRIBA", "departamento": "", "municipio": "", "correo": "gestiondealumnos@regionalluzyfuerza.com", "direccion": "Jujuy 29 (B° Centro).", "telefono": "", "web": "", "instagram": "", "facebook": "", "lat": null, "lon": null}, {"institucion": "ASOCIACION GREMIAL DE EMPLEADOS DE COMERCIO DE RIO TERCERO", "seccion": "TERCERO ARRIBA", "departamento": "Tercero Arriba", "municipio": "Río Tercero", "correo": "c.agecrio3@gmail.com", "direccion": "Garibaldi 98 (Río Tercero)", "telefono": "03571 - 414000 internos 105/110 WhatsApp: 3571-556363", "web": "https://agecriotercero.com.ar", "instagram": "https://instagram.com/agecriotercero", "facebook": "https://facebook.com/capacitacionagec", "lat": -32.174, "lon": -64.114}, {"institucion": "COOPERATIVA DE ELECTRICIDAD OBRAS Y SERVICIOS PUBLICOS DE ANISACATE", "seccion": "SANTA MARIA", "departamento": "Santa María", "municipio": "Anisacate", "correo": "reclamos@coopanisacate.com.ar", "direccion": "Los Fresnos 15 esq. RP 5", "telefono": "03547 461307 - 3547541823", "web": "wwwcoopanisacate.com.ar", "instagram": "", "facebook": "", "lat": -31.71334, "lon": -64.40427}];
+  <footer class="footer">
+    Fuente: <strong>Instituciones_habilitadas_completado_final.xlsx</strong> · actualización agosto 2026 · 70 instituciones, 36 municipios y 19 departamentos. El mapa base utiliza cartografía de Esri y no requiere clave API. La ubicación de cada institución surge de las coordenadas contenidas en la planilla.
+  </footer>
+</div>
 
-    const mapped = DATA.filter(x => Number.isFinite(Number(x.lat)) && Number.isFinite(Number(x.lon)));
-    const unmapped = DATA.filter(x => !(Number.isFinite(Number(x.lat)) && Number.isFinite(Number(x.lon))));
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
-    const map = L.map('map', { zoomControl:true, minZoom:6 }).setView([-31.42,-64.19], 7);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom:19,
-      attribution:'&copy; OpenStreetMap contributors'
-    }).addTo(map);
+<script>
+(() => {
+"use strict";
 
-    const clusters = L.markerClusterGroup({
+const data = [{"id": 1, "institucion": "MINISTERIO DE DESARROLLO SOCIAL Y PROMOCIÓN DEL EMPLEO", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "email": null, "direccion": "Juan B. Justo 3600", "telefono": "0351 432-2900", "web": "https://desarrolloyempleo.cba.gov.ar", "instagram": null, "facebook": null, "lat": -31.3839278, "lng": -64.1756313, "revision": null}, {"id": 2, "institucion": "ACADEMIA SANTO DOMINGO", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "email": "muicich.asd@gmail.com", "direccion": "Ituzaingó 159", "telefono": null, "web": "https://asd.edu.ar", "instagram": null, "facebook": null, "lat": -31.4186775, "lng": -64.182026, "revision": null}, {"id": 3, "institucion": "UNIVERSIDAD NACIONAL DE CÓRDOBA", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "email": "lbt@fcefyn.unc.edu.ar", "direccion": "Av. Velez Sarsfield 1661 Ciudad Universitaria", "telefono": null, "web": "https://efn.uncor.edu", "instagram": null, "facebook": null, "lat": -31.43785, "lng": -64.18775, "revision": null}, {"id": 4, "institucion": "ESCUELA DE CAPACITACIÓN LABORAL SAN JUAN BOSCO", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "email": "cfp@sapsalesianos.com.ar", "direccion": "Ismael Galindez 1250 (B° San Vicente)", "telefono": "351-4554740", "web": "https://facebook.com/escuelasanjuanbosco", "instagram": null, "facebook": null, "lat": -31.4302, "lng": -64.1509, "revision": null}, {"id": 5, "institucion": "INSTITUTO TÉCNICO DE OFICIOS CELSIUS", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "email": "celsiusinstituto@gmail.com", "direccion": "La Rioja 337", "telefono": "+54 9 3512 13-3187", "web": "https://www.celsiusinstituto.com.ar/", "instagram": "https://www.instagram.com/instituto.celsius/", "facebook": null, "lat": -31.410154, "lng": -64.186741, "revision": null}, {"id": 6, "institucion": "INSTITUTO TÉCNICO DE OFICIOS CELSIUS", "seccion": "RIO CUARTO", "departamento": "Río Cuarto", "municipio": "Río Cuarto", "email": "riocuarto@celsiusinstituto.com", "direccion": "Lavalle 641", "telefono": "+54 9 3585 73-4559", "web": "https://www.celsiusinstituto.com.ar/", "instagram": "https://www.instagram.com/institutocelsius.riocuarto?stkn=b3c4bnpmdmVoeG9u", "facebook": null, "lat": -33.1239, "lng": -64.3484, "revision": {"estado": "Completado", "municipio_revision": "Río Cuarto", "coordenadas_revision": "-33.1239000, -64.3484000", "fuente": "Lavalle 641 confirmado por ficha pública del establecimiento."}}, {"id": 7, "institucion": "UNIVERSIDAD TECNOLÓGICA NACIONAL - FACULTAD REGIONAL CÓRDOBA", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "email": null, "direccion": "Maestro Marcelo López y Av. Cruz roja Argentina", "telefono": "351-5986000", "web": "https://frc.utn.edu.ar", "instagram": null, "facebook": null, "lat": -31.442087, "lng": -64.192759, "revision": null}, {"id": 8, "institucion": "FUNDACIÓN INTEGRAL DE FORMACIÓN Y DESARROLLO", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "email": "info@integralcapacitando.com.ar", "direccion": "Caseros 1250", "telefono": "0351 4257440 / 3512192950", "web": "https://integralcapacitando.com.ar", "instagram": "@integralcapacitando.cba", "facebook": null, "lat": -31.4130538, "lng": -64.2019334, "revision": null}, {"id": 9, "institucion": "FUNDACIÓN INTEGRAL DE FORMACIÓN Y DESARROLLO", "seccion": "PUNILLA", "departamento": "Punilla", "municipio": "Villa Carlos Paz", "email": "info.vcp@integralcapacitando.com.ar", "direccion": "Resistencia 20", "telefono": 3541642029, "web": null, "instagram": "@integralcapacita dovcp", "facebook": null, "lat": -31.4238, "lng": -64.4962, "revision": {"estado": "Completado", "municipio_revision": "Villa Carlos Paz", "coordenadas_revision": "-31.4238000, -64.4962000", "fuente": "Resistencia 20 confirmado por web oficial y ficha pública."}}, {"id": 10, "institucion": "FUNDACIÓN INTEGRAL DE FORMACIÓN Y DESARROLLO", "seccion": "COLÓN", "departamento": "Colón", "municipio": "Jesús María", "email": "info.jm@integralcapacitando.com.ar", "direccion": "Córdoba 990", "telefono": 3525641993, "web": null, "instagram": "@integral.capacitando.jm", "facebook": null, "lat": -30.9816, "lng": -64.0952, "revision": {"estado": "Completado manteniendo el Excel", "municipio_revision": "Jesús María", "coordenadas_revision": "-30.9816000, -64.0952000", "fuente": "Se conserva Córdoba 990 tal como figura en el Excel; coordenada aproximada a esa ubicación."}}, {"id": 11, "institucion": "FUNDACIÓN UNIVERSITARIA DE OFICIOS (FUO)", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "email": "contacto@fuoficios.com.ar", "direccion": "Ruta 5 Km 4, Córdoba", "telefono": "+54 9 351 372 2487", "web": null, "instagram": null, "facebook": null, "lat": -31.495272, "lng": -64.25557, "revision": null}, {"id": 12, "institucion": "ARSOLAR S.A.S.", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "email": "info@energiasolarcba.com", "direccion": "Oncativo 1069", "telefono": null, "web": "https://arsolar.com.ar", "instagram": null, "facebook": null, "lat": -31.4109, "lng": -64.1672, "revision": null}, {"id": 13, "institucion": "AMBOX EDUCACION ONLINE S.A.S.", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "email": "info@ambox.com.ar", "direccion": "Ayacucho 346", "telefono": "3515943973 / 3517034440", "web": "https://ambox.com", "instagram": null, "facebook": null, "lat": -31.421, "lng": -64.1893, "revision": null}, {"id": 14, "institucion": "INSTITUTO TESLA", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "email": "administracion@institutotesla.com.ar", "direccion": "Ituzaingó 32", "telefono": "351 873-0543", "web": "https://institutotesla.ar", "instagram": null, "facebook": null, "lat": -31.4171634, "lng": -64.1816295, "revision": null}, {"id": 15, "institucion": "ELECTRICISTAS PROFESIONALES ASOCIADOS DE CÓRDOBA (EPAC)", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "email": "fabian.e.lucca@hotmail.com", "direccion": "Diagonal Ica 1538", "telefono": null, "web": null, "instagram": null, "facebook": null, "lat": -31.3993, "lng": -64.1645, "revision": null}, {"id": 16, "institucion": "ESCUELA SALVADOR CÁMPOLI (B° SANTA ISABEL II)", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "email": null, "direccion": "Cajamarca Esq. Colorado", "telefono": "0351-152067677", "web": null, "instagram": null, "facebook": null, "lat": -31.4796087, "lng": -64.2345363, "revision": null}, {"id": 17, "institucion": "ESCUELA DE OFICIOS DE ARGÜELLO", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "email": null, "direccion": "Antequera y Castro 7384", "telefono": "03543-403005", "web": null, "instagram": null, "facebook": null, "lat": -31.337, "lng": -64.2675, "revision": null}, {"id": 18, "institucion": "FUNDACIÓN CRECER", "seccion": "CAPITAL", "departamento": "Colón", "municipio": "Río Ceballos", "email": "crecerfund@gmail.com", "direccion": "Amuchastegui 344 (Rio Ceballos)", "telefono": null, "web": null, "instagram": null, "facebook": null, "lat": -31.1705, "lng": -64.315, "revision": null}, {"id": 19, "institucion": "MUNICIPALIDAD DE CÓRDOBA (SECRETARÍA DE PARTICIPACIÓN CIUDADANA)", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "email": "alejandroestrella@live.com.ar", "direccion": "Caseros 621, 8° piso Centro", "telefono": null, "web": "https://cordoba.gob.ar/areas-de-gobierno/secretaria-de-participacion-ciudadana", "instagram": null, "facebook": null, "lat": -31.4159049, "lng": -64.1933225, "revision": null}, {"id": 20, "institucion": "FUNDACIÓN ARGENTINA DE CAPACITACIÓN Y FORMACIÓN DE OFICIOS", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "email": null, "direccion": "Santiago Morales 4980 (B° Ferreyra)", "telefono": "351 3036306", "web": null, "instagram": "https://instagram.com/fundacion.fadcyf", "facebook": null, "lat": -31.4637, "lng": -64.1155, "revision": null}, {"id": 21, "institucion": "FUNDACIÓN BRUNER", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "email": "admbrunerinstituto@gmail.com", "direccion": "27 de abril 991", "telefono": "3512195068", "web": "https://brunerinstituto.com", "instagram": null, "facebook": "https://facebook.com/share/1B2meJ9cvB", "lat": -31.4133155, "lng": -64.1976736, "revision": null}, {"id": 22, "institucion": "FUNDACIÓN UN MUNDO IDEAL", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "email": "fundacionunmundoideal88@gmail.com", "direccion": "AV. Los Sauces 3291 (Bº Gral. Urquiza)", "telefono": "3518019121", "web": null, "instagram": "https://instagram.com/funda.unmundoideal", "facebook": null, "lat": -31.4548, "lng": -64.183, "revision": null}, {"id": 23, "institucion": "INSTITUTO CEEL", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "email": "institutoer.f@gmail.com", "direccion": "Domingo F Sarmiento 398", "telefono": "3513 21-7788", "web": "https://cecalcapacitacion.com", "instagram": null, "facebook": null, "lat": -31.4139, "lng": -64.1783, "revision": null}, {"id": 24, "institucion": "INSTITUTO TÉCNICO SALESIANO VILLADA", "seccion": "CAPITAL", "departamento": "Capital", "municipio": "Córdoba", "email": "formaciones@portalsea.com.ar", "direccion": "Cno. a La Calera km 7 1/2, B° Valle Escondido", "telefono": "3513 69-7444", "web": null, "instagram": null, "facebook": null, "lat": -31.36245, "lng": -64.27657, "revision": null}, {"id": 25, "institucion": "MUNICIPALIDAD DE EMBALSE", "seccion": "CALAMUCHITA", "departamento": "Calamuchita", "municipio": "Embalse", "email": null, "direccion": "Juan Domingo Perón 163", "telefono": null, "web": null, "instagram": null, "facebook": null, "lat": -32.1827, "lng": -64.4184, "revision": null}, {"id": 26, "institucion": "CEDER JESUS MARIA", "seccion": "COLÓN", "departamento": "Colón", "municipio": "Jesús María", "email": null, "direccion": "Av. Las Heras 1381 Bº17 de octubre", "telefono": "03525-429060", "web": null, "instagram": null, "facebook": null, "lat": -30.98979, "lng": -64.0847, "revision": null}, {"id": 27, "institucion": "MUNICIPALIDAD DE CRUZ DEL EJE", "seccion": "CRUZ DEL EJE", "departamento": "Cruz del Eje", "municipio": "Cruz del Eje", "email": "adolforomero671@yahoo.com.ar", "direccion": "Ruta 38 y Sarmiento", "telefono": "3549 523767", "web": null, "instagram": null, "facebook": null, "lat": -30.73683, "lng": -64.79255, "revision": null}, {"id": 28, "institucion": "CEDER CRUZ DEL EJE", "seccion": "CRUZ DEL EJE", "departamento": "Cruz del Eje", "municipio": "Cruz del Eje", "email": null, "direccion": "Pellegrini 253", "telefono": "03549-426722", "web": null, "instagram": null, "facebook": null, "lat": -30.7267, "lng": -64.803, "revision": null}, {"id": 29, "institucion": "CEDER VILLA HUIDOBRO", "seccion": "GENERAL ROCA", "departamento": "General Roca", "municipio": "Villa Huidobro", "email": null, "direccion": "Av. Carlos Pellegrini 222 esq. Dorrego", "telefono": "02336-481714", "web": null, "instagram": null, "facebook": null, "lat": -34.8388, "lng": -64.5865, "revision": null}, {"id": 30, "institucion": "CEDER VILLA VALERIA", "seccion": "GENERAL ROCA", "departamento": "General Roca", "municipio": "Villa Valeria", "email": null, "direccion": "Osvaldo Depino 1051 esq. J. Croto", "telefono": "03583-497060", "web": null, "instagram": null, "facebook": null, "lat": -34.34, "lng": -64.921, "revision": null}, {"id": 31, "institucion": "MUNICIPALIDAD DE VILLA MARIA", "seccion": "GENERAL SAN MARTIN", "departamento": "General San Martín", "municipio": "Villa María", "email": "pspsanmarengo@gmail.com", "direccion": "Bv. Sarmiento esq. San Martín", "telefono": "0353 – 154012120", "web": null, "instagram": null, "facebook": null, "lat": -32.41523, "lng": -63.24252, "revision": null}, {"id": 32, "institucion": "FUNDACIÓN CIEP PARA EL DESARROLLO EDUCATIVO, LABORAL Y EMPRESARIAL (VILLA MARÍA)", "seccion": "GENERAL SAN MARTIN", "departamento": "General San Martín", "municipio": "Villa María", "email": "consultas@ciep.com.ar", "direccion": "Corrientes 570", "telefono": null, "web": null, "instagram": null, "facebook": null, "lat": -32.4155541, "lng": -63.2480428, "revision": null}, {"id": 33, "institucion": "CEDER VILLA MARÍA", "seccion": "GENERAL SAN MARTIN", "departamento": "General San Martín", "municipio": "Villa María", "email": null, "direccion": "Lisandro de la Torre 173", "telefono": "0353-4619129", "web": null, "instagram": null, "facebook": null, "lat": -32.4081975, "lng": -63.2429312, "revision": null}, {"id": 34, "institucion": "MUTUAL YRIGOYEN", "seccion": "GENERAL SAN MARTIN", "departamento": "General San Martín", "municipio": "Villa María", "email": "adm.mutualyrigoyen@gmail.com", "direccion": "Mendoza 1267", "telefono": "3534297052", "web": "https://mutualyrigoyen.com.ar", "instagram": null, "facebook": null, "lat": -32.4129, "lng": -63.2505, "revision": {"estado": "Completado", "municipio_revision": "Villa María", "coordenadas_revision": "-32.4129000, -63.2505000", "fuente": "Mendoza 1267 confirmado en registros; se fuerza georreferenciación según ese domicilio."}}, {"id": 35, "institucion": "CEDER DEAN FUNES", "seccion": "ISCHILIN", "departamento": "Ischilín", "municipio": "Deán Funes", "email": "cederdeanfunes255@gmail.com", "direccion": "9 de julio 255", "telefono": "03521-426237", "web": null, "instagram": null, "facebook": null, "lat": -30.4235, "lng": -64.3502, "revision": null}, {"id": 36, "institucion": "MUNICIPALIDAD DE GENERAL DEHEZA", "seccion": "JUAREZ CELMAN", "departamento": "Juárez Celman", "municipio": "General Deheza", "email": "belendema@yahoo.com.ar", "direccion": "Nuestra Señora de la Asunción 81", "telefono": null, "web": null, "instagram": null, "facebook": null, "lat": -32.75717, "lng": -63.78876, "revision": null}, {"id": 37, "institucion": "ASOCIACIÓN CIVIL EMPRESARIAL GENERAL DEHEZA", "seccion": "JUAREZ CELMAN", "departamento": "Juárez Celman", "municipio": "General Deheza", "email": "aegd2019@gmail.com", "direccion": "General Paz 316, General Deheza", "telefono": null, "web": null, "instagram": null, "facebook": null, "lat": -32.7564, "lng": -63.7905, "revision": null}, {"id": 38, "institucion": "CEDER ALEJO LEDESMA", "seccion": "MARCOS JUAREZ", "departamento": "Marcos Juárez", "municipio": "Alejo Ledesma", "email": null, "direccion": "Roque Sáenz Peña 960", "telefono": "03468-490238", "web": null, "instagram": null, "facebook": null, "lat": -33.6065, "lng": -62.6235, "revision": null}, {"id": 39, "institucion": "CEDER CORRAL DE BUSTOS", "seccion": "MARCOS JUAREZ", "departamento": "Marcos Juárez", "municipio": "Corral de Bustos", "email": null, "direccion": "Mitre 271", "telefono": "03468-423977", "web": null, "instagram": null, "facebook": null, "lat": -33.2823, "lng": -62.1845, "revision": null}, {"id": 40, "institucion": "CEDER SALSACATE", "seccion": "POCHO", "departamento": "Pocho", "municipio": "Salsacate", "email": null, "direccion": "Av. San Martín (sobre ruta 15)", "telefono": "0351 – 156612575", "web": null, "instagram": null, "facebook": null, "lat": -31.3145, "lng": -65.0905, "revision": null}, {"id": 41, "institucion": "CEDER VILLA CARLOS PAZ", "seccion": "PUNILLA", "departamento": "Punilla", "municipio": "Villa Carlos Paz", "email": null, "direccion": "Cárcano 1600 esq, Carlos Gardel Pje 1 – Bº Obrero", "telefono": "03541 – 438265", "web": null, "instagram": null, "facebook": null, "lat": -31.432, "lng": -64.491, "revision": null}, {"id": 42, "institucion": "ASOCIACIÓN CIVIL DE ELECTRICISTAS HABILITADOS AGRUPADOS DE PUNILLA (LA CUMBRE)", "seccion": "PUNILLA", "departamento": "Punilla", "municipio": "La Cumbre", "email": "ehapunilla@gmail.com", "direccion": "Rivadavia 274", "telefono": null, "web": null, "instagram": null, "facebook": null, "lat": -30.9829, "lng": -64.4915, "revision": null}, {"id": 43, "institucion": "FUNDACIÓN INGENIAR (VALLE HERMOSO)", "seccion": "PUNILLA", "departamento": "Punilla", "municipio": "Valle Hermoso", "email": null, "direccion": "Av. General Paz 738 (Valle Hermoso)", "telefono": "3548 581777", "web": null, "instagram": "https://instagram.com/fundacioningeniar", "facebook": "https://facebook.com/share/16F6x2gi4G", "lat": -31.1175, "lng": -64.4818, "revision": null}, {"id": 44, "institucion": "MUNICIPALIDAD DE TANTI", "seccion": "PUNILLA", "departamento": "Punilla", "municipio": "Tanti", "email": "casascristian01@gmail.com", "direccion": "Belgrano 142.", "telefono": null, "web": null, "instagram": null, "facebook": null, "lat": -31.35535, "lng": -64.59367, "revision": null}, {"id": 45, "institucion": "FUNDACIÓN PUERTO MARÍA PIHUEN (BIALET MASSÉ)", "seccion": "PUNILLA", "departamento": "Punilla", "municipio": "Bialet Massé", "email": "claudiaottonello@hotmail.com", "direccion": "Rio Negro 868 (B° Playas de Oro)", "telefono": "1166609267/351 5926305", "web": null, "instagram": null, "facebook": null, "lat": -31.442, "lng": -64.508, "revision": null}, {"id": 46, "institucion": "MUNICIPALIDAD DE COSQUIN", "seccion": "PUNILLA", "departamento": "Punilla", "municipio": "Cosquín", "email": "elisarmiento097@gmail.com", "direccion": "Salta 141", "telefono": null, "web": null, "instagram": null, "facebook": null, "lat": -31.24417, "lng": -64.46667, "revision": null}, {"id": 47, "institucion": "MUNICIPALIDAD DE PILAR", "seccion": "RIO SEGUNDO", "departamento": "Río Segundo", "municipio": "Pilar", "email": "pilaroficinadeempleo@gmail.com", "direccion": "Zenón López 1267", "telefono": "3572 40-0353", "web": null, "instagram": "https://instagram.com/pilarmunicipalidad", "facebook": null, "lat": -31.6812, "lng": -63.88484, "revision": null}, {"id": 48, "institucion": "FUNDACION SAN MARTÍN DE PORRES", "seccion": "RIO CUARTO", "departamento": "Río Cuarto", "municipio": "Río Cuarto", "email": "lbessone0@gmail.com", "direccion": "Sabattini 4200", "telefono": null, "web": null, "instagram": null, "facebook": null, "lat": -33.15591, "lng": -64.3591, "revision": {"estado": "Revalidado", "municipio_revision": "Río Cuarto", "coordenadas_revision": "-33.1559100, -64.3591000", "fuente": "Av. Sabattini 4200 confirmado por ERSeP, sitio de Ciudad de los Niños y registros públicos."}}, {"id": 49, "institucion": "MUNICIPALIDAD DE VICUÑA MACKENNA", "seccion": "RIO CUARTO", "departamento": "Río Cuarto", "municipio": "Vicuña Mackenna", "email": "planificacion@mvm.gov.ar", "direccion": "SUM Municipal Barrio Sur, San Martin y Manuel Dopazzo (Vicuña Mackenna)", "telefono": "03583-484555 – 03583-15403748", "web": null, "instagram": null, "facebook": null, "lat": -33.92, "lng": -64.392, "revision": null}, {"id": 50, "institucion": "CEDER RIO CUARTO", "seccion": "RIO CUARTO", "departamento": "Río Cuarto", "municipio": "Río Cuarto", "email": null, "direccion": "Belgrano 1135", "telefono": "0358-4672938", "web": null, "instagram": null, "facebook": null, "lat": -33.13, "lng": -64.354, "revision": null}, {"id": 51, "institucion": "FUNDACIÓN EDUCATIVA SABERES", "seccion": "ROQUE SAENZ PEÑA", "departamento": "Presidente Roque Sáenz Peña", "municipio": "Laboulaye", "email": "info@fundacionsaberes.com.ar", "direccion": "Daireaux 25 (Laboulaye)", "telefono": "03385-421730", "web": "https://fundacionsaberes.com.ar", "instagram": null, "facebook": null, "lat": -34.126, "lng": -63.392, "revision": null}, {"id": 52, "institucion": "CEDER MINA CLAVERO", "seccion": "SAN ALBERTO", "departamento": "San Alberto", "municipio": "Mina Clavero", "email": null, "direccion": "Las Moras 609", "telefono": "03544-476263", "web": null, "instagram": null, "facebook": null, "lat": -31.7295, "lng": -65.0067, "revision": null}, {"id": 53, "institucion": "CERTIFICACIONES ELÉCTRICAS (VILLA DOLORES)", "seccion": "SAN JAVIER", "departamento": "San Javier", "municipio": "Villa Dolores", "email": "izqbrisena@gmail.com", "direccion": "Jhon F. Kennedy 43 (Villa Dolores)", "telefono": null, "web": null, "instagram": null, "facebook": null, "lat": -31.945, "lng": -65.189, "revision": null}, {"id": 54, "institucion": "CEDER VILLA DOLORES", "seccion": "SAN JAVIER", "departamento": "San Javier", "municipio": "Villa Dolores", "email": null, "direccion": "Libertador Urquiza 54", "telefono": "03544 423437", "web": null, "instagram": null, "facebook": null, "lat": -31.944, "lng": -65.19, "revision": null}, {"id": 55, "institucion": "ASOCIACION CIVIL TRASLASIERRA ELECTRICISTAS PROFESIONALES HABILITADOS (TRASLAEA)", "seccion": "SAN JAVIER", "departamento": "San Javier", "municipio": "Villa Dolores", "email": "traslaea@gmail.com", "direccion": "Dorrego 1435", "telefono": "3544307583", "web": null, "instagram": null, "facebook": "https://facebook.com/traslaea.arg", "lat": -31.946, "lng": -65.181, "revision": {"estado": "Completado", "municipio_revision": "Villa Dolores", "coordenadas_revision": "-31.9460000, -65.1810000", "fuente": "Dorrego 1435 confirmado como domicilio existente en Villa Dolores."}}, {"id": 56, "institucion": "MUNICIPALIDAD DE LAS VARILLAS", "seccion": "SAN JUSTO", "departamento": "San Justo", "municipio": "Las Varillas", "email": "capacitacionlasvarillas@gmail.com", "direccion": "Tucumán Nº 52 (Las Varillas", "telefono": "03533- 422-7000", "web": null, "instagram": null, "facebook": null, "lat": -31.87142, "lng": -62.71748, "revision": null}, {"id": 57, "institucion": "CEDER SAN FRANCISCO", "seccion": "SAN JUSTO", "departamento": "San Justo", "municipio": "San Francisco", "email": null, "direccion": "Belgrano 2158", "telefono": "03564-443771", "web": null, "instagram": null, "facebook": null, "lat": -31.42677, "lng": -62.0896, "revision": null}, {"id": 58, "institucion": "CEDER MIRAMAR", "seccion": "SAN JUSTO", "departamento": "San Justo", "municipio": "Miramar", "email": null, "direccion": "Juan B Justo 138", "telefono": "03563-493933 - 8/10", "web": null, "instagram": null, "facebook": null, "lat": -30.918, "lng": -62.678, "revision": null}, {"id": 59, "institucion": "UNIVERSIDAD TECNOLÓGICA NACIONAL – FACULTAD REGIONAL SAN FRANCISCO", "seccion": "SAN JUSTO", "departamento": "San Justo", "municipio": "San Francisco", "email": "capacitacionyoficios@sanfrancisco.utn.edu.ar", "direccion": "Av. De la Universidad 501", "telefono": null, "web": null, "instagram": null, "facebook": null, "lat": -31.42046, "lng": -62.110691, "revision": null}, {"id": 60, "institucion": "CEDER ALTA GRACIA", "seccion": "SANTA MARIA", "departamento": "Santa María", "municipio": "Alta Gracia", "email": null, "direccion": "Italia 406", "telefono": "03547 429289", "web": null, "instagram": null, "facebook": null, "lat": -31.654195, "lng": -64.4237248, "revision": null}, {"id": 61, "institucion": "FUNDACIÓN EFFETÁ (ALTA GRACIA)", "seccion": "SANTA MARIA", "departamento": "Santa María", "municipio": "Alta Gracia", "email": "effeta@effeta.org.ar", "direccion": "Hnos Maure (ex San Juan) 650", "telefono": "3547 427625 / 3547 452733 (móvil)", "web": "https://effeta.org.ar", "instagram": null, "facebook": "https://facebook.com/www.facebook.com/FundacionEffeta", "lat": -31.666582, "lng": -64.433334, "revision": null}, {"id": 62, "institucion": "ASOCIACIÓN CIVIL DE ELECTRICISTAS DE ALTA GRACIA Y ZONAS", "seccion": "SANTA MARIA", "departamento": "Santa María", "municipio": "Alta Gracia", "email": "asocelectagr@gmail.com", "direccion": "Uruguay 1962 B° Parque Casino", "telefono": "3547-634200/351-2319206", "web": null, "instagram": null, "facebook": null, "lat": -31.6715, "lng": -64.443, "revision": null}, {"id": 63, "institucion": "COMUNA POTRERO DE GARAY", "seccion": "SANTA MARIA", "departamento": "Santa María", "municipio": "Potrero de Garay", "email": "info@potrerodegaray.gob.ar", "direccion": "Rio Yuspe/esquina Rio los Molinos", "telefono": "3547-540578", "web": "https://Potrerodegaray.gob.ar", "instagram": null, "facebook": null, "lat": -31.79198, "lng": -64.54706, "revision": null}, {"id": 64, "institucion": "MUNICIPALIDAD DE MALAGUEÑO", "seccion": "SANTA MARIA", "departamento": "Santa María", "municipio": "Malagueño", "email": "secdesarrollohumano@malagueno.gob.ar", "direccion": "Brig. Juan Manuel de Rosas 650", "telefono": "0351-4986001", "web": "https://malagueño.gob.ar", "instagram": null, "facebook": null, "lat": -31.4615, "lng": -64.3575, "revision": null}, {"id": 65, "institucion": "MUNICIPALIDAD DE VILLA ASCASUBI", "seccion": "TERCERO ARRIBA", "departamento": "Tercero Arriba", "municipio": "Villa Ascasubi", "email": "educacionupva@gmail.com", "direccion": "J. R. Bernard 88", "telefono": "03571 49-8000", "web": null, "instagram": null, "facebook": null, "lat": -32.16251, "lng": -63.8916, "revision": null}, {"id": 66, "institucion": "MUNICIPALIDAD DE TANCACHA", "seccion": "TERCERO ARRIBA", "departamento": "Tercero Arriba", "municipio": "Tancacha", "email": "administracion@tancacha.gob.ar", "direccion": "Bartolomé Mitre 543", "telefono": "03571- 460101 cel: 03571-15363401", "web": null, "instagram": "https://instagram.com/municipalidaddetancacha", "facebook": null, "lat": -32.244, "lng": -63.979, "revision": null}, {"id": 67, "institucion": "CEDER RIO TERCERO", "seccion": "TERCERO ARRIBA", "departamento": "Tercero Arriba", "municipio": "Río Tercero", "email": null, "direccion": "San Agustín 755 - Bº Medialuna", "telefono": "03571-439231", "web": null, "instagram": null, "facebook": null, "lat": -32.1650198, "lng": -64.1139367, "revision": null}, {"id": 68, "institucion": "FUNDACIÓN PARA EL DESARROLLO Y CAPACITACIÓN DE LOS TRABAJADORES DEL SINDICATO REGIONAL LUZ Y FUERZA (SIRELYF)", "seccion": "TERCERO ARRIBA", "departamento": "Tercero Arriba", "municipio": "Almafuerte", "email": "gestiondealumnos@regionalluzyfuerza.com", "direccion": "Ruta 36 - km 721", "telefono": null, "web": null, "instagram": null, "facebook": null, "lat": -32.194, "lng": -64.262, "revision": {"estado": "Completado con mejor aproximación disponible", "municipio_revision": "Almafuerte", "coordenadas_revision": "-32.1940000, -64.2620000", "fuente": "RP 36 km 721 / predio Aldo Serrano confirmado; coordenada aproximada al sector del predio."}}, {"id": 69, "institucion": "ASOCIACION GREMIAL DE EMPLEADOS DE COMERCIO DE RIO TERCERO", "seccion": "TERCERO ARRIBA", "departamento": "Tercero Arriba", "municipio": "Río Tercero", "email": "c.agecrio3@gmail.com", "direccion": "Garibaldi 98 (Río Tercero)", "telefono": "03571 - 414000 internos 105/110 WhatsApp: 3571-556363", "web": "https://agecriotercero.com.ar", "instagram": "https://instagram.com/agecriotercero", "facebook": "https://facebook.com/capacitacionagec", "lat": -32.174, "lng": -64.114, "revision": null}, {"id": 70, "institucion": "COOPERATIVA DE ELECTRICIDAD OBRAS Y SERVICIOS PUBLICOS DE ANISACATE", "seccion": "SANTA MARIA", "departamento": "Santa María", "municipio": "Anisacate", "email": "reclamos@coopanisacate.com.ar", "direccion": "Los Fresnos 15 esq. RP 5", "telefono": "03547 461307 - 3547541823", "web": "wwwcoopanisacate.com.ar", "instagram": null, "facebook": null, "lat": -31.71334, "lng": -64.40427, "revision": null}];
+const totalBase = data.length;
+
+const $ = id => document.getElementById(id);
+const searchEl = $("search");
+const departmentEl = $("departmentFilter");
+const municipalityEl = $("municipalityFilter");
+const clusterBtn = $("clusterBtn");
+const listEl = $("list");
+const resultText = $("resultText");
+const detailEl = $("detail");
+const detailName = $("detailName");
+const detailBadges = $("detailBadges");
+const detailInfo = $("detailInfo");
+const detailActions = $("detailActions");
+const tileWarning = $("tileWarning");
+
+const esc = v => String(v ?? "")
+  .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+  .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+
+const norm = v => String(v ?? "")
+  .normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
+
+const hasCoords = d => Number.isFinite(d.lat) && Number.isFinite(d.lng);
+const safeHttp = u => typeof u === "string" && /^https?:\/\//i.test(u);
+const mapsUrl = d => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(d.lat + "," + d.lng)}`;
+
+let activeId = null;
+let currentFiltered = [...data];
+let clustering = true;
+
+if (typeof L === "undefined") {
+  $("map").innerHTML = '<div style="padding:30px;color:#64748b">No se pudo cargar Leaflet. Verificá la conexión a Internet y volvé a abrir el archivo.</div>';
+  return;
+}
+
+const map = L.map("map", {
+  zoomControl:true,
+  minZoom:5,
+  maxZoom:19,
+  preferCanvas:true,
+  zoomSnap:.5
+}).setView([-31.55,-64.35],7);
+
+const transparentTile = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
+let tileErrors = 0;
+let baseLayer = L.tileLayer(
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
+  {
+    maxZoom:19,
+    errorTileUrl:transparentTile,
+    attribution:'Tiles &copy; Esri'
+  }
+).addTo(map);
+baseLayer.on("tileerror", () => {
+  tileErrors++;
+  if (tileErrors >= 3 && map.hasLayer(baseLayer)) {
+    map.removeLayer(baseLayer);
+    tileWarning.textContent = "No se pudo cargar el fondo del mapa. Los puntos y filtros siguen funcionando.";
+    tileWarning.classList.add("show");
+  }
+});
+baseLayer.on("load", () => tileWarning.classList.remove("show"));
+
+const plainLayer = L.layerGroup();
+const clusterLayer = (typeof L.markerClusterGroup === "function")
+  ? L.markerClusterGroup({
       showCoverageOnHover:false,
       spiderfyOnMaxZoom:true,
-      maxClusterRadius:45
-    });
-    const plainLayer = L.layerGroup();
-    let clusteringEnabled = true;
-    map.addLayer(clusters);
+      maxClusterRadius:48,
+      disableClusteringAtZoom:16,
+      zoomToBoundsOnClick:true,
+      animate:true,
+      chunkedLoading:true
+    })
+  : null;
 
-    const markerByName = new Map();
-    let filtered = mapped.slice();
+const markers = new Map();
 
-    const searchEl = document.getElementById('search');
-    const depEl = document.getElementById('department');
-    const munEl = document.getElementById('municipality');
-    const listEl = document.getElementById('resultList');
-    const detailEl = document.getElementById('detail');
-    const statVisible = document.getElementById('statVisible');
-    const visibleNote = document.getElementById('visibleNote');
+function markerIcon(d, selected=false) {
+  const cls = `marker-pin${selected ? " selected" : ""}`;
+  return L.divIcon({
+    className:"",
+    html:`<div class="${cls}"></div>`,
+    iconSize:[30,30],
+    iconAnchor:[15,28],
+    popupAnchor:[0,-27]
+  });
+}
 
-    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
-    const norm = s => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-    const safeUrl = u => {
-      if(!u) return '';
-      let v = String(u).trim();
-      if(!/^https?:\/\//i.test(v)) v = 'https://' + v.replace(/^www\.?/i,'www.');
-      try {
-        const p = new URL(v);
-        if(!['http:','https:'].includes(p.protocol)) return '';
-        return p.href;
-      } catch { return ''; }
+data.forEach(d => {
+  if (!hasCoords(d)) return;
+  const marker = L.marker([d.lat,d.lng],{icon:markerIcon(d,false),keyboard:true});
+  marker.bindPopup(`
+    <div class="popup-name">${esc(d.institucion)}</div>
+    <div class="popup-meta">
+      ${esc(d.municipio || "Municipio sin dato")}${d.departamento ? " · " + esc(d.departamento) : ""}<br>
+      ${esc(d.direccion || "Dirección sin dato")}
+    </div>
+    <div class="popup-tip">Seleccioná el registro para ver la ficha completa.</div>
+  `, {maxWidth:310});
+  marker.on("click", () => selectInstitution(d.id,false));
+  markers.set(d.id,marker);
+});
+
+function rebuildMapLayer() {
+  if (map.hasLayer(plainLayer)) map.removeLayer(plainLayer);
+  if (clusterLayer && map.hasLayer(clusterLayer)) map.removeLayer(clusterLayer);
+  plainLayer.clearLayers();
+  if (clusterLayer) clusterLayer.clearLayers();
+
+  const target = clustering && clusterLayer ? clusterLayer : plainLayer;
+  currentFiltered.filter(hasCoords).forEach(d => {
+    const m = markers.get(d.id);
+    if (m) target.addLayer(m);
+  });
+  target.addTo(map);
+}
+
+function resetMarkerIcons() {
+  markers.forEach((m,id) => {
+    const d = data.find(x => x.id === id);
+    if (d) m.setIcon(markerIcon(d,id === activeId));
+  });
+}
+
+function infoRow(k,v,kind="text") {
+  if (!v) return "";
+  let value = esc(v);
+  if (kind === "email") value = `<a href="mailto:${esc(v)}">${esc(v)}</a>`;
+  if (kind === "url" && safeHttp(v)) value = `<a href="${esc(v)}" target="_blank" rel="noopener">${esc(String(v).replace(/^https?:\/\//i,""))}</a>`;
+  return `<div class="info-row"><div class="info-key">${esc(k)}</div><div class="info-val">${value}</div></div>`;
+}
+
+function showDetail(d) {
+  detailName.textContent = d.institucion || "Institución";
+  detailBadges.innerHTML = `
+    ${d.departamento ? `<span class="badge">${esc(d.departamento)}</span>` : ""}
+    ${d.seccion ? `<span class="badge">${esc(d.seccion)}</span>` : ""}
+  `;
+
+  detailInfo.innerHTML =
+    infoRow("Municipio",d.municipio) +
+    infoRow("Dirección",d.direccion) +
+    infoRow("Teléfono",d.telefono) +
+    infoRow("Correo",d.email,"email") +
+    infoRow("Web",d.web,"url") +
+    infoRow("Coordenadas",hasCoords(d) ? `${d.lat.toFixed(6)}, ${d.lng.toFixed(6)}` : "");
+
+
+  const actions = [];
+  if (hasCoords(d)) actions.push(`<a class="main-action" href="${mapsUrl(d)}" target="_blank" rel="noopener">Abrir en Google Maps ↗</a>`);
+  if (safeHttp(d.web)) actions.push(`<a href="${esc(d.web)}" target="_blank" rel="noopener">Sitio web ↗</a>`);
+  if (safeHttp(d.instagram)) actions.push(`<a href="${esc(d.instagram)}" target="_blank" rel="noopener">Instagram ↗</a>`);
+  if (safeHttp(d.facebook)) actions.push(`<a href="${esc(d.facebook)}" target="_blank" rel="noopener">Facebook ↗</a>`);
+  actions.push(`<button type="button" id="downloadCardBtn">Descargar ficha</button>`);
+  detailActions.innerHTML = actions.join("");
+  detailEl.classList.add("show");
+
+  const dl = $("downloadCardBtn");
+  if (dl) dl.addEventListener("click", () => downloadCard(d));
+}
+
+function selectInstitution(id, zoom=true) {
+  const d = data.find(x => x.id === id);
+  if (!d) return;
+  activeId = id;
+  showDetail(d);
+  resetMarkerIcons();
+  renderList();
+
+  if (hasCoords(d)) {
+    const marker = markers.get(id);
+    const openMarker = () => {
+      if (zoom) map.setView([d.lat,d.lng],Math.max(map.getZoom(),15),{animate:true});
+      if (marker) marker.openPopup();
     };
-
-    function populateSelect(select, values, placeholder) {
-      const current = select.value;
-      select.innerHTML = `<option value="">${placeholder}</option>`;
-      [...new Set(values.filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es')).forEach(v => {
-        const o = document.createElement('option');
-        o.value = v; o.textContent = v; select.appendChild(o);
-      });
-      if([...select.options].some(o=>o.value===current)) select.value=current;
+    if (clustering && clusterLayer && marker && clusterLayer.hasLayer(marker)) {
+      clusterLayer.zoomToShowLayer(marker, openMarker);
+    } else {
+      openMarker();
     }
+  }
 
-    populateSelect(depEl, mapped.map(x=>x.departamento), 'Todos los departamentos');
-    populateSelect(munEl, mapped.map(x=>x.municipio), 'Todos los municipios');
+}
 
-    function popupHtml(x) {
-      const loc = [x.municipio,x.departamento].filter(Boolean).join(' · ');
-      return `<div class="popup-title">${esc(x.institucion)}</div>
-              <div class="popup-meta">${loc ? esc(loc)+'<br>' : ''}${x.direccion ? esc(x.direccion) : 'Dirección no informada'}</div>
-              <div class="popup-more">Ver ficha en el panel ←</div>`;
-    }
+function closeDetail() {
+  activeId = null;
+  detailEl.classList.remove("show");
+  map.closePopup();
+  resetMarkerIcons();
+  renderList();
+}
 
-    function showDetail(x) {
-      const links = [];
-      const web = safeUrl(x.web), ig = safeUrl(x.instagram), fb = safeUrl(x.facebook);
-      if(web) links.push(`<a class="chip" href="${esc(web)}" target="_blank" rel="noopener">Sitio web ↗</a>`);
-      if(ig) links.push(`<a class="chip" href="${esc(ig)}" target="_blank" rel="noopener">Instagram ↗</a>`);
-      if(fb) links.push(`<a class="chip" href="${esc(fb)}" target="_blank" rel="noopener">Facebook ↗</a>`);
+function baseForDepartmentOptions() {
+  const q = norm(searchEl.value);
+  return data.filter(d => {
+    const text = norm([d.institucion,d.municipio,d.departamento,d.direccion,d.seccion,d.email].filter(Boolean).join(" "));
+    if (q && !text.includes(q)) return false;
+    return true;
+  });
+}
 
-      const email = x.correo ? `<a href="mailto:${esc(x.correo)}">${esc(x.correo)}</a>` : '—';
-      detailEl.innerHTML = `
-        <div class="detail-card">
-          <h4>${esc(x.institucion)}</h4>
-          <div class="detail-row"><b>Departamento</b><span>${esc(x.departamento || '—')}</span></div>
-          <div class="detail-row"><b>Municipio</b><span>${esc(x.municipio || '—')}</span></div>
-          <div class="detail-row"><b>Dirección</b><span>${esc(x.direccion || '—')}</span></div>
-          <div class="detail-row"><b>Teléfono</b><span>${esc(x.telefono || '—')}</span></div>
-          <div class="detail-row"><b>Correo</b><span>${email}</span></div>
-          ${links.length ? `<div class="detail-links">${links.join('')}</div>` : ''}
-        </div>`;
-    }
+function baseForMunicipalityOptions() {
+  const dep = departmentEl.value;
+  return baseForDepartmentOptions().filter(d => !dep || d.departamento === dep);
+}
 
-    function addMarker(x) {
-      const marker = L.circleMarker([Number(x.lat),Number(x.lon)], {
-        radius:7, color:'#ffffff', weight:2, fillColor:'#26a269', fillOpacity:.95
-      });
-      marker.bindPopup(popupHtml(x));
-      marker.on('click', () => showDetail(x));
-      markerByName.set(x.institucion, marker);
-      if (clusteringEnabled) {
-        clusters.addLayer(marker);
-      } else {
-        plainLayer.addLayer(marker);
-      }
-    }
+function updateSelectOptions() {
+  const depCurrent = departmentEl.value;
+  const muniCurrent = municipalityEl.value;
 
-    function renderList(items) {
-      listEl.innerHTML = '';
-      const shown = items.slice(0,40);
-      shown.forEach(x => {
-        const btn = document.createElement('button');
-        btn.type='button';
-        btn.className='result-item';
-        btn.innerHTML=`<strong>${esc(x.institucion)}</strong><span>${esc([x.municipio,x.departamento].filter(Boolean).join(' · ') || 'Ubicación sin especificar')}</span>`;
-        btn.addEventListener('click',()=>{
-          const m=markerByName.get(x.institucion);
-          if(m){
-            if (clusteringEnabled) {
-              clusters.zoomToShowLayer(m,()=>{
-                map.setView(m.getLatLng(), Math.max(map.getZoom(),14));
-                m.openPopup();
-                showDetail(x);
-              });
-            } else {
-              map.setView(m.getLatLng(), Math.max(map.getZoom(),14));
-              m.openPopup();
-              showDetail(x);
-            }
-          }
-        });
-        listEl.appendChild(btn);
-      });
-      if(items.length > 40){
-        const d=document.createElement('div');
-        d.className='visible-note';
-        d.textContent=`Se muestran los primeros 40 de ${items.length} resultados. Afiná la búsqueda para ver menos.`;
-        listEl.appendChild(d);
-      }
-    }
+  const depBase = baseForDepartmentOptions();
+  const depCounts = new Map();
+  depBase.forEach(d => {
+    if (d.departamento) depCounts.set(d.departamento,(depCounts.get(d.departamento)||0)+1);
+  });
+  const deps = [...depCounts.keys()].sort((a,b)=>a.localeCompare(b,"es"));
+  departmentEl.innerHTML = `<option value="">Todos los departamentos (${depBase.length})</option>` +
+    deps.map(d => `<option value="${esc(d)}">${esc(d)} (${depCounts.get(d)})</option>`).join("");
+  if (deps.includes(depCurrent)) departmentEl.value = depCurrent;
 
-    function fitTo(items) {
-      if(!items.length) return;
-      const bounds=L.latLngBounds(items.map(x=>[Number(x.lat),Number(x.lon)]));
-      map.fitBounds(bounds.pad(.12), {maxZoom:15});
-    }
+  const muniBase = baseForMunicipalityOptions();
+  const muniCounts = new Map();
+  muniBase.forEach(d => {
+    if (d.municipio) muniCounts.set(d.municipio,(muniCounts.get(d.municipio)||0)+1);
+  });
+  const munis = [...muniCounts.keys()].sort((a,b)=>a.localeCompare(b,"es"));
+  municipalityEl.innerHTML = `<option value="">Todos los municipios (${muniBase.length})</option>` +
+    munis.map(m => `<option value="${esc(m)}">${esc(m)} (${muniCounts.get(m)})</option>`).join("");
+  if (munis.includes(muniCurrent)) municipalityEl.value = muniCurrent;
+  else municipalityEl.value = "";
+}
 
-    function applyFilters(doFit=false) {
-      const q=norm(searchEl.value.trim());
-      const dep=depEl.value;
-      const mun=munEl.value;
-      filtered=mapped.filter(x=>{
-        const hay=norm([x.institucion,x.municipio,x.departamento,x.direccion].join(' '));
-        return (!q || hay.includes(q)) && (!dep || x.departamento===dep) && (!mun || x.municipio===mun);
-      });
+function filterData() {
+  const q = norm(searchEl.value);
+  const dep = departmentEl.value;
+  const muni = municipalityEl.value;
 
-      clusters.clearLayers();
-      plainLayer.clearLayers();
-      markerByName.clear();
-      filtered.forEach(addMarker);
+  currentFiltered = data.filter(d => {
+    const text = norm([d.institucion,d.municipio,d.departamento,d.direccion,d.seccion,d.email,d.telefono].filter(Boolean).join(" "));
+    if (q && !text.includes(q)) return false;
+    if (dep && d.departamento !== dep) return false;
+    if (muni && d.municipio !== muni) return false;
+    return true;
+  });
 
-      if (clusteringEnabled) {
-        if (!map.hasLayer(clusters)) map.addLayer(clusters);
-        if (map.hasLayer(plainLayer)) map.removeLayer(plainLayer);
-      } else {
-        if (!map.hasLayer(plainLayer)) map.addLayer(plainLayer);
-        if (map.hasLayer(clusters)) map.removeLayer(clusters);
-      }
-      renderList(filtered);
-      statVisible.textContent=filtered.length;
-      visibleNote.textContent=`Mostrando ${filtered.length} centro${filtered.length===1?'':'s'} georreferenciado${filtered.length===1?'':'s'}.`;
-      if(doFit) fitTo(filtered);
-    }
+  renderKPIs();
+  renderList();
+  rebuildMapLayer();
+}
 
-    searchEl.addEventListener('input',()=>applyFilters(false));
-    depEl.addEventListener('change',()=>{
-      const depset=depEl.value;
-      populateSelect(munEl, mapped.filter(x=>!depset || x.departamento===depset).map(x=>x.municipio), 'Todos los municipios');
-      applyFilters(true);
-    });
-    munEl.addEventListener('change',()=>applyFilters(true));
+function renderKPIs() {
+  $("kpiInstitutions").textContent = currentFiltered.length;
+  $("kpiMunicipalities").textContent = new Set(currentFiltered.map(d=>d.municipio).filter(Boolean)).size;
+  $("kpiDepartments").textContent = new Set(currentFiltered.map(d=>d.departamento).filter(Boolean)).size;
+  resultText.textContent = `${currentFiltered.length} instituci${currentFiltered.length===1 ? "ón" : "ones"}`;
+}
 
-    document.getElementById('fitBtn').addEventListener('click',()=>fitTo(filtered));
-    document.getElementById('clearBtn').addEventListener('click',()=>{
-      searchEl.value=''; depEl.value=''; munEl.value='';
-      populateSelect(munEl, mapped.map(x=>x.municipio), 'Todos los municipios');
-      applyFilters(true);
-      detailEl.innerHTML='<div class="detail-empty">Tocá un punto del mapa o un resultado para ver dirección, teléfono, correo y enlaces disponibles.</div>';
-    });
+function renderList() {
+  if (!currentFiltered.length) {
+    listEl.innerHTML = '<div class="empty">No hay instituciones que coincidan con los filtros seleccionados.</div>';
+    return;
+  }
 
-    mapped.forEach(addMarker);
-    renderList(mapped);
+  listEl.innerHTML = currentFiltered.map(d => `
+    <article class="item${d.id===activeId ? " active" : ""}" data-record-id="${d.id}">
+      <div class="item-top">
+        <div class="item-name">${esc(d.institucion)}</div>
+        <span class="item-status" title="Institución"></span>
+      </div>
+      <div class="item-meta">
+        ${d.municipio ? `<span>📍 ${esc(d.municipio)}</span>` : ""}
+        ${d.departamento ? `<span>· ${esc(d.departamento)}</span>` : ""}
+        ${d.revision ? `<span>· ✓ Revisado</span>` : ""}
+      </div>
+      <div class="item-bottom">
+        <button class="small-btn open-card" type="button" data-id="${d.id}">Ver ficha</button>
+        <button class="small-btn go-map" type="button" data-id="${d.id}">Ver en mapa →</button>
+      </div>
+    </article>
+  `).join("");
+}
 
-    // Vista inicial centrada en la Provincia de Córdoba.
-    map.setView([-31.42,-64.19], 7);
-    setTimeout(() => map.invalidateSize(), 80);
+function fitVisible() {
+  const visible = currentFiltered.filter(hasCoords);
+  if (!visible.length) return;
+  map.fitBounds(L.latLngBounds(visible.map(d=>[d.lat,d.lng])).pad(.12),{maxZoom:14});
+}
 
-    if(unmapped.length){
-      const warning=document.createElement('div');
-      warning.className='missing';
-      warning.textContent=`${unmapped.length} institución quedó sin georreferenciar por domicilio inconsistente: ${unmapped.map(x=>x.institucion).join(', ')}.`;
-      document.querySelector('.sidebar .section').appendChild(warning);
-    }
+function cordobaView() {
+  const all = data.filter(hasCoords);
+  map.fitBounds(L.latLngBounds(all.map(d=>[d.lat,d.lng])).pad(.11),{maxZoom:9});
+}
 
 
-    const clusterBtn = document.getElementById('clusterBtn');
-    clusterBtn.addEventListener('click', () => {
-      clusteringEnabled = !clusteringEnabled;
+function resetAll() {
+  searchEl.value="";
+  departmentEl.value="";
+  municipalityEl.value="";
+  activeId=null;
+  detailEl.classList.remove("show");
+  updateSelectOptions();
+  filterData();
+  cordobaView();
+  map.closePopup();
+}
 
-      clusters.clearLayers();
-      plainLayer.clearLayers();
-      markerByName.clear();
-      filtered.forEach(addMarker);
+function downloadText(filename,text,mime="text/plain;charset=utf-8") {
+  const blob = new Blob([text],{type:mime});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),500);
+}
 
-      if (clusteringEnabled) {
-        if (map.hasLayer(plainLayer)) map.removeLayer(plainLayer);
-        if (!map.hasLayer(clusters)) map.addLayer(clusters);
-        clusterBtn.textContent = 'Desagrupar puntos';
-      } else {
-        if (map.hasLayer(clusters)) map.removeLayer(clusters);
-        if (!map.hasLayer(plainLayer)) map.addLayer(plainLayer);
-        clusterBtn.textContent = 'Agrupar puntos';
-      }
-    });
+function downloadCard(d) {
+  const lines = [
+    "INSTITUCIÓN HABILITADA",
+    "",
+    `Institución: ${d.institucion || ""}`,
+    `Sección: ${d.seccion || ""}`,
+    `Departamento: ${d.departamento || ""}`,
+    `Municipio: ${d.municipio || ""}`,
+    `Dirección: ${d.direccion || ""}`,
+    `Teléfono: ${d.telefono || ""}`,
+    `Correo: ${d.email || ""}`,
+    `Web: ${d.web || ""}`,
+    `Instagram: ${d.instagram || ""}`,
+    `Facebook: ${d.facebook || ""}`,
+    `Coordenadas: ${hasCoords(d) ? d.lat + ", " + d.lng : ""}`,
+    "",
+    "Fuente: Instituciones_habilitadas_completado_final.xlsx · agosto 2026"
+  ];
+  const safeName = norm(d.institucion).replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,60) || "institucion";
+  downloadText(`ficha-${safeName}.txt`,lines.join("\n"));
+}
 
-    window.addEventListener('resize',()=>map.invalidateSize());
-  </script>
+function exportCSV() {
+  const cols = ["Institución","Sección","Departamento","Municipio","Email","Dirección","Teléfono","Web","Instagram","Facebook","Latitud","Longitud"];
+  const q = v => '"' + String(v ?? "").replaceAll('"','""') + '"';
+  const rows = currentFiltered.map(d => [
+    d.institucion,d.seccion,d.departamento,d.municipio,d.email,d.direccion,d.telefono,
+    d.web,d.instagram,d.facebook,d.lat,d.lng
+  ].map(q).join(","));
+  downloadText("instituciones_filtradas.csv","\ufeff"+cols.map(q).join(",")+"\n"+rows.join("\n"),"text/csv;charset=utf-8");
+}
+
+listEl.addEventListener("click", e => {
+  const cardBtn = e.target.closest(".open-card");
+  const mapBtn = e.target.closest(".go-map");
+  const article = e.target.closest(".item");
+
+  if (cardBtn) {
+    selectInstitution(Number(cardBtn.dataset.id),false);
+    return;
+  }
+  if (mapBtn) {
+    selectInstitution(Number(mapBtn.dataset.id),true);
+    return;
+  }
+  if (article) selectInstitution(Number(article.dataset.recordId),false);
+});
+
+searchEl.addEventListener("input",() => {
+  updateSelectOptions();
+  filterData();
+});
+departmentEl.addEventListener("change",() => {
+  updateSelectOptions();
+  filterData();
+});
+municipalityEl.addEventListener("change",filterData);
+
+clusterBtn.addEventListener("click",() => {
+  clustering = !clustering;
+  clusterBtn.textContent = clustering ? "Desagrupar puntos" : "Agrupar puntos";
+  clusterBtn.classList.toggle("active",clustering);
+  rebuildMapLayer();
+  if (activeId) {
+    const d = data.find(x=>x.id===activeId);
+    if (d) selectInstitution(activeId,false);
+  }
+});
+
+
+$("resetBtn").addEventListener("click",resetAll);
+$("exportBtn").addEventListener("click",exportCSV);
+$("fitVisibleBtn").addEventListener("click",fitVisible);
+$("cordobaBtn").addEventListener("click",cordobaView);
+$("closeDetailTop").addEventListener("click",closeDetail);
+
+updateSelectOptions();
+filterData();
+rebuildMapLayer();
+setTimeout(()=>{ map.invalidateSize(); cordobaView(); },180);
+
+})();
+</script>
 </body>
 </html>
-
