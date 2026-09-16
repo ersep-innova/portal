@@ -299,15 +299,23 @@ table.reg tbody tr:hover{background:var(--bg-subtle);}
       cargarFiltroAnios();
       render();
 
-      var faltan = window.ERSePNube.pendientes();
-      if (r.nube) {
-        estadoNube('ok', 'Base compartida <b>al día</b> · ' + r.pedidos.length + ' pedidos · ' +
-          new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) +
-          (faltan ? ' · ' + faltan + ' cambio(s) esperando conexión' : ''));
-      } else {
-        estadoNube('error', 'No se pudo contactar la base compartida: se muestran los datos de esta computadora.' +
-          (faltan ? ' Hay ' + faltan + ' cambio(s) en espera.' : ''));
-      }
+     if (r.nube) {
+  estadoNube(
+    'ok',
+    'Base compartida <b>al día</b> · ' +
+    r.pedidos.length +
+    ' pedidos · ' +
+    new Date().toLocaleTimeString('es-AR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  );
+} else {
+  estadoNube(
+    'error',
+    'No se pudo contactar la base compartida de Compras: se muestran los datos guardados en esta computadora.'
+  );
+}
     });
   }
 
