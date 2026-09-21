@@ -461,6 +461,7 @@ function setupSeriesPicker(){
 }
 
 async function init() {
+  if (window.ERSEP_API_READY) { try { await window.ERSEP_API_READY; } catch (e) { const st = document.getElementById('status'); if (st) st.textContent = '⚠ ' + e.message; return; } }
   const meta = await api("/api/meta");
   _ALL_SERIES = meta.value_columns;
   _ALL_DATES  = meta.index_values;

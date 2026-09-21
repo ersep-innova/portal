@@ -542,8 +542,29 @@ function renderMonthPicker() {
 // INICIALIZACIÓN
 // ════════════════════════════════
 
+/* Explica en pantalla por qué no hay datos, en vez de un "Failed to fetch" mudo */
+function mostrarDiagnostico(e) {
+  const msg = e && e.diagnostico ? e.message
+    : "No se pudo conectar con el servicio de datos (" + (e && e.message ? e.message : "error de red") + ").";
+  let caja = document.getElementById("diagnostico_conexion");
+  if (!caja) {
+    caja = document.createElement("div");
+    caja.id = "diagnostico_conexion";
+    caja.style.cssText = "margin:0 0 16px;padding:14px 16px;border-radius:12px;border:1px solid #e8b4bf;" +
+      "background:#fff1f4;color:#5c1424;font-size:13px;line-height:1.55";
+    const destino = document.querySelector(".stats-dashboard-intro") || document.querySelector("main") || document.body;
+    destino.parentNode.insertBefore(caja, destino.nextSibling);
+  }
+  caja.innerHTML = "<b>No se pudieron cargar los datos.</b><br>" + msg +
+    "<br><br>Si el servicio estaba inactivo, puede tardar hasta un minuto en despertar. " +
+    "<button type='button' id='btn_reintentar_conexion' style='margin-top:8px;border:1px solid #b51234;" +
+    "background:#b51234;color:#fff;border-radius:8px;padding:6px 12px;font-weight:700;cursor:pointer'>Reintentar</button>";
+  document.getElementById("btn_reintentar_conexion").onclick = () => location.reload();
+}
+
 async function init() {
   try {
+    if (window.ERSEP_API_READY) await window.ERSEP_API_READY;
     const meta = await api("/api/meta");
     _ALL_SERIES = meta.value_columns;
     _ALL_DATES = Array.from(
@@ -586,7 +607,8 @@ async function init() {
     }
 
   } catch (e) {
-    document.getElementById("status").textContent = "⚠ Error: " + e.message;
+    document.getElementById("status").textContent = "⚠ Sin conexión con los datos";
+    mostrarDiagnostico(e);
   }
 
   actualizarPanelIndicesElegidos();
