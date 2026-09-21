@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Consulta pública de índices económicos y regulatorios: series, variaciones punta a punta, gráficos y asistente estadístico.">
+  <title>Estadísticas · Portal de Innovación y Análisis de Datos</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="../../assets/css/standalone.css">
+  <link rel="stylesheet" href="css/institutional-theme.css">
+  <link rel="icon" href="../../assets/img/favicon.ico">
+  <style>
+    /* Aviso de la versión pública */
+    .aviso-publico{margin:0 0 14px;padding:10px 14px;border-radius:12px;border:1px dashed var(--border);
+      font-size:12px;color:var(--text-muted);line-height:1.55}
+    .aviso-publico b{color:var(--text)}
+  </style>
+</head>
+<body>
+
+<section id="app-screen" class="tool-page area-institutional stats-screen">
+  <div class="wrap">
+    <header class="header">
+        <a class="page-brand" href="../../" aria-label="Volver al portal">
+          <img src="../../assets/img/institucional/logo-ersep.png" alt="ERSeP">
+        </a>
+        <div class="header-left">
+          <h1>Estadísticas</h1>
+          <span class="header-badge">Portal de Innovación y Análisis de Datos · Índices económicos y regulatorios</span>
+        </div>
+        <div class="header-right">
+          <span id="status">Cargando datos...</span>
+          <a class="nav-chip" href="evolucion.html" title="Gráficos de evolución"><span>◔</span> Evolución</a>
+          <a class="nav-chip" href="../../" title="Volver al portal"><span>⌂</span> Portal</a>
+          <button class="theme-toggle" id="btn_theme" title="Cambiar modo claro/oscuro">🌙</button>
+        </div>
+      </header>
+
+    <section class="stats-dashboard-intro" aria-labelledby="stats-dashboard-title">
+      <div class="stats-dashboard-copy">
+        <span class="stats-dashboard-eyebrow">Base económica y regulatoria</span>
+        <h2 id="stats-dashboard-title">Una vista ordenada para consultar y comparar los índices</h2>
+        <p>Seleccioná las series, definí el período y consultá datos o variaciones punta a punta desde el mismo panel.</p>
+      </div>
+      <div class="stats-dashboard-pills" aria-label="Funciones disponibles">
+        <span>Datos históricos</span>
+        <span>Variaciones</span>
+        <span>Asistente por reglas</span>
+      </div>
+    </section>
+
+    <div class="card stats-control-card">
+      <div class="card-body">
+        <div class="section-heading-row">
+          <div>
+            <span class="section-kicker">Área de consulta</span>
+            <h2>Preparar análisis</h2>
+            <p>Elegí las series y el período. Los resultados aparecen inmediatamente debajo del área de consulta.</p>
+          </div>
+          <div class="selection-counter" aria-live="polite">
+            <strong id="selected_series_count">0</strong>
+            <span>series elegidas</span>
+          </div>
+        </div>
+
+        <div class="main-grid">
+          <div class="series-container">
+            <label class="field-label">1. Buscar y seleccionar índices (Ctrl+Click)</label>
+            <input type="text" id="search_series" class="search-box"
+                   placeholder="Escribe para buscar (ej: 'IPC Córdoba' o 'Alquileres')...">
+            <select id="sel_col" multiple></select>
+            <div class="sel-actions">
+              <button class="btn-sm" id="btn_sel_all" type="button">Seleccionar visibles</button>
+              <button class="btn-sm" id="btn_desel" type="button">Limpiar selección</button>
+            </div>
+          </div>
+
+          <aside class="side-panel">
+            <div class="date-control">
+              <label class="field-label">2. Desde</label>
+              <button class="date-btn" id="btn_pick_desde" type="button">
+                <span class="date-btn-label">Seleccionar mes</span>
+                <span class="date-btn-value" id="txt_desde">-</span>
+              </button>
+              <select id="sel_desde" class="date-select" style="display:none;"></select>
+              <div class="date-step-row" aria-label="Mover fecha desde">
+                <button class="date-step" data-target="desde" data-step="-5" type="button">−5</button>
+                <button class="date-step" data-target="desde" data-step="-1" type="button">−1</button>
+                <span>meses</span>
+                <button class="date-step" data-target="desde" data-step="1" type="button">+1</button>
+                <button class="date-step" data-target="desde" data-step="5" type="button">+5</button>
+              </div>
+            </div>
+
+            <div class="date-control">
+              <label class="field-label">3. Hasta</label>
+              <button class="date-btn" id="btn_pick_hasta" type="button">
+                <span class="date-btn-label">Seleccionar mes</span>
+                <span class="date-btn-value" id="txt_hasta">-</span>
+              </button>
+              <select id="sel_hasta" class="date-select" style="display:none;"></select>
+              <div class="date-step-row" aria-label="Mover fecha hasta">
+                <button class="date-step" data-target="hasta" data-step="-5" type="button">−5</button>
+                <button class="date-step" data-target="hasta" data-step="-1" type="button">−1</button>
+                <span>meses</span>
+                <button class="date-step" data-target="hasta" data-step="1" type="button">+1</button>
+                <button class="date-step" data-target="hasta" data-step="5" type="button">+5</button>
+              </div>
+            </div>
+
+            <div class="btns-group">
+              <button class="action primary" id="btn_filtrar" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+                Ver tabla de datos filtrados
+              </button>
+              <button class="action success" id="btn_analizar" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                Calcular variaciones
+              </button>
+              <button class="action" id="btn_copiar" type="button">Copiar tabla</button>
+            </div>
+
+            
+          </aside>
+        </div>
+
+
+        
+
+        <p class="aviso-publico"><b>Consulta pública de solo lectura.</b> Podés elegir series, períodos, ver tablas, variaciones y gráficos y copiar los resultados a Excel. La base de datos de origen, su actualización y su configuración no están disponibles desde esta página.</p>
+        <section class="results-zone" aria-labelledby="results-zone-title">
+          <div class="results-zone-head">
+            <div>
+              <span class="section-kicker">Salida del análisis</span>
+              <h2 id="results-zone-title">Resultados</h2>
+            </div>
+            <p>Las vistas se actualizan sin alterar la base original.</p>
+          </div>
+
+        <div id="hint" class="hint-toast">✓ ¡Datos copiados al portapapeles!</div>
+
+        <div id="variation_notice" class="variation-notice" style="display:none;" aria-live="polite"></div>
+
+        <div id="view_tabla" class="table-wrap">
+          <table id="tbl"><thead><tr></tr></thead><tbody></tbody></table>
+        </div>
+
+        <div id="view_analisis" class="table-wrap" style="display:none;">
+          <table id="tbl_vars">
+            <thead><tr><th>Índice</th><th style="text-align:right;">Valor inicial</th><th style="text-align:right;">Valor final</th><th style="text-align:right;">Variación % (punta a punta)</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div id="view_grafico" class="table-wrap" style="display:none;">
+          <div class="chart-header">
+            <div id="chart_title"></div>
+            <div class="chart-subtitle">Variación porcentual punta a punta por índice seleccionado</div>
+          </div>
+          <div id="chart_body"></div>
+        </div>
+        </section>
+
+<section class="stats-chat-card" id="stats_chat" aria-labelledby="stats-chat-title">
+          <div class="stats-chat-head">
+            <div>
+              <span class="section-kicker">Consulta en lenguaje natural · sin IA</span>
+              <h2 id="stats-chat-title">Asistente Estadístico</h2>
+              <p>Interpreta reglas, sinónimos, índices y fechas; los datos siempre se consultan desde la API.</p>
+            </div>
+            <span class="chat-free-badge">100% local en el navegador</span>
+          </div>
+          <div class="chat-suggestions" id="chat_suggestions" aria-label="Consultas de ejemplo">
+            <button type="button" data-chat-example="inflación de Córdoba de diciembre 2025 a julio 2026">IPC Córdoba</button>
+            <button type="button" data-chat-example="dame datos del dólar mayorista de enero a agosto de 2026">Dólar A3500</button>
+            <button type="button" data-chat-example="variación del IPIM de productos químicos de diciembre 2025 a julio 2026">IPIM químicos</button>
+            <button type="button" data-chat-example="valor del RIPTE en julio de 2026">RIPTE</button>
+          </div>
+          <div class="chat-thread" id="chat_thread" aria-live="polite">
+            <div class="chat-message bot">
+              <div class="chat-avatar" aria-hidden="true">CyT</div>
+              <div class="chat-bubble">
+                Podés preguntarme por IPC nacional, Córdoba, San Luis o EE.UU.; ICC, IPIM, salarios, RIPTE, dólares, BADLAR, CER, UVA, IOP Córdoba, RAC, VGA, agua en bloque, FAM y el resto de las series disponibles.
+              </div>
+            </div>
+          </div>
+          <form class="chat-composer" id="chat_form">
+            <input id="chat_input" type="text" autocomplete="off"
+                   placeholder="Ej.: ¿cuánto varió el IPC Córdoba entre dic-2025 y jul-2026?">
+            <button id="chat_send" type="submit">Consultar</button>
+          </form>
+          <div class="chat-help">Si una consulta es ambigua —por ejemplo, “inflación” o “dólar”— el asistente te pedirá que elijas la serie correcta en vez de adivinar.</div>
+        </section>
+
+        
+
+      </div>
+    </div>
+
+    
+
+    <div id="panel_indices_elegidos" class="panel-indices" style="display:none;">
+      <div class="panel-head">
+        <div class="panel-title">Índices elegidos</div>
+        <button id="btn_toggle_panel" class="panel-toggle" type="button" title="Ocultar/Mostrar">▾</button>
+      </div>
+      <div id="lista_indices_elegidos"></div>
+    </div>
+  </div>
+</section>
+
+<!-- SELECTOR DE MESES -->
+<div id="monthModal" class="month-modal" style="display:none;">
+  <div class="month-modal-backdrop" id="monthBackdrop"></div>
+  <div class="month-modal-card" role="dialog" aria-modal="true" aria-labelledby="monthTitle">
+    <div class="month-modal-head">
+      <div class="month-modal-title" id="monthTitle">Seleccionar mes</div>
+      <button class="month-close" id="monthClose" type="button" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="month-nav">
+      <button class="month-nav-btn jump" id="yearPrev5" type="button" title="Retroceder cinco años">−5</button>
+      <button class="month-nav-btn" id="yearPrev" type="button" title="Año anterior">◀</button>
+      <div class="month-year" id="yearLabel">2026</div>
+      <button class="month-nav-btn" id="yearNext" type="button" title="Año siguiente">▶</button>
+      <button class="month-nav-btn jump" id="yearNext5" type="button" title="Avanzar cinco años">+5</button>
+    </div>
+    <div class="month-grid" id="monthGrid"></div>
+    <div class="month-footer">
+      <div class="month-help" id="monthHelp">Elegí un mes</div>
+      <button class="month-ok" id="monthOk" type="button">Aceptar</button>
+    </div>
+  </div>
+</div>
+
+
+<script src="config.js"></script>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="estadisticas.js?v=20260916-publico" defer></script>
+<script src="chatbot.js?v=20260916-publico" defer></script>
+</body>
+</html>
