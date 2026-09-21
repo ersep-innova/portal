@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Generador de accesos · Actas por empresa</title>
+  <link rel="stylesheet" href="../../assets/css/style.css">
+  <link rel="stylesheet" href="../../assets/css/portal-pages.css">
+  <link rel="stylesheet" href="../../assets/css/standalone.css">
+  <link rel="stylesheet" href="../../assets/css/institutional-theme.css">
+  <link rel="icon" href="../../assets/img/favicon.ico">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+.paso{border:1px solid var(--border);border-radius:14px;background:var(--card);padding:16px 18px;margin-bottom:14px}
+.paso h3{margin:0 0 4px;font:800 15px var(--font-main);color:var(--text)}
+.paso p{margin:0 0 10px;font:400 12.5px var(--font-main);color:var(--text-muted);line-height:1.55}
+.fila{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.fila label{display:flex;flex-direction:column;gap:4px;font:700 11px var(--font-main);color:var(--text-muted);
+  text-transform:uppercase;letter-spacing:.5px}
+.fila select,.fila input[type=text]{padding:9px 11px;border:1px solid var(--border);border-radius:9px;
+  background:var(--card);color:var(--text);font:600 13px var(--font-main);min-width:200px}
+.btn2{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:10px 15px;
+  font:800 13px var(--font-main);cursor:pointer}
+.btn2.prim{background:#b51234;border-color:#b51234;color:#fff}
+.btn2:disabled{opacity:.5;cursor:default}
+.alerta{padding:12px 14px;border-radius:12px;border:1px solid #e8b4bf;background:#fff1f4;color:#5c1424;
+  font:600 12.5px var(--font-main);line-height:1.6;margin-bottom:14px}
+.ok{border-color:#9fd4bf;background:#eaf7f1;color:#0c4a37}
+.tabla{max-height:340px;overflow:auto;border:1px solid var(--border);border-radius:10px}
+.tabla table{width:100%;border-collapse:collapse;font:400 12.5px var(--font-main)}
+.tabla th{position:sticky;top:0;background:var(--bg-subtle);text-align:left;padding:7px 10px;font-size:10.5px;
+  text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted)}
+.tabla td{padding:7px 10px;border-top:1px solid var(--border);color:var(--text)}
+.tabla code{font:700 12.5px ui-monospace,Consolas,monospace}
+#estado{font:600 12.5px var(--font-main);color:var(--text-muted);margin-top:8px}
+</style>
+</head>
+<body class="tool-page area-transport">
+<div class="wrap">
+
+  <header class="header">
+    <a class="page-brand" href="../../" aria-label="Volver al portal"><img src="../../assets/img/institucional/logo-ersep.png" alt="ERSeP"></a>
+    <div class="header-left">
+      <h1>Generador de accesos · Actas</h1>
+      <span class="header-badge">Uso interno · Gerencia de Transporte</span>
+    </div>
+  </header>
+
+  <div class="alerta">
+    <b>Esta herramienta no guarda ni envía nada.</b> Todo se procesa en este navegador. Genera dos archivos:
+    <b>datos-actas.js</b>, que se sube al portal (va cifrado, es seguro publicarlo), y
+    <b>credenciales-actas.csv</b>, con los usuarios y contraseñas, que <u>NO</u> se sube a ningún lado:
+    se guarda en una carpeta restringida del Área y se usa para mandar los mails.
+  </div>
+
+  <div class="paso">
+    <h3>1. Listado de actas</h3>
+    <p>Abrí la lista de actas de SharePoint en Excel (Exportar a Excel), guardala como <b>.xlsx</b> o <b>.csv</b> y cargala acá.
+      Tiene que tener al menos una columna con el nombre de la empresa y, idealmente, otra con el enlace a cada acta.</p>
+    <input type="file" id="archivo" accept=".xlsx,.xls,.csv">
+    <div id="estado"></div>
+  </div>
+
+  <div class="paso" id="paso2" hidden>
+    <h3>2. Columnas</h3>
+    <p>Elegí qué columna identifica a la empresa y cuál tiene el enlace. Todas las demás columnas se muestran y se pueden buscar.</p>
+    <div class="fila">
+      <label>Empresa <select id="col_empresa"></select></label>
+      <label>Enlace al acta <select id="col_enlace"></select></label>
+      <label>Carpeta de la empresa (opcional) <select id="col_carpeta"></select></label>
+    </div>
+  </div>
+
+  <div class="paso" id="paso3" hidden>
+    <h3>3. Contraseñas</h3>
+    <p>Si ya se enviaron contraseñas antes, cargá el <b>credenciales-actas.csv</b> anterior: se mantienen las mismas y sólo
+      se generan para empresas nuevas. Así una actualización del listado no obliga a reenviar los accesos.</p>
+    <div class="fila">
+      <input type="file" id="credenciales_previas" accept=".csv">
+      <span id="estado_previas" style="font:600 12.5px var(--font-main);color:var(--text-muted)"></span>
+    </div>
+  </div>
+
+  <div class="paso" id="paso4" hidden>
+    <h3>4. Revisión</h3>
+    <div class="tabla"><table><thead><tr><th>Empresa</th><th>Usuario</th><th>Contraseña</th><th>Actas</th></tr></thead>
+      <tbody id="vista"></tbody></table></div>
+    <div class="fila" style="margin-top:12px">
+      <button class="btn2 prim" id="btn_generar" type="button">🔒 Generar archivos</button>
+      <span id="estado_gen" style="font:600 12.5px var(--font-main);color:var(--text-muted)"></span>
+    </div>
+  </div>
+
+</div>
+
+<script src="actas-cripto.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var FILAS = [], COLS = [], PREVIAS = {}, CLAVES = {};
+
+  function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  function norm(t) { return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+
+  function descargar(nombre, texto, tipo) {
+    var url = URL.createObjectURL(new Blob([texto], { type: tipo }));
+    var a = document.createElement('a'); a.href = url; a.download = nombre;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+  }
+
+  /* ── 1. Lectura del listado ── */
+  $('archivo').addEventListener('change', function () {
+    var f = this.files[0]; if (!f) return;
+    var r = new FileReader();
+    r.onload = function () {
+      try {
+        var bytes = new Uint8Array(r.result), libro;
+        if (/\.csv$/i.test(f.name)) {
+          /* Los CSV pueden venir en UTF-8 o en la codificación de Excel para Windows:
+             si al leer como UTF-8 aparecen caracteres inválidos, se reintenta como Windows-1252 */
+          var texto = new TextDecoder('utf-8').decode(bytes);
+          if (texto.indexOf('\uFFFD') !== -1) texto = new TextDecoder('windows-1252').decode(bytes);
+          libro = XLSX.read(texto.replace(/^\uFEFF/, ''), { type: 'string', raw: true });
+        } else {
+          libro = XLSX.read(bytes, { type: 'array', cellDates: true });
+        }
+        var hoja = libro.Sheets[libro.SheetNames[0]];
+        FILAS = XLSX.utils.sheet_to_json(hoja, { defval: '', raw: false, dateNF: 'dd/mm/yyyy' });
+        COLS = FILAS.length ? Object.keys(FILAS[0]) : [];
+        if (!FILAS.length) throw new Error('El archivo no tiene filas.');
+        $('estado').textContent = '✓ ' + FILAS.length + ' actas leídas · ' + COLS.length + ' columnas';
+        armarColumnas();
+      } catch (e) {
+        $('estado').textContent = '⚠ No se pudo leer: ' + e.message + '. Si es un .iqy, abrilo en Excel y guardalo como .xlsx.';
+      }
+    };
+    r.readAsArrayBuffer(f);
+  });
+
+  function adivinar(patron) {
+    return COLS.filter(function (c) { return patron.test(norm(c)); })[0] || '';
+  }
+
+  function armarColumnas() {
+    var opciones = function (vacio) {
+      return (vacio ? '<option value="">— ninguna —</option>' : '') +
+        COLS.map(function (c) { return '<option>' + esc(c) + '</option>'; }).join('');
+    };
+    $('col_empresa').innerHTML = opciones(false);
+    $('col_enlace').innerHTML = opciones(true);
+    $('col_carpeta').innerHTML = opciones(true);
+
+    $('col_empresa').value = adivinar(/empresa|razon social|prestador|operador|transport/) || COLS[0];
+    // El enlace: la primera columna cuyos valores parecen direcciones web
+    var conUrl = COLS.filter(function (c) {
+      return FILAS.slice(0, 20).some(function (f) { return /^https?:\/\//i.test(String(f[c]).trim()); });
+    });
+    $('col_enlace').value = adivinar(/enlace|link|url|vinculo|archivo/) || conUrl[0] || '';
+    $('col_carpeta').value = adivinar(/carpeta|folder/) || '';
+
+    $('paso2').hidden = $('paso3').hidden = $('paso4').hidden = false;
+    revisar();
+  }
+
+  ['col_empresa', 'col_enlace', 'col_carpeta'].forEach(function (id) { $(id).addEventListener('change', revisar); });
+
+  /* ── 3. Credenciales anteriores ── */
+  $('credenciales_previas').addEventListener('change', function () {
+    var f = this.files[0]; if (!f) return;
+    f.text().then(function (t) {
+      PREVIAS = {};
+      t.replace(/^\uFEFF/, '').split(/\r?\n/).slice(1).forEach(function (l) {
+        var p = l.split(';').map(function (x) { return x.replace(/^"|"$/g, '').replace(/""/g, '"'); });
+        if (p[1] && p[2]) PREVIAS[p[1]] = p[2];
+      });
+      $('estado_previas').textContent = '✓ ' + Object.keys(PREVIAS).length + ' contraseñas anteriores cargadas';
+      CLAVES = {};
+      revisar();
+    });
+  });
+
+  /* ── 4. Agrupar por empresa ── */
+  function grupos() {
+    var ce = $('col_empresa').value, g = {};
+    FILAS.forEach(function (f) {
+      var nombre = String(f[ce] || '').trim();
+      if (!nombre) return;
+      var u = ActasCripto.usuario(nombre);
+      (g[u] = g[u] || { nombre: nombre, filas: [] }).filas.push(f);
+    });
+    return g;
+  }
+
+  function revisar() {
+    var g = grupos();
+    Object.keys(g).forEach(function (u) {
+      if (!CLAVES[u]) CLAVES[u] = PREVIAS[u] || ActasCripto.contrasena();
+    });
+    $('vista').innerHTML = Object.keys(g).sort().map(function (u) {
+      return '<tr><td>' + esc(g[u].nombre) + '</td><td><code>' + esc(u) + '</code></td><td><code>' +
+        esc(CLAVES[u]) + '</code>' + (PREVIAS[u] ? ' <small>(se mantiene)</small>' : ' <small>(nueva)</small>') +
+        '</td><td>' + g[u].filas.length + '</td></tr>';
+    }).join('');
+  }
+
+  /* ── Generación ── */
+  $('btn_generar').addEventListener('click', function () {
+    var b = this; b.disabled = true;
+    var g = grupos(), ce = $('col_empresa').value, cl = $('col_enlace').value, cc = $('col_carpeta').value;
+    var usuarios = Object.keys(g).sort();
+    var columnas = COLS.filter(function (c) { return c !== ce && c !== cl && c !== cc; });
+    var salida = {}, hechos = 0;
+
+    $('estado_gen').textContent = 'Cifrando… (unos segundos por empresa)';
+
+    usuarios.reduce(function (p, u) {
+      return p.then(function () {
+        var e = g[u];
+        var carpeta = cc ? (e.filas.map(function (f) { return String(f[cc] || '').trim(); }).filter(Boolean)[0] || '') : '';
+        var datos = {
+          empresa: e.nombre, carpeta: carpeta, columnas: columnas, generado: new Date().toISOString(),
+          actas: e.filas.map(function (f) {
+            var fila = { enlace: cl ? String(f[cl] || '').trim() : '' };
+            columnas.forEach(function (c) { fila[c] = f[c]; });
+            return fila;
+          })
+        };
+        return ActasCripto.cifrar(datos, CLAVES[u]).then(function (paquete) {
+          paquete.nombre = e.nombre;   // el nombre de la empresa es público: se usa en el selector
+          salida[u] = paquete;
+          hechos++;
+          $('estado_gen').textContent = 'Cifrando… ' + hechos + ' de ' + usuarios.length;
+        });
+      });
+    }, Promise.resolve()).then(function () {
+      var js = '/* Actas por empresa · generado el ' + new Date().toLocaleString('es-AR') + '\n' +
+        '   Contenido CIFRADO: sin la contraseña de cada empresa no puede leerse.\n' +
+        '   No contiene contraseñas. Generado con modulos/actas/generador.html */\n' +
+        'window.ACTAS_CIFRADAS = ' + JSON.stringify(salida) + ';\n';
+      descargar('datos-actas.js', js, 'text/javascript');
+
+      var csv = '\uFEFF"Empresa";"Usuario";"Contraseña";"Actas"\r\n' + usuarios.map(function (u) {
+        return ['"' + g[u].nombre.replace(/"/g, '""') + '"', '"' + u + '"', '"' + CLAVES[u] + '"', g[u].filas.length].join(';');
+      }).join('\r\n');
+      setTimeout(function () { descargar('credenciales-actas.csv', csv, 'text/csv;charset=utf-8'); }, 700);
+
+      $('estado_gen').innerHTML = '✓ Listo: ' + usuarios.length + ' empresas. Subí <b>datos-actas.js</b> a modulos/actas/ ' +
+        'y guardá <b>credenciales-actas.csv</b> en un lugar restringido.';
+      b.disabled = false;
+    }).catch(function (e) {
+      $('estado_gen').textContent = '⚠ Error: ' + e.message; b.disabled = false;
+    });
+  });
+})();
+</script>
+</body>
+</html>
