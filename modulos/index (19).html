@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Consulta de actas del ERSeP para empresas prestadoras. Acceso con usuario y contraseña propios.">
+  <title>Actas · Portal de Innovación y Análisis de Datos</title>
+  <link rel="stylesheet" href="../../assets/css/style.css">
+  <link rel="stylesheet" href="../../assets/css/portal-pages.css">
+  <link rel="stylesheet" href="../../assets/css/standalone.css">
+  <link rel="stylesheet" href="../../assets/css/institutional-theme.css">
+  <link rel="icon" href="../../assets/img/favicon.ico">
+<style>
+.acceso{max-width:440px;margin:0 auto;display:flex;flex-direction:column;gap:12px;text-align:center;padding:6px 0}
+.acceso .ico{font-size:38px}
+.acceso h3{margin:0;font:800 19px var(--font-main);color:var(--text)}
+.acceso p{margin:0;font:400 13px var(--font-main);color:var(--text-muted);line-height:1.55}
+.campo{display:flex;flex-direction:column;gap:5px;text-align:left}
+.campo span{font:800 10.5px var(--font-main);letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted)}
+.campo input,.campo select{padding:11px 13px;border:1px solid var(--border);border-radius:10px;background:var(--card);
+  color:var(--text);font:600 14px var(--font-main)}
+.clave{position:relative;display:flex}
+.clave input{flex:1;padding-right:46px}
+.ojo{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:transparent;cursor:pointer;
+  font-size:16px;padding:6px;border-radius:8px;opacity:.6}
+.ojo:hover{opacity:1;background:var(--bg-subtle)}
+.btn-in{border:0;background:#b51234;color:#fff;border-radius:10px;padding:12px;font:800 14px var(--font-main);cursor:pointer}
+.btn-in:disabled{opacity:.6;cursor:default}
+.error{font:700 12.5px var(--font-main);color:#b51234;min-height:18px}
+
+.cab-empresa{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.cab-empresa h3{margin:0;font:800 19px var(--font-main);color:var(--text)}
+.cab-empresa small{color:var(--text-muted);font:500 12px var(--font-main)}
+.cab-empresa .der{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:9px 13px;
+  font:700 12.5px var(--font-main);cursor:pointer;text-decoration:none}
+.chip:hover{border-color:#b51234;color:#b51234}
+.filtros{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:12px}
+.filtros input,.filtros select{padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--card);
+  color:var(--text);font:600 13px var(--font-main)}
+.filtros input{flex:1 1 260px;min-width:0}
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;margin-bottom:12px}
+.kpis div{border:1px solid var(--border);border-radius:12px;padding:10px 13px;background:var(--card)}
+.kpis span{display:block;font:800 9.5px var(--font-main);letter-spacing:.8px;text-transform:uppercase;color:var(--text-muted)}
+.kpis b{font:900 20px var(--font-main);color:var(--text)}
+.tabla{border:1px solid var(--border);border-radius:14px;overflow:auto;background:var(--card);max-height:620px}
+.tabla table{width:100%;border-collapse:collapse;font:400 13px var(--font-main)}
+.tabla th{position:sticky;top:0;background:var(--bg-subtle);text-align:left;padding:10px 12px;font:800 10.5px var(--font-main);
+  text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);border-bottom:1px solid var(--border);cursor:pointer;white-space:nowrap}
+.tabla td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:top}
+.tabla tr:hover td{background:var(--bg-subtle)}
+.tabla a.abrir{display:inline-block;border:1px solid #b51234;color:#b51234;border-radius:8px;padding:4px 10px;
+  font:800 11.5px var(--font-main);text-decoration:none;white-space:nowrap}
+.tabla a.abrir:hover{background:#b51234;color:#fff}
+mark{background:#fff3b0;color:inherit;padding:0 1px;border-radius:2px}
+.vacio{padding:30px;text-align:center;color:var(--text-muted);font:600 13px var(--font-main)}
+.nota{margin-top:14px;font:400 11.5px var(--font-main);color:var(--text-muted);line-height:1.55}
+@media(max-width:760px){.kpis{grid-template-columns:1fr 1fr}.cab-empresa .der{margin-left:0}}
+</style>
+</head>
+<body class="tool-page area-transport">
+<div class="wrap">
+
+  <header class="header">
+    <a class="page-brand" href="../../" aria-label="Volver al portal"><img src="../../assets/img/institucional/logo-ersep.png" alt="ERSeP"></a>
+    <div class="header-left">
+      <h1>Actas</h1>
+      <span class="header-badge">Transporte · Consulta para empresas prestadoras</span>
+    </div>
+    <div class="header-right">
+      <a class="nav-chip" href="../../"><span>⌂</span> Menú</a>
+      <button class="theme-toggle" data-theme-toggle="" type="button">🌙</button>
+    </div>
+  </header>
+
+  <!-- ══ Acceso ══ -->
+  <section class="card" id="card_acceso">
+    <div class="card-body">
+      <form class="acceso" id="form_acceso" autocomplete="on">
+        <div class="ico">🔒</div>
+        <h3>Acceso para empresas</h3>
+        <p>Ingresá con el usuario y la contraseña que el ERSeP le envió a tu empresa. Sólo vas a ver las actas de tu empresa.</p>
+        <label class="campo"><span>Usuario</span>
+          <input type="text" id="usuario" list="lista_empresas" autocomplete="username" autocapitalize="off" spellcheck="false"
+                 placeholder="Usuario asignado">
+          <datalist id="lista_empresas"></datalist>
+        </label>
+        <label class="campo"><span>Contraseña</span>
+          <div class="clave">
+            <input type="password" id="clave" autocomplete="current-password" placeholder="xxxx-xxxx-xxxx-xxxx">
+            <button type="button" class="ojo" id="btn_ojo" aria-label="Mostrar la contraseña" aria-pressed="false">👁</button>
+          </div>
+        </label>
+        <button class="btn-in" id="btn_entrar" type="submit">Ingresar</button>
+        <div class="error" id="error" role="alert"></div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ══ Actas de la empresa ══ -->
+  <section class="card" id="card_actas" hidden>
+    <div class="card-body">
+      <div class="cab-empresa">
+        <div><h3 id="nombre_empresa">—</h3><small id="info_empresa"></small></div>
+        <div class="der">
+          <a class="chip" id="btn_carpeta" target="_blank" rel="noopener" hidden>📁 Abrir la carpeta completa</a>
+          <button class="chip" id="btn_csv" type="button">⬇ Descargar listado</button>
+          <button class="chip" id="btn_salir" type="button">Salir</button>
+        </div>
+      </div>
+
+      <div class="filtros">
+        <input type="search" id="buscar" placeholder="Buscar en todas las columnas: número, fecha, dominio, motivo…">
+        <select id="filtro_anio"><option value="">Todos los años</option></select>
+      </div>
+
+      <div class="kpis">
+        <div><span>Actas encontradas</span><b id="k_total">0</b></div>
+        <div><span>Total de la empresa</span><b id="k_todas">0</b></div>
+        <div><span>Última actualización</span><b id="k_fecha" style="font-size:15px">—</b></div>
+      </div>
+
+      <div class="tabla"><table><thead id="cabecera"></thead><tbody id="cuerpo"></tbody></table>
+        <div class="vacio" id="vacio" hidden>Ninguna acta coincide con la búsqueda.</div></div>
+
+      <p class="nota">Los enlaces abren los documentos en el sistema documental del ERSeP. Por seguridad, al cerrar la
+        pestaña o tocar “Salir” hay que volver a ingresar la contraseña. Ante cualquier duda, comunicate con la Gerencia de Transporte.</p>
+    </div>
+  </section>
+
+</div>
+
+<script defer src="../../assets/js/theme.js"></script>
+<script src="actas-cripto.js"></script>
+<script src="datos-actas.js?v=1"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var DATOS = window.ACTAS_CIFRADAS || {};
+  var ACTUAL = null, ORDEN = { col: null, dir: 1 }, fallos = 0;
+
+  function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function norm(t) { return String(t == null ? '' : t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+
+  // Se sugieren los usuarios válidos: el nombre de las empresas no es reservado
+  $('lista_empresas').innerHTML = Object.keys(DATOS).sort().map(function (u) {
+    return '<option value="' + esc(u) + '">' + esc(DATOS[u].nombre || u) + '</option>';
+  }).join('');
+
+  if (!Object.keys(DATOS).length) {
+    $('error').textContent = 'El listado de actas todavía no fue publicado.';
+    $('btn_entrar').disabled = true;
+  }
+
+  $('btn_ojo').addEventListener('click', function () {
+    var v = $('clave').type === 'text';
+    $('clave').type = v ? 'password' : 'text';
+    this.textContent = v ? '👁' : '🙈';
+    this.setAttribute('aria-pressed', String(!v));
+    $('clave').focus();
+  });
+
+  /* ══ Ingreso ══ */
+  $('form_acceso').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var u = ActasCripto.usuario($('usuario').value);
+    var clave = $('clave').value.trim();
+    var boton = $('btn_entrar');
+    $('error').textContent = '';
+
+    if (!DATOS[u] || !clave) {
+      // Mismo mensaje para usuario o contraseña: no se revela cuál falló
+      return fallar();
+    }
+
+    boton.disabled = true; boton.textContent = 'Verificando…';
+    ActasCripto.descifrar(DATOS[u], clave).then(function (d) {
+      fallos = 0;
+      $('clave').value = ''; $('clave').type = 'password'; $('btn_ojo').textContent = '👁';
+      mostrar(d);
+    }).catch(fallar).then(function () {
+      boton.textContent = 'Ingresar';
+      if (fallos < 5) boton.disabled = false;
+    });
+  });
+
+  /* Tras varios intentos fallidos se agrega una espera creciente */
+  function fallar() {
+    fallos++;
+    $('error').textContent = 'Usuario o contraseña incorrectos.';
+    if (fallos >= 5) {
+      var espera = Math.min(60, 5 * (fallos - 4));
+      $('btn_entrar').disabled = true;
+      $('error').textContent = 'Demasiados intentos. Esperá ' + espera + ' segundos.';
+      setTimeout(function () { $('btn_entrar').disabled = false; $('error').textContent = ''; }, espera * 1000);
+    }
+    return Promise.resolve();
+  }
+
+  /* ══ Listado de la empresa ══ */
+  function mostrar(d) {
+    ACTUAL = d;
+    $('card_acceso').hidden = true;
+    $('card_actas').hidden = false;
+    $('nombre_empresa').textContent = d.empresa;
+    $('info_empresa').textContent = d.actas.length + ' actas';
+    $('k_todas').textContent = d.actas.length;
+    $('k_fecha').textContent = d.generado ? new Date(d.generado).toLocaleDateString('es-AR') : '—';
+
+    if (d.carpeta && /^https?:\/\//i.test(d.carpeta)) { $('btn_carpeta').href = d.carpeta; $('btn_carpeta').hidden = false; }
+    else $('btn_carpeta').hidden = true;
+
+    // Años detectados en cualquier columna de fecha
+    var anios = {};
+    d.actas.forEach(function (a) {
+      d.columnas.forEach(function (c) {
+        var m = String(a[c] || '').match(/\b(20\d{2}|19\d{2})\b/);
+        if (m && /fecha|date|ano|anio|periodo/.test(norm(c))) anios[m[1]] = 1;
+      });
+    });
+    $('filtro_anio').innerHTML = '<option value="">Todos los años</option>' +
+      Object.keys(anios).sort().reverse().map(function (a) { return '<option>' + a + '</option>'; }).join('');
+    $('filtro_anio').hidden = !Object.keys(anios).length;
+
+    $('cabecera').innerHTML = '<tr>' + d.columnas.map(function (c) {
+      return '<th data-col="' + esc(c) + '">' + esc(c) + ' <span class="ord"></span></th>';
+    }).join('') + (d.actas.some(function (a) { return a.enlace; }) ? '<th></th>' : '') + '</tr>';
+
+    $('buscar').value = '';
+    pintar();
+    $('buscar').focus();
+  }
+
+  function filtradas() {
+    var t = norm($('buscar').value).split(/\s+/).filter(Boolean);
+    var anio = $('filtro_anio').value;
+    var lista = ACTUAL.actas.filter(function (a) {
+      var texto = norm(ACTUAL.columnas.map(function (c) { return a[c]; }).join(' '));
+      if (anio && texto.indexOf(anio) === -1) return false;
+      return t.every(function (p) { return texto.indexOf(p) !== -1; });   // todas las palabras deben aparecer
+    });
+    if (ORDEN.col) {
+      lista.sort(function (x, y) {
+        var a = String(x[ORDEN.col] || ''), b = String(y[ORDEN.col] || '');
+        // Fechas dd/mm/aaaa: se comparan como aaaammdd
+        var fa = aFecha(a), fb = aFecha(b);
+        if (fa && fb) return (fa < fb ? -1 : fa > fb ? 1 : 0) * ORDEN.dir;
+        var na = parseFloat(a.replace(',', '.')), nb = parseFloat(b.replace(',', '.'));
+        if (isFinite(na) && isFinite(nb) && /^[\d.,\s]+$/.test(a + b)) return (na - nb) * ORDEN.dir;
+        return a.localeCompare(b, 'es', { numeric: true }) * ORDEN.dir;
+      });
+    }
+    return lista;
+  }
+
+  function aFecha(t) {
+    var m = String(t).trim().match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+    if (!m) return '';
+    var anio = m[3].length === 2 ? '20' + m[3] : m[3];
+    return anio + m[2].padStart(2, '0') + m[1].padStart(2, '0');
+  }
+
+  function resaltar(texto, palabras) {
+    var s = esc(texto);
+    palabras.forEach(function (p) {
+      if (p.length < 2) return;
+      var re = new RegExp('(' + p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig');
+      s = s.replace(re, '<mark>$1</mark>');
+    });
+    return s;
+  }
+
+  function pintar() {
+    var lista = filtradas();
+    var palabras = $('buscar').value.trim().split(/\s+/).filter(Boolean);
+    var conEnlace = ACTUAL.actas.some(function (a) { return a.enlace; });
+    $('k_total').textContent = lista.length;
+    $('vacio').hidden = lista.length > 0;
+    $('cuerpo').innerHTML = lista.slice(0, 2000).map(function (a) {
+      return '<tr>' + ACTUAL.columnas.map(function (c) {
+        return '<td>' + resaltar(a[c], palabras) + '</td>';
+      }).join('') + (conEnlace ? '<td>' + (a.enlace && /^https?:\/\//i.test(a.enlace)
+        ? '<a class="abrir" href="' + esc(a.enlace) + '" target="_blank" rel="noopener">Abrir acta ↗</a>' : '') + '</td>' : '') + '</tr>';
+    }).join('');
+  }
+
+  $('buscar').addEventListener('input', pintar);
+  $('filtro_anio').addEventListener('change', pintar);
+
+  $('cabecera').addEventListener('click', function (e) {
+    var th = e.target.closest('th[data-col]'); if (!th) return;
+    var c = th.getAttribute('data-col');
+    ORDEN.dir = ORDEN.col === c ? -ORDEN.dir : 1; ORDEN.col = c;
+    this.querySelectorAll('.ord').forEach(function (s) { s.textContent = ''; });
+    th.querySelector('.ord').textContent = ORDEN.dir === 1 ? '▲' : '▼';
+    pintar();
+  });
+
+  $('btn_csv').addEventListener('click', function () {
+    var cols = ACTUAL.columnas.concat(['Enlace']);
+    var filas = [cols].concat(filtradas().map(function (a) {
+      return ACTUAL.columnas.map(function (c) { return a[c]; }).concat([a.enlace]);
+    }));
+    var csv = '\uFEFF' + filas.map(function (f) {
+      return f.map(function (x) { return '"' + String(x == null ? '' : x).replace(/"/g, '""') + '"'; }).join(';');
+    }).join('\r\n');
+    var url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    var a = document.createElement('a'); a.href = url; a.download = 'actas-' + ActasCripto.usuario(ACTUAL.empresa) + '.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  });
+
+  /* Salir borra de memoria todo lo descifrado */
+  $('btn_salir').addEventListener('click', function () {
+    ACTUAL = null;
+    $('cuerpo').innerHTML = ''; $('cabecera').innerHTML = '';
+    $('card_actas').hidden = true; $('card_acceso').hidden = false;
+    $('usuario').value = ''; $('clave').value = '';
+    $('usuario').focus();
+  });
+})();
+</script>
+</body>
+</html>
