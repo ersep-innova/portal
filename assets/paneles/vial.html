@@ -247,8 +247,25 @@
 
   var modal = document.getElementById('pnl_modal');
   var img = document.getElementById('pnl_modal_img');
-  function abrir(src) { img.src = src; modal.classList.add('open'); }
-  function cerrar() { modal.classList.remove('open'); img.src = ''; }
+
+  /* El panel se inyecta dentro de un contenedor animado: si el visor queda ahí,
+     'position:fixed' se ubica respecto de ese contenedor y no de la pantalla,
+     y la imagen aparece muy por encima de donde está el usuario. */
+  if (modal && modal.parentNode !== document.body) {
+    var previo = document.querySelectorAll('body > #pnl_modal');
+    Array.prototype.forEach.call(previo, function (m) { if (m !== modal) m.remove(); });
+    document.body.appendChild(modal);
+  }
+  function abrir(src) {
+    img.src = src;
+    modal.classList.add('open');
+    document.documentElement.style.overflow = 'hidden';   // la página no se desplaza detrás
+  }
+  function cerrar() {
+    modal.classList.remove('open');
+    img.src = '';
+    document.documentElement.style.overflow = '';
+  }
   modal.querySelector('.close').onclick = cerrar;
   modal.onclick = function (e) { if (e.target === modal) cerrar(); };
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') cerrar(); });
