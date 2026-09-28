@@ -55,9 +55,9 @@
   </div>
 
   <div class="paso">
-    <h3>1. Listado de actas</h3>
-    <p>Abrí la lista de actas de SharePoint en Excel (Exportar a Excel), guardala como <b>.xlsx</b> o <b>.csv</b> y cargala acá.
-      Tiene que tener al menos una columna con el nombre de la empresa y, idealmente, otra con el enlace a cada acta.</p>
+    <h3>1. Listado de empresas o de actas</h3>
+    <p>Exportá la lista de SharePoint (<i>Exportar → CSV</i>) y cargala acá; también sirve un <b>.xlsx</b>. Puede ser el listado de
+      Permisos de Explotación (una fila por permiso) o una lista de actas con su enlace. Tiene que tener al menos la columna de la empresa.</p>
     <input type="file" id="archivo" accept=".xlsx,.xls,.csv">
     <div id="estado"></div>
   </div>
@@ -67,13 +67,34 @@
     <p>Elegí qué columna identifica a la empresa y cuál tiene el enlace. Todas las demás columnas se muestran y se pueden buscar.</p>
     <div class="fila">
       <label>Empresa <select id="col_empresa"></select></label>
-      <label>Enlace al acta <select id="col_enlace"></select></label>
-      <label>Carpeta de la empresa (opcional) <select id="col_carpeta"></select></label>
+      <label>Identificar por (CUIT recomendado) <select id="col_id"></select></label>
+      <label>Correo electrónico <select id="col_correo"></select></label>
+    </div>
+    <div class="fila" style="margin-top:10px">
+      <label>Enlace a cada acta (opcional) <select id="col_enlace"></select></label>
+      <label>Enlace a la carpeta (opcional) <select id="col_carpeta"></select></label>
+    </div>
+    <div class="fila" style="margin-top:10px">
+      <label style="flex:1 1 100%">Si no hay columna de carpeta: ruta de "Actas de Transporte" en SharePoint
+        <input type="text" id="ruta_base" style="width:100%" placeholder="https://…sharepoint.com/personal/…/Documents/Actas de Transporte">
+      </label>
+    </div>
+    <p style="margin-top:8px">Con la ruta base, cada empresa se vincula a la subcarpeta con su nombre. Se quitan los puntos finales
+      y los caracteres que SharePoint no admite (por ejemplo, <b>EMPRESA S.R.L.</b> → carpeta <b>EMPRESA S.R.L</b>).</p>
+  </div>
+
+  <div class="paso" id="paso_carpetas" hidden>
+    <h3>3. Enlaces de las carpetas</h3>
+    <p>Cargá el índice de carpetas de <b>Actas de Transporte</b> (el Excel con las columnas <i>Carpeta</i> y <i>Enlace completo</i>).
+      Cada empresa se vincula a su carpeta por el nombre. Las que no figuren en el índice usan la ruta base de arriba.</p>
+    <div class="fila">
+      <input type="file" id="archivo_carpetas" accept=".xlsx,.xls,.csv">
+      <span id="estado_carpetas" style="font:600 12.5px var(--font-main);color:var(--text-muted)"></span>
     </div>
   </div>
 
   <div class="paso" id="paso3" hidden>
-    <h3>3. Contraseñas</h3>
+    <h3>4. Contraseñas</h3>
     <p>Si ya se enviaron contraseñas antes, cargá el <b>credenciales-actas.csv</b> anterior: se mantienen las mismas y sólo
       se generan para empresas nuevas. Así una actualización del listado no obliga a reenviar los accesos.</p>
     <div class="fila">
@@ -83,11 +104,12 @@
   </div>
 
   <div class="paso" id="paso4" hidden>
-    <h3>4. Revisión</h3>
+    <h3>5. Revisión</h3>
     <div class="tabla"><table><thead><tr><th>Empresa</th><th>Usuario</th><th>Contraseña</th><th>Actas</th></tr></thead>
       <tbody id="vista"></tbody></table></div>
     <div class="fila" style="margin-top:12px">
       <button class="btn2 prim" id="btn_generar" type="button">🔒 Generar archivos</button>
+      <button class="btn2" id="btn_faltantes" type="button">⬇ Empresas sin carpeta</button>
       <span id="estado_gen" style="font:600 12.5px var(--font-main);color:var(--text-muted)"></span>
     </div>
   </div>
@@ -125,6 +147,7 @@
              si al leer como UTF-8 aparecen caracteres inválidos, se reintenta como Windows-1252 */
           var texto = new TextDecoder('utf-8').decode(bytes);
           if (texto.indexOf('\uFFFD') !== -1) texto = new TextDecoder('windows-1252').decode(bytes);
+          texto = texto.replace(/^\uFEFF?ListSchema=.*\r?\n/, '');   // encabezado técnico de SharePoint
           libro = XLSX.read(texto.replace(/^\uFEFF/, ''), { type: 'string', raw: true });
         } else {
           libro = XLSX.read(bytes, { type: 'array', cellDates: true });
@@ -152,8 +175,12 @@
         COLS.map(function (c) { return '<option>' + esc(c) + '</option>'; }).join('');
     };
     $('col_empresa').innerHTML = opciones(false);
+    $('col_id').innerHTML = opciones(true);
+    $('col_correo').innerHTML = opciones(true);
     $('col_enlace').innerHTML = opciones(true);
     $('col_carpeta').innerHTML = opciones(true);
+    $('col_id').value = adivinar(/^cuit|cuil/) || '';
+    $('col_correo').value = adivinar(/correo|mail/) || '';
 
     $('col_empresa').value = adivinar(/empresa|razon social|prestador|operador|transport/) || COLS[0];
     // El enlace: la primera columna cuyos valores parecen direcciones web
@@ -163,13 +190,79 @@
     $('col_enlace').value = adivinar(/enlace|link|url|vinculo|archivo/) || conUrl[0] || '';
     $('col_carpeta').value = adivinar(/carpeta|folder/) || '';
 
-    $('paso2').hidden = $('paso3').hidden = $('paso4').hidden = false;
+    $('paso2').hidden = $('paso_carpetas').hidden = $('paso3').hidden = $('paso4').hidden = false;
     revisar();
   }
 
-  ['col_empresa', 'col_enlace', 'col_carpeta'].forEach(function (id) { $(id).addEventListener('change', revisar); });
+  ['col_empresa', 'col_id', 'col_correo', 'col_enlace', 'col_carpeta', 'ruta_base'].forEach(function (id) {
+    $(id).addEventListener('change', revisar);
+  });
 
-  /* ── 3. Credenciales anteriores ── */
+  /* Las fechas de SharePoint llegan como 2022-06-16T07:00:00Z: se muestran como 16/06/2022 */
+  function fechaLegible(v) {
+    var m = String(v == null ? '' : v).match(/^(\d{4})-(\d{2})-(\d{2})(T[\d:.]+Z?)?$/);
+    return m ? m[3] + '/' + m[2] + '/' + m[1] : v;
+  }
+
+  /* Nombre de carpeta válido para SharePoint: sin  " * : < > ? / \ |  ni punto o espacio final */
+  function nombreCarpeta(n) {
+    return String(n || '').replace(/["*:<>?\/\\|#%]/g, '').replace(/[.\s]+$/, '').trim();
+  }
+
+  function enlaceCarpeta(nombre) {
+    var real = CARPETAS[claveCarpeta(nombre)];
+    if (real) return real;                       // enlace verdadero de SharePoint
+    var base = $('ruta_base').value.trim().replace(/\/+$/, '');
+    return base ? base + '/' + encodeURIComponent(nombreCarpeta(nombre)) : '';
+  }
+
+  /* ── 3. Índice de carpetas ── */
+  var CARPETAS = {};
+
+  $('archivo_carpetas').addEventListener('change', function () {
+    var f = this.files[0]; if (!f) return;
+    var r = new FileReader();
+    r.onload = function () {
+      try {
+        var libro = /\.csv$/i.test(f.name)
+          ? XLSX.read(new TextDecoder('utf-8').decode(new Uint8Array(r.result)), { type: 'string', raw: true })
+          : XLSX.read(new Uint8Array(r.result), { type: 'array' });
+        var hoja = libro.Sheets[libro.SheetNames[0]];
+        var filas = XLSX.utils.sheet_to_json(hoja, { header: 1, defval: '' });
+
+        // El archivo trae títulos y avisos arriba: se busca la fila de encabezados
+        var iCab = -1;
+        filas.forEach(function (fila, i) {
+          if (iCab === -1 && fila.some(function (c) { return /carpeta/i.test(String(c)); })
+              && fila.some(function (c) { return /enlace|link|url/i.test(String(c)); })) iCab = i;
+        });
+        if (iCab === -1) throw new Error('No encontré las columnas Carpeta y Enlace.');
+
+        var cab = filas[iCab].map(function (c) { return String(c); });
+        var iC = cab.findIndex(function (c) { return /carpeta/i.test(c); });
+        var iL = cab.findIndex(function (c) { return /enlace|link|url/i.test(c); });
+
+        CARPETAS = {};
+        filas.slice(iCab + 1).forEach(function (fila) {
+          var nombre = String(fila[iC] || '').trim(), link = String(fila[iL] || '').trim();
+          if (nombre && /^https?:\/\//i.test(link)) CARPETAS[claveCarpeta(nombre)] = link;
+        });
+        $('estado_carpetas').textContent = '✓ ' + Object.keys(CARPETAS).length + ' carpetas cargadas';
+        revisar();
+      } catch (e) {
+        $('estado_carpetas').textContent = '⚠ ' + e.message;
+      }
+    };
+    r.readAsArrayBuffer(f);
+  });
+
+  /* Comparación tolerante: SharePoint recorta puntos finales y no admite ciertos caracteres */
+  function claveCarpeta(n) {
+    return String(n || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/["*:<>?\/\\|#%,]/g, ' ').replace(/[.\s]+$/, '').replace(/\s+/g, ' ').trim().toUpperCase();
+  }
+
+  /* ── 4. Credenciales anteriores ── */
   $('credenciales_previas').addEventListener('change', function () {
     var f = this.files[0]; if (!f) return;
     f.text().then(function (t) {
@@ -186,12 +279,16 @@
 
   /* ── 4. Agrupar por empresa ── */
   function grupos() {
-    var ce = $('col_empresa').value, g = {};
+    var ce = $('col_empresa').value, ci = $('col_id').value, cm = $('col_correo').value, g = {};
     FILAS.forEach(function (f) {
       var nombre = String(f[ce] || '').trim();
       if (!nombre) return;
-      var u = ActasCripto.usuario(nombre);
-      (g[u] = g[u] || { nombre: nombre, filas: [] }).filas.push(f);
+      // El CUIT sin guiones es el usuario: único, conocido por la empresa y estable aunque cambie el nombre
+      var id = ci ? String(f[ci] || '').replace(/\D/g, '') : '';
+      var u = id.length >= 8 ? id : ActasCripto.usuario(nombre);
+      var e = (g[u] = g[u] || { nombre: nombre, filas: [], correos: {} });
+      e.filas.push(f);
+      if (cm) String(f[cm] || '').split(/[;,\s]+/).forEach(function (m) { if (/@/.test(m)) e.correos[m.trim().toLowerCase()] = 1; });
     });
     return g;
   }
@@ -201,19 +298,43 @@
     Object.keys(g).forEach(function (u) {
       if (!CLAVES[u]) CLAVES[u] = PREVIAS[u] || ActasCripto.contrasena();
     });
-    $('vista').innerHTML = Object.keys(g).sort().map(function (u) {
+    var sinCorreo = 0;
+    $('vista').innerHTML = Object.keys(g).sort(function (a, b) { return g[a].nombre.localeCompare(g[b].nombre); }).map(function (u) {
+      var correos = Object.keys(g[u].correos);
+      if (!correos.length) sinCorreo++;
       return '<tr><td>' + esc(g[u].nombre) + '</td><td><code>' + esc(u) + '</code></td><td><code>' +
         esc(CLAVES[u]) + '</code>' + (PREVIAS[u] ? ' <small>(se mantiene)</small>' : ' <small>(nueva)</small>') +
-        '</td><td>' + g[u].filas.length + '</td></tr>';
+        '</td><td>' + g[u].filas.length + (correos.length ? '' : ' <small style="color:#b51234">· sin correo</small>') + '</td></tr>';
     }).join('');
+    var conCarpeta = Object.keys(g).filter(function (u) { return !!CARPETAS[claveCarpeta(g[u].nombre)]; }).length;
+    $('estado_gen').textContent = Object.keys(g).length + ' empresas · ' + conCarpeta + ' con carpeta del índice' +
+      (Object.keys(CARPETAS).length ? ' · ' + (Object.keys(g).length - conCarpeta) + ' sin enlace propio' : '') +
+      (sinCorreo ? ' · ' + sinCorreo + ' sin correo' : '');
   }
 
   /* ── Generación ── */
+  $('btn_faltantes').addEventListener('click', function () {
+    var g = grupos();
+    var filas = Object.keys(g).filter(function (u) { return !CARPETAS[claveCarpeta(g[u].nombre)]; })
+      .sort(function (a, b) { return g[a].nombre.localeCompare(g[b].nombre); })
+      .map(function (u) {
+        return ['"' + g[u].nombre.replace(/"/g, '""') + '"', '"' + u + '"',
+                '"' + nombreCarpeta(g[u].nombre) + '"', '"' + Object.keys(g[u].correos).join(', ') + '"'].join(';');
+      });
+    descargar('empresas-sin-carpeta.csv',
+      '\uFEFF"Empresa";"CUIT";"Nombre de carpeta esperado";"Correo"\r\n' + filas.join('\r\n'),
+      'text/csv;charset=utf-8');
+  });
+
   $('btn_generar').addEventListener('click', function () {
     var b = this; b.disabled = true;
-    var g = grupos(), ce = $('col_empresa').value, cl = $('col_enlace').value, cc = $('col_carpeta').value;
+    var g = grupos(), ce = $('col_empresa').value, cl = $('col_enlace').value, cc = $('col_carpeta').value,
+        cm = $('col_correo').value;
     var usuarios = Object.keys(g).sort();
-    var columnas = COLS.filter(function (c) { return c !== ce && c !== cl && c !== cc; });
+    // No se muestran a la empresa columnas técnicas ni el correo
+    var columnas = COLS.filter(function (c) {
+      return c !== ce && c !== cl && c !== cc && c !== cm && !/^titulo$|^title$/i.test(norm(c).trim());
+    });
     var salida = {}, hechos = 0;
 
     $('estado_gen').textContent = 'Cifrando… (unos segundos por empresa)';
@@ -222,11 +343,12 @@
       return p.then(function () {
         var e = g[u];
         var carpeta = cc ? (e.filas.map(function (f) { return String(f[cc] || '').trim(); }).filter(Boolean)[0] || '') : '';
+        if (!carpeta) carpeta = enlaceCarpeta(e.nombre);
         var datos = {
           empresa: e.nombre, carpeta: carpeta, columnas: columnas, generado: new Date().toISOString(),
           actas: e.filas.map(function (f) {
             var fila = { enlace: cl ? String(f[cl] || '').trim() : '' };
-            columnas.forEach(function (c) { fila[c] = f[c]; });
+            columnas.forEach(function (c) { fila[c] = fechaLegible(f[c]); });
             return fila;
           })
         };
@@ -244,8 +366,9 @@
         'window.ACTAS_CIFRADAS = ' + JSON.stringify(salida) + ';\n';
       descargar('datos-actas.js', js, 'text/javascript');
 
-      var csv = '\uFEFF"Empresa";"Usuario";"Contraseña";"Actas"\r\n' + usuarios.map(function (u) {
-        return ['"' + g[u].nombre.replace(/"/g, '""') + '"', '"' + u + '"', '"' + CLAVES[u] + '"', g[u].filas.length].join(';');
+      var csv = '\uFEFF"Empresa";"Usuario";"Contraseña";"Registros";"Correo";"Carpeta"\r\n' + usuarios.map(function (u) {
+        return ['"' + g[u].nombre.replace(/"/g, '""') + '"', '"' + u + '"', '"' + CLAVES[u] + '"', g[u].filas.length,
+                '"' + Object.keys(g[u].correos).join(', ') + '"', '"' + nombreCarpeta(g[u].nombre) + '"'].join(';');
       }).join('\r\n');
       setTimeout(function () { descargar('credenciales-actas.csv', csv, 'text/csv;charset=utf-8'); }, 700);
 

@@ -79,11 +79,10 @@ mark{background:#fff3b0;color:inherit;padding:0 1px;border-radius:2px}
       <form class="acceso" id="form_acceso" autocomplete="on">
         <div class="ico">🔒</div>
         <h3>Acceso para empresas</h3>
-        <p>Ingresá con el usuario y la contraseña que el ERSeP le envió a tu empresa. Sólo vas a ver las actas de tu empresa.</p>
-        <label class="campo"><span>Usuario</span>
-          <input type="text" id="usuario" list="lista_empresas" autocomplete="username" autocapitalize="off" spellcheck="false"
-                 placeholder="Usuario asignado">
-          <datalist id="lista_empresas"></datalist>
+        <p>Ingresá con el CUIT de tu empresa y la contraseña que te envió el ERSeP. Sólo vas a ver las actas de tu empresa.</p>
+        <label class="campo"><span>CUIT</span>
+          <input type="text" id="usuario" autocomplete="username" autocapitalize="off" spellcheck="false"
+                 placeholder="CUIT de la empresa (con o sin guiones)">
         </label>
         <label class="campo"><span>Contraseña</span>
           <div class="clave">
@@ -110,12 +109,12 @@ mark{background:#fff3b0;color:inherit;padding:0 1px;border-radius:2px}
       </div>
 
       <div class="filtros">
-        <input type="search" id="buscar" placeholder="Buscar en todas las columnas: número, fecha, dominio, motivo…">
+        <input type="search" id="buscar" placeholder="Buscar en todas las columnas: modalidad, número, fecha, centro…">
         <select id="filtro_anio"><option value="">Todos los años</option></select>
       </div>
 
       <div class="kpis">
-        <div><span>Actas encontradas</span><b id="k_total">0</b></div>
+        <div><span>Registros encontrados</span><b id="k_total">0</b></div>
         <div><span>Total de la empresa</span><b id="k_todas">0</b></div>
         <div><span>Última actualización</span><b id="k_fecha" style="font-size:15px">—</b></div>
       </div>
@@ -144,10 +143,6 @@ mark{background:#fff3b0;color:inherit;padding:0 1px;border-radius:2px}
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function norm(t) { return String(t == null ? '' : t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
 
-  // Se sugieren los usuarios válidos: el nombre de las empresas no es reservado
-  $('lista_empresas').innerHTML = Object.keys(DATOS).sort().map(function (u) {
-    return '<option value="' + esc(u) + '">' + esc(DATOS[u].nombre || u) + '</option>';
-  }).join('');
 
   if (!Object.keys(DATOS).length) {
     $('error').textContent = 'El listado de actas todavía no fue publicado.';
@@ -165,7 +160,10 @@ mark{background:#fff3b0;color:inherit;padding:0 1px;border-radius:2px}
   /* ══ Ingreso ══ */
   $('form_acceso').addEventListener('submit', function (e) {
     e.preventDefault();
-    var u = ActasCripto.usuario($('usuario').value);
+    var escrito = $('usuario').value.trim();
+    var soloNumeros = escrito.replace(/\D/g, '');
+    // Se acepta el CUIT con o sin guiones; si no, el usuario asignado
+    var u = (soloNumeros.length === 11 && DATOS[soloNumeros]) ? soloNumeros : ActasCripto.usuario(escrito);
     var clave = $('clave').value.trim();
     var boton = $('btn_entrar');
     $('error').textContent = '';
@@ -205,7 +203,7 @@ mark{background:#fff3b0;color:inherit;padding:0 1px;border-radius:2px}
     $('card_acceso').hidden = true;
     $('card_actas').hidden = false;
     $('nombre_empresa').textContent = d.empresa;
-    $('info_empresa').textContent = d.actas.length + ' actas';
+    $('info_empresa').textContent = d.actas.length + (d.actas.length === 1 ? ' registro' : ' registros');
     $('k_todas').textContent = d.actas.length;
     $('k_fecha').textContent = d.generado ? new Date(d.generado).toLocaleDateString('es-AR') : '—';
 
