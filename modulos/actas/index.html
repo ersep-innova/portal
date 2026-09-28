@@ -35,6 +35,12 @@
 .chip{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:9px 13px;
   font:700 12.5px var(--font-main);cursor:pointer;text-decoration:none}
 .chip:hover{border-color:#b51234;color:#b51234}
+.pestanas{display:flex;gap:8px;margin-bottom:12px;border-bottom:1px solid var(--border)}
+.pes{border:0;background:transparent;color:var(--text-muted);font:800 13px var(--font-main);cursor:pointer;
+  padding:9px 14px;border-bottom:3px solid transparent}
+.pes:hover{color:var(--text)}
+.pes.activa{color:#b51234;border-bottom-color:#b51234}
+.pes[hidden]{display:none}
 .filtros{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:12px}
 .filtros input,.filtros select{padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--card);
   color:var(--text);font:600 13px var(--font-main)}
@@ -108,19 +114,27 @@ mark{background:#fff3b0;color:inherit;padding:0 1px;border-radius:2px}
         </div>
       </div>
 
+      <div class="pestanas" id="pestanas">
+        <button type="button" class="pes activa" data-vista="actas">Actas</button>
+        <button type="button" class="pes" data-vista="permisos">Permisos de explotación</button>
+      </div>
+
       <div class="filtros">
-        <input type="search" id="buscar" placeholder="Buscar en todas las columnas: modalidad, número, fecha, centro…">
-        <select id="filtro_anio"><option value="">Todos los años</option></select>
+        <input type="search" id="buscar" placeholder="Buscar: número de acta, mes, período…">
+        <select id="f_empresa" hidden><option value="">Todas las empresas</option></select>
+        <select id="f_anio"><option value="">Todos los años</option></select>
+        <select id="f_mes"><option value="">Todos los meses</option></select>
+        <button class="chip" id="btn_limpiar" type="button">Limpiar</button>
       </div>
 
       <div class="kpis">
-        <div><span>Registros encontrados</span><b id="k_total">0</b></div>
-        <div><span>Total de la empresa</span><b id="k_todas">0</b></div>
-        <div><span>Última actualización</span><b id="k_fecha" style="font-size:15px">—</b></div>
+        <div><span>Resultados</span><b id="k_total">0</b></div>
+        <div><span>Total</span><b id="k_todas">0</b></div>
+        <div><span id="et_extra">Años</span><b id="k_extra" style="font-size:15px">—</b></div>
       </div>
 
       <div class="tabla"><table><thead id="cabecera"></thead><tbody id="cuerpo"></tbody></table>
-        <div class="vacio" id="vacio" hidden>Ninguna acta coincide con la búsqueda.</div></div>
+        <div class="vacio" id="vacio" hidden>No hay resultados con esos filtros.</div></div>
 
       <p class="nota">Los enlaces abren los documentos en el sistema documental del ERSeP. Por seguridad, al cerrar la
         pestaña o tocar “Salir” hay que volver a ingresar la contraseña. Ante cualquier duda, comunicate con la Gerencia de Transporte.</p>
@@ -197,56 +211,123 @@ mark{background:#fff3b0;color:inherit;padding:0 1px;border-radius:2px}
     return Promise.resolve();
   }
 
-  /* ══ Listado de la empresa ══ */
+  /* ══ Listado ══ */
+  var VISTA = 'actas';
+  /* Encabezados legibles para las columnas del inventario */
+  var ETIQUETAS = { Anio: 'Año', Tamano: 'Tamaño (KB)', Subcarpeta: 'Ubicación', Extension: 'Tipo' };
+
+  function columnas() {
+    return VISTA === 'actas' ? (ACTUAL.columnasActas || []) : (ACTUAL.columnas || []);
+  }
+
+  function registros() {
+    return VISTA === 'actas' ? (ACTUAL.actas || []) : (ACTUAL.permisos || ACTUAL.actas || []);
+  }
+
+  function valorAnio(r) {
+    var c = columnas().filter(function (x) { return /anio|año|year/i.test(x); })[0];
+    if (c && r[c]) return String(r[c]).trim();
+    var m = columnas().map(function (x) { return String(r[x] || ''); }).join(' ').match(/\b(20\d{2}|19\d{2})\b/);
+    return m ? m[1] : '';
+  }
+
+  function valorMes(r) {
+    var c = columnas().filter(function (x) { return /^mes$/i.test(x); })[0];
+    return c ? String(r[c] || '').trim() : '';
+  }
+
+  function valorEmpresa(r) {
+    return String(r.Empresa || r.EMPRESA || '').trim();
+  }
+
   function mostrar(d) {
     ACTUAL = d;
     $('card_acceso').hidden = true;
     $('card_actas').hidden = false;
     $('nombre_empresa').textContent = d.empresa;
-    $('info_empresa').textContent = d.actas.length + (d.actas.length === 1 ? ' registro' : ' registros');
-    $('k_todas').textContent = d.actas.length;
-    $('k_fecha').textContent = d.generado ? new Date(d.generado).toLocaleDateString('es-AR') : '—';
+
+    var hayActas = (d.actas || []).length > 0 && (d.columnasActas || []).length > 0;
+    var hayPermisos = (d.permisos || []).length > 0;
+    VISTA = hayActas ? 'actas' : 'permisos';
+
+    // Si sólo hay una de las dos cosas, no se muestran las pestañas
+    $('pestanas').hidden = !(hayActas && hayPermisos);
+    Array.prototype.forEach.call($('pestanas').querySelectorAll('.pes'), function (b) {
+      b.classList.toggle('activa', b.dataset.vista === VISTA);
+      b.hidden = (b.dataset.vista === 'actas' && !hayActas) || (b.dataset.vista === 'permisos' && !hayPermisos);
+    });
+
+    $('info_empresa').textContent = (d.actas || []).length + ' actas · ' + (d.permisos || []).length + ' permisos';
+    $('k_fecha') && ($('k_fecha').textContent = '');
 
     if (d.carpeta && /^https?:\/\//i.test(d.carpeta)) { $('btn_carpeta').href = d.carpeta; $('btn_carpeta').hidden = false; }
     else $('btn_carpeta').hidden = true;
 
-    // Años detectados en cualquier columna de fecha
-    var anios = {};
-    d.actas.forEach(function (a) {
-      d.columnas.forEach(function (c) {
-        var m = String(a[c] || '').match(/\b(20\d{2}|19\d{2})\b/);
-        if (m && /fecha|date|ano|anio|periodo/.test(norm(c))) anios[m[1]] = 1;
-      });
-    });
-    $('filtro_anio').innerHTML = '<option value="">Todos los años</option>' +
-      Object.keys(anios).sort().reverse().map(function (a) { return '<option>' + a + '</option>'; }).join('');
-    $('filtro_anio').hidden = !Object.keys(anios).length;
+    // El acceso global suma el filtro por empresa
+    $('f_empresa').hidden = !d.global;
 
-    $('cabecera').innerHTML = '<tr>' + d.columnas.map(function (c) {
-      return '<th data-col="' + esc(c) + '">' + esc(c) + ' <span class="ord"></span></th>';
-    }).join('') + (d.actas.some(function (a) { return a.enlace; }) ? '<th></th>' : '') + '</tr>';
-
-    $('buscar').value = '';
-    pintar();
+    cambiarVista(VISTA);
     $('buscar').focus();
+  }
+
+  function cambiarVista(v) {
+    VISTA = v;
+    Array.prototype.forEach.call($('pestanas').querySelectorAll('.pes'), function (b) {
+      b.classList.toggle('activa', b.dataset.vista === v);
+    });
+
+    var datos = registros(), cols = columnas();
+    $('k_todas').textContent = datos.length;
+    $('buscar').placeholder = v === 'actas'
+      ? 'Buscar: número de acta, mes, archivo…' : 'Buscar: modalidad, estado, centro…';
+
+    // Opciones de los filtros, según lo que realmente haya
+    var anios = {}, meses = {}, empresas = {};
+    datos.forEach(function (r) {
+      var a = valorAnio(r); if (a) anios[a] = 1;
+      var m = valorMes(r); if (m) meses[m] = 1;
+      var e = valorEmpresa(r); if (e) empresas[e] = 1;
+    });
+
+    var ORDEN_MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    $('f_anio').innerHTML = '<option value="">Todos los años</option>' +
+      Object.keys(anios).sort().reverse().map(function (a) { return '<option>' + esc(a) + '</option>'; }).join('');
+    $('f_mes').innerHTML = '<option value="">Todos los meses</option>' +
+      Object.keys(meses).sort(function (a, b) { return ORDEN_MESES.indexOf(a) - ORDEN_MESES.indexOf(b); })
+        .map(function (m) { return '<option>' + esc(m) + '</option>'; }).join('');
+    $('f_empresa').innerHTML = '<option value="">Todas las empresas</option>' +
+      Object.keys(empresas).sort().map(function (e) { return '<option>' + esc(e) + '</option>'; }).join('');
+
+    $('f_anio').hidden = !Object.keys(anios).length;
+    $('f_mes').hidden = !Object.keys(meses).length;
+    $('et_extra').textContent = v === 'actas' ? 'Años con actas' : 'Permisos vigentes';
+
+    $('cabecera').innerHTML = '<tr>' + cols.map(function (c) {
+      return '<th data-col="' + esc(c) + '">' + esc(ETIQUETAS[c] || c) + ' <span class="ord"></span></th>';
+    }).join('') + (datos.some(function (r) { return r.enlace; }) ? '<th></th>' : '') + '</tr>';
+
+    ORDEN = { col: null, dir: 1 };
+    pintar();
   }
 
   function filtradas() {
     var t = norm($('buscar').value).split(/\s+/).filter(Boolean);
-    var anio = $('filtro_anio').value;
-    var lista = ACTUAL.actas.filter(function (a) {
-      var texto = norm(ACTUAL.columnas.map(function (c) { return a[c]; }).join(' '));
-      if (anio && texto.indexOf(anio) === -1) return false;
-      return t.every(function (p) { return texto.indexOf(p) !== -1; });   // todas las palabras deben aparecer
+    var anio = $('f_anio').value, mes = $('f_mes').value, empresa = $('f_empresa').value;
+    var cols = columnas();
+
+    var lista = registros().filter(function (r) {
+      if (anio && valorAnio(r) !== anio) return false;
+      if (mes && valorMes(r) !== mes) return false;
+      if (empresa && valorEmpresa(r) !== empresa) return false;
+      var texto = norm(cols.map(function (c) { return r[c]; }).join(' '));
+      return t.every(function (p) { return texto.indexOf(p) !== -1; });
     });
+
     if (ORDEN.col) {
       lista.sort(function (x, y) {
         var a = String(x[ORDEN.col] || ''), b = String(y[ORDEN.col] || '');
-        // Fechas dd/mm/aaaa: se comparan como aaaammdd
         var fa = aFecha(a), fb = aFecha(b);
         if (fa && fb) return (fa < fb ? -1 : fa > fb ? 1 : 0) * ORDEN.dir;
-        var na = parseFloat(a.replace(',', '.')), nb = parseFloat(b.replace(',', '.'));
-        if (isFinite(na) && isFinite(nb) && /^[\d.,\s]+$/.test(a + b)) return (na - nb) * ORDEN.dir;
         return a.localeCompare(b, 'es', { numeric: true }) * ORDEN.dir;
       });
     }
@@ -271,41 +352,60 @@ mark{background:#fff3b0;color:inherit;padding:0 1px;border-radius:2px}
   }
 
   function pintar() {
-    var lista = filtradas();
+    var lista = filtradas(), cols = columnas();
     var palabras = $('buscar').value.trim().split(/\s+/).filter(Boolean);
-    var conEnlace = ACTUAL.actas.some(function (a) { return a.enlace; });
+    var conEnlace = registros().some(function (r) { return r.enlace; });
+
     $('k_total').textContent = lista.length;
+    var extra = {};
+    lista.forEach(function (r) { var a = valorAnio(r); if (a) extra[a] = 1; });
+    $('k_extra').textContent = VISTA === 'actas' ? (Object.keys(extra).length || '—') : lista.length;
+
     $('vacio').hidden = lista.length > 0;
-    $('cuerpo').innerHTML = lista.slice(0, 2000).map(function (a) {
-      return '<tr>' + ACTUAL.columnas.map(function (c) {
-        return '<td>' + resaltar(a[c], palabras) + '</td>';
-      }).join('') + (conEnlace ? '<td>' + (a.enlace && /^https?:\/\//i.test(a.enlace)
-        ? '<a class="abrir" href="' + esc(a.enlace) + '" target="_blank" rel="noopener">Abrir acta ↗</a>' : '') + '</td>' : '') + '</tr>';
+    $('cuerpo').innerHTML = lista.slice(0, 3000).map(function (r) {
+      return '<tr>' + cols.map(function (c) {
+        return '<td>' + resaltar(r[c], palabras) + '</td>';
+      }).join('') + (conEnlace ? '<td>' + (r.enlace && /^https?:\/\//i.test(r.enlace)
+        ? '<a class="abrir" href="' + esc(r.enlace) + '" target="_blank" rel="noopener">Abrir ↗</a>' : '') + '</td>' : '') + '</tr>';
     }).join('');
   }
 
-  $('buscar').addEventListener('input', pintar);
-  $('filtro_anio').addEventListener('change', pintar);
+  $('pestanas').addEventListener('click', function (e) {
+    var b = e.target.closest('.pes'); if (!b) return;
+    $('buscar').value = ''; $('f_anio').value = ''; $('f_mes').value = ''; $('f_empresa').value = '';
+    cambiarVista(b.dataset.vista);
+  });
+
+  ['buscar', 'f_anio', 'f_mes', 'f_empresa'].forEach(function (id) {
+    $(id).addEventListener('input', pintar);
+    $(id).addEventListener('change', pintar);
+  });
+
+  $('btn_limpiar').addEventListener('click', function () {
+    $('buscar').value = ''; $('f_anio').value = ''; $('f_mes').value = ''; $('f_empresa').value = '';
+    pintar();
+  });
 
   $('cabecera').addEventListener('click', function (e) {
     var th = e.target.closest('th[data-col]'); if (!th) return;
     var c = th.getAttribute('data-col');
     ORDEN.dir = ORDEN.col === c ? -ORDEN.dir : 1; ORDEN.col = c;
-    this.querySelectorAll('.ord').forEach(function (s) { s.textContent = ''; });
+    this.querySelectorAll('.ord').forEach(function (x) { x.textContent = ''; });
     th.querySelector('.ord').textContent = ORDEN.dir === 1 ? '▲' : '▼';
     pintar();
   });
 
   $('btn_csv').addEventListener('click', function () {
-    var cols = ACTUAL.columnas.concat(['Enlace']);
-    var filas = [cols].concat(filtradas().map(function (a) {
-      return ACTUAL.columnas.map(function (c) { return a[c]; }).concat([a.enlace]);
+    var cols = columnas().concat(['Enlace']);
+    var filas = [cols].concat(filtradas().map(function (r) {
+      return columnas().map(function (c) { return r[c]; }).concat([r.enlace]);
     }));
     var csv = '\uFEFF' + filas.map(function (f) {
       return f.map(function (x) { return '"' + String(x == null ? '' : x).replace(/"/g, '""') + '"'; }).join(';');
     }).join('\r\n');
     var url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    var a = document.createElement('a'); a.href = url; a.download = 'actas-' + ActasCripto.usuario(ACTUAL.empresa) + '.csv';
+    var a = document.createElement('a'); a.href = url;
+    a.download = (VISTA === 'actas' ? 'actas-' : 'permisos-') + ActasCripto.usuario(ACTUAL.empresa) + '.csv';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
   });

@@ -93,8 +93,27 @@
     </div>
   </div>
 
+  <div class="paso" id="paso_inventario" hidden>
+    <h3>4. Inventario de actas (opcional pero recomendado)</h3>
+    <p>Cargá el <b>actas-inventario.csv</b> que genera <i>inventario-actas.ps1</i>. Con él, cada empresa ve el listado de sus
+      actas dentro del portal —con año, mes y enlace a cada PDF— en vez de tener que entrar a la carpeta y navegarla.</p>
+    <div class="fila">
+      <input type="file" id="archivo_inventario" accept=".xlsx,.xls,.csv">
+      <span id="estado_inventario" style="font:600 12.5px var(--font-main);color:var(--text-muted)"></span>
+    </div>
+    <div class="fila" style="margin-top:12px">
+      <label style="flex:1 1 100%">
+        <input type="checkbox" id="usuario_global" checked style="margin-right:7px">
+        Crear el <b>usuario global del ERSeP</b>, que ve las actas de todas las empresas con filtros por empresa, año y mes
+      </label>
+    </div>
+    <div class="fila">
+      <label>Usuario global <input type="text" id="nombre_global" value="ersep" style="min-width:140px"></label>
+    </div>
+  </div>
+
   <div class="paso" id="paso3" hidden>
-    <h3>4. Contraseñas</h3>
+    <h3>5. Contraseñas</h3>
     <p>Si ya se enviaron contraseñas antes, cargá el <b>credenciales-actas.csv</b> anterior: se mantienen las mismas y sólo
       se generan para empresas nuevas. Así una actualización del listado no obliga a reenviar los accesos.</p>
     <div class="fila">
@@ -104,7 +123,7 @@
   </div>
 
   <div class="paso" id="paso4" hidden>
-    <h3>5. Revisión</h3>
+    <h3>6. Revisión</h3>
     <div class="tabla"><table><thead><tr><th>Empresa</th><th>Usuario</th><th>Contraseña</th><th>Actas</th></tr></thead>
       <tbody id="vista"></tbody></table></div>
     <div class="fila" style="margin-top:12px">
@@ -190,7 +209,8 @@
     $('col_enlace').value = adivinar(/enlace|link|url|vinculo|archivo/) || conUrl[0] || '';
     $('col_carpeta').value = adivinar(/carpeta|folder/) || '';
 
-    $('paso2').hidden = $('paso_carpetas').hidden = $('paso3').hidden = $('paso4').hidden = false;
+    $('paso2').hidden = $('paso_carpetas').hidden = $('paso_inventario').hidden =
+      $('paso3').hidden = $('paso4').hidden = false;
     revisar();
   }
 
@@ -262,7 +282,54 @@
       .replace(/["*:<>?\/\\|#%,]/g, ' ').replace(/[.\s]+$/, '').replace(/\s+/g, ' ').trim().toUpperCase();
   }
 
-  /* ── 4. Credenciales anteriores ── */
+  /* ── 4. Inventario de actas ── */
+  var INVENTARIO = {};     // clave de empresa -> [actas]
+  var COLS_ACTA = [];
+
+  $('archivo_inventario').addEventListener('change', function () {
+    var f = this.files[0]; if (!f) return;
+    var r = new FileReader();
+    r.onload = function () {
+      try {
+        var libro = /\.csv$/i.test(f.name)
+          ? XLSX.read(leerTexto(new Uint8Array(r.result)), { type: 'string', raw: true })
+          : XLSX.read(new Uint8Array(r.result), { type: 'array' });
+        var filas = XLSX.utils.sheet_to_json(libro.Sheets[libro.SheetNames[0]], { defval: '', raw: false });
+        if (!filas.length) throw new Error('El inventario está vacío.');
+
+        var cab = Object.keys(filas[0]);
+        var cEmp = cab.filter(function (c) { return /empresa/i.test(c); })[0];
+        var cLink = cab.filter(function (c) { return /enlace|link|url/i.test(c); })[0];
+        if (!cEmp || !cLink) throw new Error('Faltan las columnas Empresa y Enlace.');
+
+        // Se muestran todas las columnas menos la empresa, el enlace y la carpeta
+        COLS_ACTA = cab.filter(function (c) { return c !== cEmp && c !== cLink && !/carpetaempresa/i.test(c); });
+
+        INVENTARIO = {};
+        filas.forEach(function (fila) {
+          var k = claveCarpeta(fila[cEmp]);
+          var acta = { enlace: String(fila[cLink] || '').trim(), Empresa: String(fila[cEmp] || '').trim() };
+          COLS_ACTA.forEach(function (c) { acta[c] = fila[c]; });
+          (INVENTARIO[k] = INVENTARIO[k] || []).push(acta);
+        });
+
+        $('estado_inventario').textContent = '✓ ' + filas.length + ' actas de ' +
+          Object.keys(INVENTARIO).length + ' empresas';
+        revisar();
+      } catch (e) {
+        $('estado_inventario').textContent = '⚠ ' + e.message;
+      }
+    };
+    r.readAsArrayBuffer(f);
+  });
+
+  function leerTexto(bytes) {
+    var t = new TextDecoder('utf-8').decode(bytes);
+    if (t.indexOf('\uFFFD') !== -1) t = new TextDecoder('windows-1252').decode(bytes);
+    return t.replace(/^\uFEFF?ListSchema=.*\r?\n/, '');
+  }
+
+  /* ── 5. Credenciales anteriores ── */
   $('credenciales_previas').addEventListener('change', function () {
     var f = this.files[0]; if (!f) return;
     f.text().then(function (t) {
@@ -344,13 +411,19 @@
         var e = g[u];
         var carpeta = cc ? (e.filas.map(function (f) { return String(f[cc] || '').trim(); }).filter(Boolean)[0] || '') : '';
         if (!carpeta) carpeta = enlaceCarpeta(e.nombre);
+        var actasEmpresa = INVENTARIO[claveCarpeta(e.nombre)] || [];
         var datos = {
-          empresa: e.nombre, carpeta: carpeta, columnas: columnas, generado: new Date().toISOString(),
-          actas: e.filas.map(function (f) {
-            var fila = { enlace: cl ? String(f[cl] || '').trim() : '' };
+          empresa: e.nombre, carpeta: carpeta, generado: new Date().toISOString(),
+          // Permisos de explotación (el padrón)
+          columnas: columnas,
+          permisos: e.filas.map(function (f) {
+            var fila = {};
             columnas.forEach(function (c) { fila[c] = fechaLegible(f[c]); });
             return fila;
-          })
+          }),
+          // Actas del inventario de SharePoint
+          columnasActas: COLS_ACTA,
+          actas: actasEmpresa
         };
         return ActasCripto.cifrar(datos, CLAVES[u]).then(function (paquete) {
           paquete.nombre = e.nombre;   // el nombre de la empresa es público: se usa en el selector
@@ -360,6 +433,39 @@
         });
       });
     }, Promise.resolve()).then(function () {
+      if (!$('usuario_global').checked || !Object.keys(INVENTARIO).length) return;
+
+      var uGlobal = ActasCripto.usuario($('nombre_global').value || 'ersep');
+      if (!CLAVES[uGlobal]) CLAVES[uGlobal] = PREVIAS[uGlobal] || ActasCripto.contrasena();
+
+      // Nombre "oficial" del padrón cuando existe; si no, el de la carpeta
+      var nombrePadron = {};
+      Object.keys(g).forEach(function (u) { nombrePadron[claveCarpeta(g[u].nombre)] = g[u].nombre; });
+
+      // El ERSeP ve TODO el inventario, incluidas carpetas sin permiso en el padrón
+      var todas = [];
+      Object.keys(INVENTARIO).forEach(function (k) {
+        INVENTARIO[k].forEach(function (a) {
+          var fila = { enlace: a.enlace, Empresa: nombrePadron[k] || (a.Empresa || k) };
+          COLS_ACTA.forEach(function (c) { if (c !== 'Empresa') fila[c] = a[c]; });
+          todas.push(fila);
+        });
+      });
+
+      $('estado_gen').textContent = 'Cifrando el acceso global (' + todas.length + ' actas)…';
+
+      return ActasCripto.cifrar({
+        empresa: 'ERSeP · todas las empresas', carpeta: '', generado: new Date().toISOString(),
+        global: true, columnas: [], permisos: [],
+        columnasActas: ['Empresa'].concat(COLS_ACTA), actas: todas
+      }, CLAVES[uGlobal]).then(function (paquete) {
+        paquete.nombre = 'ERSeP · acceso global';
+        paquete.global = true;
+        salida[uGlobal] = paquete;
+        usuarios.push(uGlobal);
+        g[uGlobal] = { nombre: 'ERSeP · acceso global', filas: todas, correos: {} };
+      });
+    }).then(function () {
       var js = '/* Actas por empresa · generado el ' + new Date().toLocaleString('es-AR') + '\n' +
         '   Contenido CIFRADO: sin la contraseña de cada empresa no puede leerse.\n' +
         '   No contiene contraseñas. Generado con modulos/actas/generador.html */\n' +
