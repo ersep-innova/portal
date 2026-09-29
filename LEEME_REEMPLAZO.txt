@@ -1,0 +1,19 @@
+FIX PERMISOS DE SALIDA - 29/09/2026
+
+Reemplazar exactamente estos dos archivos en el repositorio ersep-innova/portal:
+
+1) backend-permisos/main.py
+2) assets/js/permisos.js
+
+Qué corrige:
+- Al iniciar sesión, el usuario recibe su Oficina y la Jefatura configurada para esa Oficina.
+- La edición de usuarios se identifica por ID estable, permitiendo cambiar email y/o username sin intentar crear un usuario nuevo.
+- Mantiene la regla estructural Oficina -> Jefatura. No modifica usuarios, oficinas ni datos existentes.
+
+Después de subir ambos archivos:
+1. Commit en GitHub.
+2. Esperar a que Render despliegue backend-permisos.
+3. Hacer recarga fuerte del navegador (Ctrl+F5).
+4. Cerrar sesión e ingresar como agustin.primo.
+5. Debe verse Costos y Tarifas -> Lucas Sebastián González Etienot.
+6. Probar editar un usuario cambiando el email y guardar.

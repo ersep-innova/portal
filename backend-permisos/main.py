@@ -89,6 +89,7 @@ class DecisionIn(BaseModel):
 
 
 class AdminUserIn(BaseModel):
+    id: int | None = None
     username: str = Field(min_length=3, max_length=80, pattern=r"^[A-Za-z0-9._-]+$")
     password: str | None = Field(default=None, min_length=6, max_length=200)
     email: EmailStr
@@ -179,6 +180,45 @@ def _serialize_user(row: dict):
     return row
 
 
+def _auth_user_with_org(user: dict):
+    """Devuelve el usuario autenticado con su Oficina y Jefatura vigentes.
+
+    La Oficina es la única fuente de verdad para resolver la jefatura.
+    Se usa tanto al iniciar sesión como al restaurar una sesión existente,
+    evitando que la UI muestre una jefatura distinta de la configurada en
+    Administración.
+    """
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT o.id oficina_id,o.nombre oficina,
+                       trim(concat(j.nombre,' ',j.apellido)) jefe_nombre,j.email jefe_email
+                FROM usuarios u
+                LEFT JOIN oficinas o ON o.id=u.oficina_id
+                LEFT JOIN usuarios j ON j.id=o.jefe_id AND j.activo=TRUE
+                WHERE u.id=%s
+            """, (user["id"],))
+            org = cur.fetchone() or {}
+
+    return _serialize_user({
+        "id": user["id"],
+        "username": user.get("username"),
+        "email": user["email"],
+        "nombre": user["nombre"],
+        "apellido": user["apellido"],
+        "dni": user.get("dni"),
+        "legajo": user.get("legajo"),
+        "area": org.get("oficina") or user.get("area"),
+        "oficina_id": org.get("oficina_id"),
+        "oficina": org.get("oficina") or user.get("area"),
+        "jefe_nombre": org.get("jefe_nombre"),
+        "jefe_email": org.get("jefe_email"),
+        "jornada_desde": user.get("jornada_desde"),
+        "jornada_hasta": user.get("jornada_hasta"),
+        "roles": user["roles"],
+    })
+
+
 @app.get("/api/health")
 def health():
     with connection() as conn:
@@ -202,7 +242,7 @@ def health():
 @app.post("/api/auth/login")
 def auth_login(payload: LoginIn):
     result = login_user(payload.usuario, payload.clave)
-    result["user"] = _serialize_user(result["user"])
+    result["user"] = _auth_user_with_org(result["user"])
     return result
 
 
@@ -214,33 +254,7 @@ def auth_logout(authorization: str | None = Header(default=None)):
 
 @app.get("/api/auth/me")
 def auth_me(user: dict = Depends(get_current_user)):
-    with connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT o.id oficina_id,o.nombre oficina,
-                       trim(concat(j.nombre,' ',j.apellido)) jefe_nombre,j.email jefe_email
-                FROM usuarios u
-                LEFT JOIN oficinas o ON o.id=u.oficina_id
-                LEFT JOIN usuarios j ON j.id=o.jefe_id
-                WHERE u.id=%s
-            """, (user["id"],))
-            org = cur.fetchone() or {}
-    return _serialize_user({
-        "id": user["id"],
-        "email": user["email"],
-        "nombre": user["nombre"],
-        "apellido": user["apellido"],
-        "dni": user.get("dni"),
-        "legajo": user.get("legajo"),
-        "area": org.get("oficina") or user.get("area"),
-        "oficina_id": org.get("oficina_id"),
-        "oficina": org.get("oficina") or user.get("area"),
-        "jefe_nombre": org.get("jefe_nombre"),
-        "jefe_email": org.get("jefe_email"),
-        "jornada_desde": user.get("jornada_desde"),
-        "jornada_hasta": user.get("jornada_hasta"),
-        "roles": user["roles"],
-    })
+    return _auth_user_with_org(user)
 
 
 @app.get("/api/reglas/plazo-devolucion")
@@ -920,31 +934,57 @@ def upsert_user(payload: AdminUserIn, user: dict = Depends(require_roles("ADMIN"
                     raise HTTPException(status_code=422, detail="La Oficina seleccionada no existe o está inactiva.")
                 office_name = office["nombre"]
 
-            cur.execute("SELECT * FROM usuarios WHERE email=%s", (email,))
-            existing = cur.fetchone()
-            cur.execute("SELECT id FROM usuarios WHERE lower(username)=lower(%s) AND email<>%s", (username, email))
+            # Al editar, el ID es la identidad estable del usuario.
+            # Así pueden cambiar email y/o username sin crear un usuario nuevo.
+            existing = None
+            if payload.id is not None:
+                cur.execute("SELECT * FROM usuarios WHERE id=%s", (payload.id,))
+                existing = cur.fetchone()
+                if not existing:
+                    raise HTTPException(status_code=404, detail="Usuario inexistente.")
+            else:
+                # Compatibilidad con clientes anteriores que todavía no envían ID.
+                cur.execute("SELECT * FROM usuarios WHERE lower(email)=lower(%s)", (email,))
+                existing = cur.fetchone()
+                if not existing:
+                    cur.execute("SELECT * FROM usuarios WHERE lower(username)=lower(%s)", (username,))
+                    existing = cur.fetchone()
+
+            current_id = existing["id"] if existing else -1
+
+            cur.execute(
+                "SELECT id FROM usuarios WHERE lower(username)=lower(%s) AND id<>%s",
+                (username, current_id),
+            )
             if cur.fetchone():
-                raise HTTPException(status_code=409, detail="Ese nombre de usuario ya está en uso.")
+                raise HTTPException(status_code=409, detail="Ese nombre de usuario ya está en uso por otro usuario.")
+
+            cur.execute(
+                "SELECT id FROM usuarios WHERE lower(email)=lower(%s) AND id<>%s",
+                (email, current_id),
+            )
+            if cur.fetchone():
+                raise HTTPException(status_code=409, detail="Ese email ya está en uso por otro usuario.")
 
             if existing:
                 if payload.password:
                     cur.execute("""
                         UPDATE usuarios SET
-                            username=%s,password_hash=%s,nombre=%s,apellido=%s,legajo=%s,dni=%s,
+                            username=%s,password_hash=%s,email=%s,nombre=%s,apellido=%s,legajo=%s,dni=%s,
                             area=%s,oficina_id=%s,jornada_desde=%s,jornada_hasta=%s,activo=TRUE,updated_at=NOW()
                         WHERE id=%s RETURNING *
                     """, (
-                        username,hash_password(payload.password),payload.nombre,payload.apellido,payload.legajo,payload.dni,
+                        username,hash_password(payload.password),email,payload.nombre,payload.apellido,payload.legajo,payload.dni,
                         office_name,office_id,work_start,work_end,existing["id"],
                     ))
                 else:
                     cur.execute("""
                         UPDATE usuarios SET
-                            username=%s,nombre=%s,apellido=%s,legajo=%s,dni=%s,
+                            username=%s,email=%s,nombre=%s,apellido=%s,legajo=%s,dni=%s,
                             area=%s,oficina_id=%s,jornada_desde=%s,jornada_hasta=%s,activo=TRUE,updated_at=NOW()
                         WHERE id=%s RETURNING *
                     """, (
-                        username,payload.nombre,payload.apellido,payload.legajo,payload.dni,
+                        username,email,payload.nombre,payload.apellido,payload.legajo,payload.dni,
                         office_name,office_id,work_start,work_end,existing["id"],
                     ))
                 target = cur.fetchone()
@@ -979,8 +1019,7 @@ def upsert_user(payload: AdminUserIn, user: dict = Depends(require_roles("ADMIN"
                 ON CONFLICT DO NOTHING
             """, (target["id"], target["id"]))
 
-            # V6: no se crea ni actualiza una jefatura por agente. La jefatura
-            # se resuelve exclusivamente desde la Oficina asignada.
+            # La jefatura se resuelve exclusivamente desde la Oficina asignada.
             conn.commit()
             return {"status": "ok", "id": target["id"]}
 

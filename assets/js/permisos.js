@@ -17,6 +17,7 @@
   let bossCalendarCursor = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   let rrhhCalendarCursor = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   let validatedImportKey = null;
+  let adminEditingUserId = null;
 
   function toast(message, type = "") {
     const el = document.createElement("div");
@@ -763,6 +764,7 @@
   }
 
   function clearAdminForm() {
+    adminEditingUserId = null;
     const form = $("#admin_user_form");
     form.reset();
     $("#admin_password").value = "";
@@ -775,6 +777,7 @@
   function editAdminUser(id) {
     const u = adminUsersCache.find(x => Number(x.id) === Number(id));
     if (!u) return;
+    adminEditingUserId = Number(u.id);
     $("#admin_username").value = u.username || "";
     $("#admin_password").value = "";
     $("#admin_email").value = u.email || "";
@@ -1078,6 +1081,7 @@
       const roles = $$('input[name="admin_role"]:checked').map(x => x.value);
       try {
         await PermisosAPI.request("/api/admin/usuarios", { method: "POST", body: JSON.stringify({
+          id: adminEditingUserId,
           username: $("#admin_username").value.trim(),
           password: $("#admin_password").value || null,
           email: $("#admin_email").value.trim(),
