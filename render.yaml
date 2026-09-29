@@ -24,11 +24,12 @@ services:
     healthCheckPath: /api/health
 
     envVars:
-      # PostgreSQL
-      - key: DATABASE_URL
-        fromDatabase:
-          name: ersep-permisos-db
-          property: connectionString
+      # Base principal de Permisos: PostgreSQL de Supabase.
+      # En un Blueprint ya existente, Render no completa automáticamente
+      # variables sync:false: cargarla manualmente una sola vez en Environment.
+      # Usar la cadena "Session pooler" (puerto 5432) de Supabase > Connect.
+      - key: SUPABASE_DATABASE_URL
+        sync: false
 
       # Frontend autorizado
       - key: FRONTEND_ORIGINS
@@ -94,12 +95,3 @@ services:
       # Alternativa opcional: cambiar EMAIL_PROVIDER a resend y configurar esta clave.
       - key: RESEND_API_KEY
         sync: false
-
-
-
-databases:
-  - name: ersep-permisos-db
-    plan: free
-    databaseName: ersep_permisos
-    user: ersep_permisos_app
-    ipAllowList: []

@@ -6,9 +6,25 @@ def _csv(name: str, default: str = "") -> list[str]:
     return [x.strip().lower() for x in os.getenv(name, default).split(",") if x.strip()]
 
 
+def _database_url() -> str:
+    """
+    Supabase es la base principal de Permisos.
+
+    Se conserva DATABASE_URL únicamente como fallback temporal para que el
+    servicio no quede inutilizable durante el corte. En cuanto se configure
+    SUPABASE_DATABASE_URL en Render, la aplicación deja de usar la PostgreSQL
+    administrada por Render sin necesidad de cambiar ninguna otra parte del
+    backend.
+    """
+    return (
+        os.getenv("SUPABASE_DATABASE_URL", "").strip()
+        or os.getenv("DATABASE_URL", "").strip()
+    )
+
+
 @dataclass(frozen=True)
 class Settings:
-    database_url: str = os.getenv("DATABASE_URL", "")
+    database_url: str = _database_url()
     frontend_origins: tuple[str, ...] = tuple(
         x.strip()
         for x in os.getenv(
@@ -17,13 +33,11 @@ class Settings:
         ).split(",")
         if x.strip()
     )
-
     # Acceso local simple (sin Google Login).
     bootstrap_admin_username: str = os.getenv("BOOTSTRAP_ADMIN_USERNAME", "admin")
     bootstrap_admin_password: str = os.getenv("BOOTSTRAP_ADMIN_PASSWORD", "")
     bootstrap_admin_email: str = os.getenv("BOOTSTRAP_ADMIN_EMAIL", "")
     auth_session_hours: int = int(os.getenv("AUTH_SESSION_HOURS", "12"))
-
     # Google queda únicamente como integración opcional de Sheets.
     google_oauth_client_id: str = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "")
     google_oauth_client_secret: str = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", "")
