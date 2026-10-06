@@ -80,6 +80,7 @@ class PermissionIn(BaseModel):
     horas_extra_fecha: date | None = None
     horas_extra_desde: str | None = None
     horas_extra_hasta: str | None = None
+    banco_horas_confirmado: bool = False
     justificacion_fuera_plazo: str | None = Field(default=None, max_length=1000)
     observaciones: str | None = Field(default=None, max_length=1000)
 
@@ -90,8 +91,8 @@ class DecisionIn(BaseModel):
 
 class AdminUserIn(BaseModel):
     id: int | None = None
-    username: str = Field(min_length=3, max_length=80, pattern=r"^[A-Za-z0-9._-]+$")
-    password: str | None = Field(default=None, min_length=6, max_length=200)
+    username: str | None = Field(default=None, max_length=80)
+    password: str | None = Field(default=None, max_length=200)
     email: EmailStr
     nombre: str = Field(min_length=1, max_length=120)
     apellido: str = Field(min_length=1, max_length=120)
@@ -120,6 +121,52 @@ class CleanupIn(BaseModel):
     confirmacion: str = Field(min_length=1, max_length=80)
 
 
+MONTHLY_PRIVATE_LIMIT_MINUTES = 5 * 60
+
+
+def _month_bounds(reference: date) -> tuple[date, date]:
+    start = reference.replace(day=1)
+    if start.month == 12:
+        end = date(start.year + 1, 1, 1)
+    else:
+        end = date(start.year, start.month + 1, 1)
+    return start, end
+
+
+def _monthly_private_minutes(cur, agent_id: int, reference: date, exclude_permission_id: int | None = None) -> int:
+    start, end = _month_bounds(reference)
+    params: list = [agent_id, start, end]
+    exclude_sql = ""
+    if exclude_permission_id is not None:
+        exclude_sql = " AND id<>%s"
+        params.append(exclude_permission_id)
+    cur.execute(f"""
+        SELECT COALESCE(SUM(COALESCE(minutos_declarados,minutos_autorizados,minutos_calculados,0)),0) minutos
+        FROM permisos_salida
+        WHERE agente_id=%s
+          AND tipo='PARTICULAR'
+          AND fecha_salida >= %s AND fecha_salida < %s
+          AND estado NOT IN ('BORRADOR','RECHAZADO','RECHAZADO_JEFE','RECHAZADO_RRHH','CANCELADO_AGENTE')
+          {exclude_sql}
+    """, params)
+    return int((cur.fetchone() or {}).get("minutos") or 0)
+
+
+def _assert_monthly_private_limit(cur, agent_id: int, reference: date, requested_minutes: int, exclude_permission_id: int | None = None) -> tuple[int, int]:
+    used = _monthly_private_minutes(cur, agent_id, reference, exclude_permission_id)
+    requested = max(0, int(requested_minutes or 0))
+    if used + requested > MONTHLY_PRIVATE_LIMIT_MINUTES:
+        available = max(0, MONTHLY_PRIVATE_LIMIT_MINUTES - used)
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"El límite de salidas particulares es de 5 horas por mes. "
+                f"Ya tenés {used} minutos computados y sólo quedan {available} minutos disponibles para ese mes."
+            ),
+        )
+    return used, MONTHLY_PRIVATE_LIMIT_MINUTES - used - requested
+
+
 def _parse_time(value: str | None):
     if value is None or value == "":
         return None
@@ -145,7 +192,9 @@ def _serialize_permission(row: dict):
     if declared is None:
         declared = row.get("minutos_autorizados")
     mode = row.get("reposicion_modalidad") or row.get("modalidad_compensacion") or "DEVOLVER_HORAS"
-    proposed = row.get("minutos_horas_extra") if mode == "HORAS_EXTRAS_PREVIAS" else row.get("reposicion_minutos_tramo")
+    proposed = row.get("minutos_horas_extra") if mode == "HORAS_EXTRAS_PREVIAS" else row.get("reposicion_minutos")
+    if proposed is None and mode == "DEVOLVER_HORAS":
+        proposed = row.get("reposicion_minutos_tramo")
     if proposed is None and mode == "DEVOLVER_HORAS":
         a = row.get("reposicion_hora_desde")
         b = row.get("reposicion_hora_hasta")
@@ -158,7 +207,7 @@ def _serialize_permission(row: dict):
 
     risks = []
     if row.get("fuera_plazo_reglamentario"):
-        risks.append({"nivel": "CRITICO", "codigo": "FUERA_PLAZO", "mensaje": "La devolución propuesta supera el plazo reglamentario sugerido."})
+        risks.append({"nivel": "CRITICO", "codigo": "FUERA_PLAZO", "mensaje": "La devolución registrada supera el plazo máximo permitido."})
     if declared is not None and proposed is not None and int(proposed) < int(declared):
         label = "horas extra informadas" if mode == "HORAS_EXTRAS_PREVIAS" else "tramo de devolución"
         risks.append({"nivel": "CRITICO", "codigo": "COMPENSACION_INSUFICIENTE", "mensaje": f"El {label} cubre menos tiempo que la salida declarada ({proposed} min vs. {declared} min)."})
@@ -266,7 +315,23 @@ def return_deadline(fecha_salida: date = Query(...), user: dict = Depends(requir
         "fecha_salida": fecha_salida,
         "fecha_limite": limit_date,
         "dias_habiles": 7,
-        "mensaje": "Por reglamento, la devolución debería realizarse dentro de los próximos 7 días hábiles.",
+        "mensaje": "La devolución debe realizarse dentro de los próximos 7 días hábiles. No se admiten fechas posteriores.",
+    }
+
+
+@app.get("/api/reglas/cupo-mensual")
+def monthly_quota(fecha: date | None = Query(default=None), user: dict = Depends(require_roles("AGENTE"))):
+    reference = fecha or datetime.now(ZoneInfo("America/Argentina/Cordoba")).date()
+    with connection() as conn:
+        with conn.cursor() as cur:
+            used = _monthly_private_minutes(cur, user["id"], reference)
+    available = max(0, MONTHLY_PRIVATE_LIMIT_MINUTES - used)
+    return {
+        "mes": reference.strftime("%Y-%m"),
+        "limite_minutos": MONTHLY_PRIVATE_LIMIT_MINUTES,
+        "usados_minutos": used,
+        "disponibles_minutos": available,
+        "limite_horas": 5,
     }
 
 
@@ -291,10 +356,6 @@ def create_permission(payload: PermissionIn, bg: BackgroundTasks, user: dict = D
         )
 
     mode = payload.compensacion_modo if payload.tipo == "PARTICULAR" else None
-    return_from = _parse_time(payload.devolucion_hora_desde)
-    return_to = _parse_time(payload.devolucion_hora_hasta)
-    extra_from = _parse_time(payload.horas_extra_desde)
-    extra_to = _parse_time(payload.horas_extra_hasta)
 
     with connection() as conn:
         with conn.cursor() as cur:
@@ -306,38 +367,32 @@ def create_permission(payload: PermissionIn, bg: BackgroundTasks, user: dict = D
             extra_date = None
 
             if payload.tipo == "PARTICULAR":
+                cur.execute("SELECT id FROM usuarios WHERE id=%s FOR UPDATE", (user["id"],))
+                _assert_monthly_private_limit(cur, user["id"], payload.fecha_salida, declared)
                 if mode == "DEVOLVER_HORAS":
                     if not payload.fecha_devolucion:
                         raise HTTPException(status_code=422, detail="Debe indicar la fecha en la que devolverá las horas.")
                     if payload.fecha_devolucion < payload.fecha_salida:
                         raise HTTPException(status_code=422, detail="La fecha de devolución no puede ser anterior a la salida.")
-                    if return_from is None or return_to is None:
-                        raise HTTPException(status_code=422, detail="Debe indicar el horario completo en el que devolverá las horas.")
-                    return_minutes = minutes_between(return_from, return_to)
                     return_date = payload.fecha_devolucion
                     limit_date = max_business_date(cur, payload.fecha_salida, 7)
-                    outside = payload.fecha_devolucion > limit_date
-                    if outside and not (payload.justificacion_fuera_plazo or "").strip():
+                    if payload.fecha_devolucion > limit_date:
                         raise HTTPException(
                             status_code=422,
                             detail=(
-                                f"La fecha seleccionada supera el plazo reglamentario sugerido ({limit_date.strftime('%d/%m/%Y')}). "
-                                "Puede continuar, pero debe indicar una observación para consideración de RR.HH."
+                                f"La fecha de devolución no puede superar el {limit_date.strftime('%d/%m/%Y')}. "
+                                "El máximo es de 7 días hábiles y no se admiten excepciones ni justificaciones."
                             ),
                         )
+                    return_minutes = declared
+                    outside = False
                 elif mode == "HORAS_EXTRAS_PREVIAS":
-                    if not payload.horas_extra_fecha or extra_from is None or extra_to is None:
+                    if not payload.banco_horas_confirmado:
                         raise HTTPException(
                             status_code=422,
-                            detail="Para usar horas extras previas debe indicar el día y el horario exacto en que fueron realizadas.",
+                            detail="Debe confirmar que la salida se compensará con el banco de horas extras previas.",
                         )
-                    if payload.horas_extra_fecha >= payload.fecha_salida:
-                        raise HTTPException(
-                            status_code=422,
-                            detail="Las horas extra utilizadas deben haber sido realizadas antes de la fecha de salida.",
-                        )
-                    extra_minutes = minutes_between(extra_from, extra_to)
-                    extra_date = payload.horas_extra_fecha
+                    extra_minutes = declared
                 else:
                     raise HTTPException(status_code=422, detail="Modalidad de compensación inválida.")
 
@@ -353,7 +408,7 @@ def create_permission(payload: PermissionIn, bg: BackgroundTasks, user: dict = D
                 (payload.lugar_destino or "").strip() or None,
                 start, end, payload.sin_regreso, workday_start, workday_end, calculated, declared, declared,
                 (payload.justificacion_minutos or "").strip() or None, return_date, limit_date, outside,
-                (payload.justificacion_fuera_plazo or "").strip() or None, mode, payload.observaciones,
+                None, mode, payload.observaciones,
             ))
             p = cur.fetchone()
             number = f"PS-{payload.fecha_salida.year}-{p['id']:06d}"
@@ -367,13 +422,11 @@ def create_permission(payload: PermissionIn, bg: BackgroundTasks, user: dict = D
             if declared != calculated:
                 details.append(f"Justificación: {(payload.justificacion_minutos or '').strip()}")
             if payload.tipo == "OFICIAL":
-                details.append("Salida oficial: no corresponde devolución ni compensación de horas; requiere aprobación final de RR.HH.")
+                details.append("Salida oficial: no corresponde devolución ni compensación de horas; requiere procesamiento final de RR.HH.")
             if mode == "DEVOLVER_HORAS":
-                details.append(f"Compensación: devolución el {return_date.strftime('%d/%m/%Y')} de {str(return_from)[:5]} a {str(return_to)[:5]} ({return_minutes} min)")
+                details.append(f"Compensación: devolución el {return_date.strftime('%d/%m/%Y')} dentro del plazo máximo de 7 días hábiles ({declared} min)")
             elif mode == "HORAS_EXTRAS_PREVIAS":
-                details.append(f"Compensación: horas extra previas del {extra_date.strftime('%d/%m/%Y')} de {str(extra_from)[:5]} a {str(extra_to)[:5]} ({extra_minutes} min)")
-            if outside:
-                details.append(f"Devolución fuera del plazo sugerido ({limit_date.strftime('%d/%m/%Y')}): {(payload.justificacion_fuera_plazo or '').strip()}")
+                details.append(f"Compensación: banco de horas extras previas confirmado por el agente ({declared} min)")
             add_history(cur, p["id"], user["id"], "SOLICITUD_CREADA", None, "BORRADOR", " · ".join(details))
 
             if payload.tipo == "PARTICULAR":
@@ -383,15 +436,9 @@ def create_permission(payload: PermissionIn, bg: BackgroundTasks, user: dict = D
                         modalidad,fecha_horas_extra,hora_desde_horas_extra,hora_hasta_horas_extra,minutos_horas_extra
                     ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 """, (
-                    p["id"], return_date, return_from, return_to, declared,
-                    mode, extra_date, extra_from, extra_to, extra_minutes,
+                    p["id"], return_date, None, None, declared,
+                    mode, None, None, None, declared if mode == "HORAS_EXTRAS_PREVIAS" else None,
                 ))
-                compensated = extra_minutes if mode == "HORAS_EXTRAS_PREVIAS" else return_minutes
-                if compensated != declared:
-                    add_history(
-                        cur, p["id"], user["id"], "COMPENSACION_DIFERENTE", "BORRADOR", "BORRADOR",
-                        f"La compensación informada equivale a {compensated} min y el tiempo de salida declarado es {declared} min.",
-                    )
             conn.commit()
             p["numero_permiso"] = number
             result = _serialize_permission(p)
@@ -411,9 +458,16 @@ def send_permission(permission_id: int, bg: BackgroundTasks, user: dict = Depend
                 raise HTTPException(status_code=404, detail="Permiso inexistente.")
             if p["estado"] != "BORRADOR":
                 raise HTTPException(status_code=409, detail="Solo un borrador puede enviarse a autorización.")
+            if p["tipo"] == "PARTICULAR":
+                cur.execute("SELECT id FROM usuarios WHERE id=%s FOR UPDATE", (user["id"],))
+                _assert_monthly_private_limit(
+                    cur, user["id"], p["fecha_salida"],
+                    int(p.get("minutos_declarados") or p.get("minutos_autorizados") or p.get("minutos_calculados") or 0),
+                    exclude_permission_id=permission_id,
+                )
             boss = active_boss(cur, user["id"], p["fecha_salida"])
             if not boss:
-                raise HTTPException(status_code=409, detail="No tenés una Oficina con jefatura activa configurada para esa fecha. Solicitá a Administración o RR.HH. que revise tu Oficina.")
+                raise HTTPException(status_code=409, detail="No tenés una Gerencia/Área/Subdirección con jefatura activa configurada para esa fecha. Solicitá a Administración o RR.HH. que revise tu asignación.")
             cur.execute("UPDATE permisos_salida SET estado='PENDIENTE_JEFE',jefe_asignado_id=%s,updated_at=NOW() WHERE id=%s", (boss["id"], permission_id))
             add_history(cur, permission_id, user["id"], "ENVIADO_A_JEFE", "BORRADOR", "PENDIENTE_JEFE", f"Jefatura asignada: {boss['nombre']} {boss['apellido']}")
             conn.commit()
@@ -556,7 +610,7 @@ def boss_dashboard(
         hh = str(r.get("hora_salida") or "—")[:2]
         hour_label = f"{hh}:00" if hh.isdigit() else "Sin horario"
         by_hour[hour_label] = by_hour.get(hour_label, 0) + 1
-        office = r.get("oficina") or "Sin Oficina"
+        office = r.get("oficina") or "Sin Gerencia/Área/Subdirección"
         by_office[office] = by_office.get(office, 0) + 1
     top = lambda d, n=8: [{"label": k, "valor": v} for k, v in sorted(d.items(), key=lambda x: (-x[1], x[0]))[:n]]
     return {
@@ -592,7 +646,7 @@ def authorize(permission_id: int, payload: DecisionIn, bg: BackgroundTasks, user
             if not p:
                 raise HTTPException(status_code=404, detail="Permiso inexistente.")
             if not _can_boss_act(cur, p, user):
-                raise HTTPException(status_code=403, detail="No sos la jefatura asignada ni la jefatura actual de esta Oficina.")
+                raise HTTPException(status_code=403, detail="No sos la jefatura asignada ni la jefatura actual de esta Gerencia/Área/Subdirección.")
             if p["estado"] != "PENDIENTE_JEFE":
                 raise HTTPException(status_code=409, detail="La solicitud ya no está pendiente de autorización.")
             cur.execute("INSERT INTO aprobaciones (permiso_id,usuario_id,tipo_aprobacion,decision,observacion) VALUES (%s,%s,'JEFE','APROBADO',%s)", (permission_id, user["id"], payload.observacion))
@@ -617,7 +671,7 @@ def reject(permission_id: int, payload: DecisionIn, bg: BackgroundTasks, user: d
             if not p:
                 raise HTTPException(status_code=404, detail="Permiso inexistente.")
             if not _can_boss_act(cur, p, user):
-                raise HTTPException(status_code=403, detail="No sos la jefatura asignada ni la jefatura actual de esta Oficina.")
+                raise HTTPException(status_code=403, detail="No sos la jefatura asignada ni la jefatura actual de esta Gerencia/Área/Subdirección.")
             if p["estado"] != "PENDIENTE_JEFE":
                 raise HTTPException(status_code=409, detail="La solicitud ya no está pendiente.")
             cur.execute("INSERT INTO aprobaciones (permiso_id,usuario_id,tipo_aprobacion,decision,observacion) VALUES (%s,%s,'JEFE','RECHAZADO',%s)", (permission_id, user["id"], reason))
@@ -734,7 +788,7 @@ def rrhh_dashboard(
     by_type = {}
     declared_minutes = 0
     for r in rows:
-        office = r.get("oficina") or "Sin Oficina"
+        office = r.get("oficina") or "Sin Gerencia/Área/Subdirección"
         agent_name = r.get("agente_nombre") or "Sin identificar"
         hh = str(r.get("hora_salida") or "—")[:2]
         hour_label = f"{hh}:00" if hh.isdigit() else "Sin horario"
@@ -864,10 +918,10 @@ def upsert_office(payload: AdminOfficeIn, user: dict = Depends(require_roles("AD
             if payload.id:
                 cur.execute("SELECT id FROM oficinas WHERE id=%s", (payload.id,))
                 if not cur.fetchone():
-                    raise HTTPException(status_code=404, detail="Oficina inexistente.")
+                    raise HTTPException(status_code=404, detail="Gerencia/Área/Subdirección inexistente.")
                 cur.execute("SELECT id FROM oficinas WHERE lower(nombre)=lower(%s) AND id<>%s", (name, payload.id))
                 if cur.fetchone():
-                    raise HTTPException(status_code=409, detail="Ya existe otra Oficina con ese nombre.")
+                    raise HTTPException(status_code=409, detail="Ya existe otra Gerencia/Área/Subdirección con ese nombre.")
                 cur.execute("""
                     UPDATE oficinas SET nombre=%s,jefe_id=%s,activo=%s,updated_at=NOW()
                     WHERE id=%s RETURNING id
@@ -920,7 +974,10 @@ def upsert_user(payload: AdminUserIn, user: dict = Depends(require_roles("ADMIN"
     if work_start >= work_end:
         raise HTTPException(status_code=422, detail="El fin de la jornada debe ser posterior al inicio.")
 
-    username = payload.username.strip().lower()
+    username = payload.legajo.strip().lower()
+    dni_value = (payload.dni or "").strip()
+    if not dni_value:
+        raise HTTPException(status_code=422, detail="El DNI es obligatorio porque se utiliza como clave de acceso del agente.")
     email = payload.email.lower()
 
     with connection() as conn:
@@ -931,7 +988,7 @@ def upsert_user(payload: AdminUserIn, user: dict = Depends(require_roles("ADMIN"
                 cur.execute("SELECT id,nombre FROM oficinas WHERE id=%s AND activo=TRUE", (office_id,))
                 office = cur.fetchone()
                 if not office:
-                    raise HTTPException(status_code=422, detail="La Oficina seleccionada no existe o está inactiva.")
+                    raise HTTPException(status_code=422, detail="La Gerencia/Área/Subdirección seleccionada no existe o está inactiva.")
                 office_name = office["nombre"]
 
             # Al editar, el ID es la identidad estable del usuario.
@@ -957,7 +1014,7 @@ def upsert_user(payload: AdminUserIn, user: dict = Depends(require_roles("ADMIN"
                 (username, current_id),
             )
             if cur.fetchone():
-                raise HTTPException(status_code=409, detail="Ese nombre de usuario ya está en uso por otro usuario.")
+                raise HTTPException(status_code=409, detail="Ese número de legajo ya está en uso por otro usuario.")
 
             cur.execute(
                 "SELECT id FROM usuarios WHERE lower(email)=lower(%s) AND id<>%s",
@@ -967,36 +1024,23 @@ def upsert_user(payload: AdminUserIn, user: dict = Depends(require_roles("ADMIN"
                 raise HTTPException(status_code=409, detail="Ese email ya está en uso por otro usuario.")
 
             if existing:
-                if payload.password:
-                    cur.execute("""
-                        UPDATE usuarios SET
-                            username=%s,password_hash=%s,email=%s,nombre=%s,apellido=%s,legajo=%s,dni=%s,
-                            area=%s,oficina_id=%s,jornada_desde=%s,jornada_hasta=%s,activo=TRUE,updated_at=NOW()
-                        WHERE id=%s RETURNING *
-                    """, (
-                        username,hash_password(payload.password),email,payload.nombre,payload.apellido,payload.legajo,payload.dni,
-                        office_name,office_id,work_start,work_end,existing["id"],
-                    ))
-                else:
-                    cur.execute("""
-                        UPDATE usuarios SET
-                            username=%s,email=%s,nombre=%s,apellido=%s,legajo=%s,dni=%s,
-                            area=%s,oficina_id=%s,jornada_desde=%s,jornada_hasta=%s,activo=TRUE,updated_at=NOW()
-                        WHERE id=%s RETURNING *
-                    """, (
-                        username,email,payload.nombre,payload.apellido,payload.legajo,payload.dni,
-                        office_name,office_id,work_start,work_end,existing["id"],
-                    ))
+                cur.execute("""
+                    UPDATE usuarios SET
+                        username=%s,password_hash=%s,email=%s,nombre=%s,apellido=%s,legajo=%s,dni=%s,
+                        area=%s,oficina_id=%s,jornada_desde=%s,jornada_hasta=%s,activo=TRUE,updated_at=NOW()
+                    WHERE id=%s RETURNING *
+                """, (
+                    username,hash_password(dni_value),email,payload.nombre,payload.apellido,payload.legajo,dni_value,
+                    office_name,office_id,work_start,work_end,existing["id"],
+                ))
                 target = cur.fetchone()
             else:
-                if not payload.password:
-                    raise HTTPException(status_code=422, detail="Para crear un usuario nuevo debe indicar una clave inicial de al menos 6 caracteres.")
                 cur.execute("""
                     INSERT INTO usuarios(
                         username,password_hash,email,nombre,apellido,legajo,dni,area,oficina_id,jornada_desde,jornada_hasta,activo
                     ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,TRUE) RETURNING *
                 """, (
-                    username,hash_password(payload.password),email,payload.nombre,payload.apellido,payload.legajo,payload.dni,
+                    username,hash_password(dni_value),email,payload.nombre,payload.apellido,payload.legajo,dni_value,
                     office_name,office_id,work_start,work_end,
                 ))
                 target = cur.fetchone()
@@ -1095,7 +1139,8 @@ def _read_users_xlsx(content: bytes) -> list[dict]:
         "clave": "password", "password": "password", "contrasena": "password",
         "email": "email", "correo": "email",
         "nombre": "nombre", "apellido": "apellido", "legajo": "legajo", "dni": "dni",
-        "oficina": "oficina", "area": "oficina",
+        "oficina": "oficina", "area": "oficina", "gerencia": "oficina",
+        "subdireccion": "oficina", "gerencia_area_subdireccion": "oficina",
         "jornada_desde": "jornada_desde", "desde": "jornada_desde",
         "jornada_hasta": "jornada_hasta", "hasta": "jornada_hasta",
         "roles": "roles", "rol": "roles", "activo": "activo",
@@ -1104,7 +1149,7 @@ def _read_users_xlsx(content: bytes) -> list[dict]:
     for h in rows[0]:
         key = _norm_header(h)
         headers.append(aliases.get(key, key))
-    required = {"username", "email", "nombre", "apellido", "legajo"}
+    required = {"email", "nombre", "apellido", "legajo", "dni"}
     missing = sorted(required - set(headers))
     if missing:
         raise HTTPException(status_code=422, detail="Faltan columnas obligatorias: " + ", ".join(missing))
@@ -1127,10 +1172,13 @@ def _validate_import_rows(rows: list[dict]) -> tuple[list[dict], list[dict]]:
             for raw in rows:
                 rownum = raw.get("fila")
                 try:
-                    username = str(raw.get("username") or "").strip().lower()
                     email = str(raw.get("email") or "").strip().lower()
                     legajo = str(raw.get("legajo") or "").strip()
-                    password = str(raw.get("password") or "").strip() or None
+                    dni = str(raw.get("dni") or "").strip()
+                    if not dni:
+                        raise ValueError("El DNI es obligatorio porque funciona como clave de acceso.")
+                    username = legajo.lower()
+                    password = dni
                     roles = _parse_roles(raw.get("roles"))
                     jornada_desde = _excel_time(raw.get("jornada_desde"), "08:00")
                     jornada_hasta = _excel_time(raw.get("jornada_hasta"), "14:00")
@@ -1138,7 +1186,7 @@ def _validate_import_rows(rows: list[dict]) -> tuple[list[dict], list[dict]]:
                     item = AdminUserIn(
                         username=username, password=password, email=email,
                         nombre=str(raw.get("nombre") or "").strip(), apellido=str(raw.get("apellido") or "").strip(),
-                        legajo=legajo, dni=str(raw.get("dni") or "").strip() or None, area=office_name,
+                        legajo=legajo, dni=dni, area=office_name,
                         oficina_id=None, jornada_desde=jornada_desde, jornada_hasta=jornada_hasta, roles=roles, jefe_email=None,
                     )
                     if _parse_time(jornada_desde) >= _parse_time(jornada_hasta):
@@ -1167,8 +1215,6 @@ def _validate_import_rows(rows: list[dict]) -> tuple[list[dict], list[dict]]:
                     if len(distinct_ids) > 1:
                         raise ValueError("Usuario, email y/o legajo pertenecen a cuentas distintas en la base actual.")
                     existing = matches[0] if matches else None
-                    if not existing and not password:
-                        raise ValueError("Usuario nuevo sin clave inicial (mínimo 6 caracteres).")
                     valid.append({
                         "fila": rownum, "payload": item.model_dump(), "oficina": office_name,
                         "activo": _excel_bool(raw.get("activo"), True), "existente_id": existing["id"] if existing else None,

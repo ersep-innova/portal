@@ -138,20 +138,37 @@ def ensure_bootstrap_admin() -> None:
         conn.commit()
 
 
+def _digits(value: str | None) -> str:
+    return "".join(ch for ch in str(value or "") if ch.isdigit())
+
+
 def login_user(username: str, password: str) -> dict:
-    username = (username or "").strip().lower()
+    username = (username or "").strip()
     if not username or not password:
-        raise HTTPException(status_code=422, detail="Ingresá usuario y clave.")
+        raise HTTPException(status_code=422, detail="Ingresá legajo y DNI.")
 
     with connection() as conn:
         with conn.cursor() as cur:
+            # Acceso normal: número de legajo como usuario y DNI como clave.
             cur.execute(
-                "SELECT * FROM usuarios WHERE lower(username)=lower(%s)",
+                "SELECT * FROM usuarios WHERE lower(legajo)=lower(%s)",
                 (username,),
             )
             user = cur.fetchone()
-            if not user or not verify_password(password, user.get("password_hash")):
-                raise HTTPException(status_code=401, detail="Usuario o clave incorrectos.")
+            valid = bool(user and _digits(user.get("dni")) and _digits(user.get("dni")) == _digits(password))
+
+            # Sólo la cuenta técnica bootstrap conserva el acceso por usuario/clave
+            # definido en variables de entorno para no bloquear el mantenimiento.
+            if not valid and username.lower() == settings.bootstrap_admin_username.strip().lower():
+                cur.execute(
+                    "SELECT * FROM usuarios WHERE lower(username)=lower(%s)",
+                    (username.lower(),),
+                )
+                user = cur.fetchone()
+                valid = bool(user and verify_password(password, user.get("password_hash")))
+
+            if not valid:
+                raise HTTPException(status_code=401, detail="Legajo o DNI incorrectos.")
             if not user["activo"]:
                 raise HTTPException(status_code=403, detail="Tu usuario se encuentra deshabilitado.")
 

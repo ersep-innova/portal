@@ -302,7 +302,7 @@ def sync_all() -> dict:
             summary = cur.fetchone()
 
     header = [
-        "ID","Número","Fecha","Agente","DNI","Legajo","Oficina","Tipo","Destino",
+        "ID","Número","Fecha","Agente","DNI","Legajo","Gerencia/Área/Subdirección","Tipo","Destino",
         "Salida","Regreso","Sin regreso","Jornada desde","Jornada hasta",
         "Minutos calculados","Minutos declarados","Justificación diferencia",
         "Fecha devolución","Fecha límite 7 días hábiles","Fuera de plazo",

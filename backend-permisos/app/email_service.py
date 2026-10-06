@@ -338,16 +338,9 @@ def _html_body(p: dict, event: dict, observation: str | None) -> str:
     salida = f"{_fmt_time(p.get('hora_salida'))} → {'Sin regreso' if p.get('sin_regreso') else _fmt_time(p.get('hora_regreso'))}"
 
     if mode == "HORAS_EXTRAS_PREVIAS" and p.get("tipo") == "PARTICULAR":
-        compensacion = (
-            f"Usa horas extras previas · {_fmt_date(p.get('fecha_horas_extra'))} · "
-            f"{_fmt_time(p.get('hora_desde_horas_extra'))} → {_fmt_time(p.get('hora_hasta_horas_extra'))} "
-            f"({_fmt_minutes(p.get('minutos_horas_extra'))})"
-        )
+        compensacion = f"Banco de horas extras previas · confirmado ({_fmt_minutes(p.get('minutos_horas_extra'))})"
     elif p.get("tipo") == "PARTICULAR":
-        compensacion = (
-            f"Devolución de horas · {_fmt_date(p.get('reposicion_fecha') or p.get('fecha_devolucion'))} · "
-            f"{_fmt_time(p.get('reposicion_desde'))} → {_fmt_time(p.get('reposicion_hasta'))}"
-        )
+        compensacion = f"Devolución de horas · {_fmt_date(p.get('reposicion_fecha') or p.get('fecha_devolucion'))}"
     else:
         compensacion = "No corresponde (salida oficial)"
 
@@ -357,7 +350,7 @@ def _html_body(p: dict, event: dict, observation: str | None) -> str:
         ("Legajo", escape(str(p.get("legajo") or "—"))),
         ("DNI", escape(str(p.get("dni") or "—"))),
         ("Email del agente", escape(str(p.get("agente_email") or "—"))),
-        ("Oficina", escape(str(p.get("oficina") or "—"))),
+        ("Gerencia/Área/Subdirección", escape(str(p.get("oficina") or "—"))),
         ("Jefatura", escape(str(p.get("jefe_nombre") or "—"))),
         ("Fecha de salida", _fmt_date(p.get("fecha_salida"))),
         ("Hora / regreso", escape(salida)),
@@ -374,7 +367,7 @@ def _html_body(p: dict, event: dict, observation: str | None) -> str:
     if p.get("justificacion_minutos"):
         rows.append(("Justificación del tiempo declarado", escape(str(p.get("justificacion_minutos")))))
     if p.get("justificacion_fuera_plazo"):
-        rows.append(("Justificación por devolución fuera de término", escape(str(p.get("justificacion_fuera_plazo")))))
+        rows.append(("Registro histórico de devolución fuera de término", escape(str(p.get("justificacion_fuera_plazo")))))
     if p.get("observaciones"):
         rows.append(("Observaciones", escape(str(p.get("observaciones")))))
 

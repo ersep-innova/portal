@@ -72,7 +72,7 @@
       const usuario = userInput?.value.trim() || "";
       const clave = passInput?.value || "";
       if (!usuario || !clave) {
-        setLoginStatus("Ingresá usuario y clave.", "error");
+        setLoginStatus("Ingresá tu número de legajo y DNI.", "error");
         return;
       }
 
