@@ -54,19 +54,22 @@ def max_business_date(cur, start: date, business_days: int = 7) -> date:
 
 
 def calculate_minutes(start_time, end_time, no_return: bool, workday_end=None) -> int:
-    """Calcula la sugerencia automática de tiempo fuera.
+    """Calcula el tiempo computable de la salida.
 
     - Con regreso: regreso - salida.
     - Sin regreso: fin de jornada - salida.
-    La sugerencia nunca es negativa: si la salida es posterior a la jornada habitual,
-    devuelve 0 y el agente puede declarar manualmente otro tiempo con justificación.
+    Este cálculo es la única fuente válida para el tiempo del permiso: el agente no
+    puede declarar ni reemplazar manualmente la cantidad de horas.
     """
     if no_return:
         if workday_end is None:
             raise HTTPException(status_code=422, detail="No hay horario de fin de jornada configurado para el agente.")
         start = datetime.combine(date.today(), start_time)
         end = datetime.combine(date.today(), workday_end)
-        return max(0, int((end - start).total_seconds() // 60))
+        minutes = int((end - start).total_seconds() // 60)
+        if minutes <= 0:
+            raise HTTPException(status_code=422, detail="La hora de salida debe ser anterior al fin de la jornada habitual.")
+        return minutes
 
     if end_time is None:
         raise HTTPException(status_code=422, detail="Debe indicar hora de regreso o marcar 'Sin regreso'.")
@@ -144,5 +147,27 @@ def get_permission_for_user(permission_id: int, user: dict):
                 FROM historial_permiso h LEFT JOIN usuarios u ON u.id=h.usuario_id
                 WHERE h.permiso_id=%s ORDER BY h.fecha_hora ASC
             """, (permission_id,))
-            p["historial"] = cur.fetchall()
+            history = cur.fetchall()
+
+            # La identidad de quien interviene desde RR.HH. es información interna.
+            # Sólo RR.HH./Administración recibe esos datos. Para cualquier otro rol
+            # se elimina incluso el usuario_id, de modo que la privacidad no dependa
+            # de que el frontend oculte un texto.
+            can_see_rrhh_identity = bool(set(user.get("roles", [])) & {"RRHH", "ADMIN"})
+            if not can_see_rrhh_identity:
+                private_rrhh_events = {"VERIFICADO_RRHH", "RECHAZADO_RRHH"}
+                sanitized = []
+                for item in history:
+                    item = dict(item)
+                    is_rrhh_event = (
+                        item.get("evento") in private_rrhh_events
+                        or item.get("estado_nuevo") in private_rrhh_events
+                    )
+                    if is_rrhh_event:
+                        item["usuario_id"] = None
+                        item["usuario_nombre"] = "Recursos Humanos"
+                    sanitized.append(item)
+                history = sanitized
+
+            p["historial"] = history
             return p

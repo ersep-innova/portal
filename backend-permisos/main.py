@@ -71,8 +71,6 @@ class PermissionIn(BaseModel):
     hora_salida: str
     hora_regreso: str | None = None
     sin_regreso: bool = False
-    minutos_declarados: int | None = Field(default=None, ge=0, le=24 * 60)
-    justificacion_minutos: str | None = Field(default=None, max_length=1000)
     fecha_devolucion: date | None = None
     devolucion_hora_desde: str | None = None
     devolucion_hora_hasta: str | None = None
@@ -141,7 +139,7 @@ def _monthly_private_minutes(cur, agent_id: int, reference: date, exclude_permis
         exclude_sql = " AND id<>%s"
         params.append(exclude_permission_id)
     cur.execute(f"""
-        SELECT COALESCE(SUM(COALESCE(minutos_declarados,minutos_autorizados,minutos_calculados,0)),0) minutos
+        SELECT COALESCE(SUM(COALESCE(minutos_calculados,minutos_declarados,minutos_autorizados,0)),0) minutos
         FROM permisos_salida
         WHERE agente_id=%s
           AND tipo='PARTICULAR'
@@ -188,7 +186,9 @@ def _serialize_permission(row: dict):
         if row.get(key) is not None:
             row[key] = str(row[key])[:5]
 
-    declared = row.get("minutos_declarados")
+    declared = row.get("minutos_calculados")
+    if declared is None:
+        declared = row.get("minutos_declarados")
     if declared is None:
         declared = row.get("minutos_autorizados")
     mode = row.get("reposicion_modalidad") or row.get("modalidad_compensacion") or "DEVOLVER_HORAS"
@@ -210,10 +210,7 @@ def _serialize_permission(row: dict):
         risks.append({"nivel": "CRITICO", "codigo": "FUERA_PLAZO", "mensaje": "La devolución registrada supera el plazo máximo permitido."})
     if declared is not None and proposed is not None and int(proposed) < int(declared):
         label = "horas extra informadas" if mode == "HORAS_EXTRAS_PREVIAS" else "tramo de devolución"
-        risks.append({"nivel": "CRITICO", "codigo": "COMPENSACION_INSUFICIENTE", "mensaje": f"El {label} cubre menos tiempo que la salida declarada ({proposed} min vs. {declared} min)."})
-    calculated = row.get("minutos_calculados")
-    if declared is not None and calculated is not None and int(declared) != int(calculated):
-        risks.append({"nivel": "ATENCION", "codigo": "TIEMPO_DIFERENTE", "mensaje": "El tiempo declarado por el agente difiere del cálculo automático."})
+        risks.append({"nivel": "CRITICO", "codigo": "COMPENSACION_INSUFICIENTE", "mensaje": f"El {label} cubre menos tiempo que el tiempo computado automáticamente ({proposed} min vs. {declared} min)."})
     row["riesgos"] = risks
     row["riesgo_critico"] = any(x["nivel"] == "CRITICO" for x in risks)
     return row
@@ -347,13 +344,8 @@ def create_permission(payload: PermissionIn, bg: BackgroundTasks, user: dict = D
     workday_start = user.get("jornada_desde") or time(8, 0)
     workday_end = user.get("jornada_hasta") or time(14, 0)
     calculated = calculate_minutes(start, end, payload.sin_regreso, workday_end)
-    declared = calculated if payload.minutos_declarados is None else payload.minutos_declarados
-
-    if declared != calculated and not (payload.justificacion_minutos or "").strip():
-        raise HTTPException(
-            status_code=422,
-            detail="El tiempo de salida declarado difiere del cálculo automático. Debe explicar el motivo de la diferencia.",
-        )
+    # El tiempo computable es siempre el cálculo del servidor. El agente no puede declararlo ni modificarlo.
+    declared = calculated
 
     mode = payload.compensacion_modo if payload.tipo == "PARTICULAR" else None
 
@@ -407,7 +399,7 @@ def create_permission(payload: PermissionIn, bg: BackgroundTasks, user: dict = D
                 user["id"], user.get("oficina_id"), payload.tipo, payload.fecha_salida,
                 (payload.lugar_destino or "").strip() or None,
                 start, end, payload.sin_regreso, workday_start, workday_end, calculated, declared, declared,
-                (payload.justificacion_minutos or "").strip() or None, return_date, limit_date, outside,
+                None, return_date, limit_date, outside,
                 None, mode, payload.observaciones,
             ))
             p = cur.fetchone()
@@ -416,11 +408,8 @@ def create_permission(payload: PermissionIn, bg: BackgroundTasks, user: dict = D
 
             details = [
                 f"Jornada {str(workday_start)[:5]}–{str(workday_end)[:5]}",
-                f"Cálculo automático: {calculated} min",
-                f"Tiempo de salida declarado: {declared} min",
+                f"Tiempo computado automáticamente: {calculated} min",
             ]
-            if declared != calculated:
-                details.append(f"Justificación: {(payload.justificacion_minutos or '').strip()}")
             if payload.tipo == "OFICIAL":
                 details.append("Salida oficial: no corresponde devolución ni compensación de horas; requiere procesamiento final de RR.HH.")
             if mode == "DEVOLVER_HORAS":
@@ -462,7 +451,7 @@ def send_permission(permission_id: int, bg: BackgroundTasks, user: dict = Depend
                 cur.execute("SELECT id FROM usuarios WHERE id=%s FOR UPDATE", (user["id"],))
                 _assert_monthly_private_limit(
                     cur, user["id"], p["fecha_salida"],
-                    int(p.get("minutos_declarados") or p.get("minutos_autorizados") or p.get("minutos_calculados") or 0),
+                    int(p.get("minutos_calculados") or p.get("minutos_declarados") or p.get("minutos_autorizados") or 0),
                     exclude_permission_id=permission_id,
                 )
             boss = active_boss(cur, user["id"], p["fecha_salida"])
@@ -720,13 +709,23 @@ def _rrhh_rows(
                        CASE WHEN r.hora_desde_prevista IS NOT NULL AND r.hora_hasta_prevista IS NOT NULL
                             THEN EXTRACT(EPOCH FROM (r.hora_hasta_prevista-r.hora_desde_prevista))/60 END reposicion_minutos_tramo,
                        r.minutos_a_reponer reposicion_minutos,r.modalidad reposicion_modalidad,
-                       r.fecha_horas_extra,r.hora_desde_horas_extra,r.hora_hasta_horas_extra,r.minutos_horas_extra
+                       r.fecha_horas_extra,r.hora_desde_horas_extra,r.hora_hasta_horas_extra,r.minutos_horas_extra,
+                       arrhh.decision decision_rrhh,arrhh.fecha_hora decision_rrhh_fecha,
+                       arrhh.rrhh_usuario_id,arrhh.rrhh_usuario_nombre
                 FROM permisos_salida p
                 JOIN usuarios a ON a.id=p.agente_id
                 LEFT JOIN oficinas op ON op.id=p.oficina_id
                 LEFT JOIN oficinas ou ON ou.id=a.oficina_id
                 LEFT JOIN usuarios j ON j.id=p.jefe_asignado_id
                 LEFT JOIN reposiciones r ON r.permiso_id=p.id
+                LEFT JOIN LATERAL (
+                    SELECT ap.decision,ap.fecha_hora,u_rrhh.id rrhh_usuario_id,
+                           trim(concat(u_rrhh.nombre,' ',u_rrhh.apellido)) rrhh_usuario_nombre
+                    FROM aprobaciones ap
+                    JOIN usuarios u_rrhh ON u_rrhh.id=ap.usuario_id
+                    WHERE ap.permiso_id=p.id AND ap.tipo_aprobacion='RRHH'
+                    ORDER BY ap.fecha_hora DESC,ap.id DESC LIMIT 1
+                ) arrhh ON TRUE
                 {where} ORDER BY p.fecha_salida DESC,p.id DESC LIMIT %s
             """, params)
             return [_serialize_permission(r) for r in cur.fetchall()]
@@ -797,7 +796,7 @@ def rrhh_dashboard(
         by_hour[hour_label] = by_hour.get(hour_label, 0) + 1
         by_type[r.get("tipo") or "—"] = by_type.get(r.get("tipo") or "—", 0) + 1
         if r.get("tipo") == "PARTICULAR":
-            declared_minutes += int(r.get("minutos_declarados") or 0)
+            declared_minutes += int(r.get("minutos_calculados") or r.get("minutos_declarados") or r.get("minutos_autorizados") or 0)
     top = lambda d, n=10: [{"label": k, "valor": v} for k, v in sorted(d.items(), key=lambda x: (-x[1], x[0]))[:n]]
     return {
         "total": len(rows),

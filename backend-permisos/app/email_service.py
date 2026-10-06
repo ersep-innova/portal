@@ -59,7 +59,7 @@ EVENTS = {
     "JEFATURA_APROBADO": {
         "subject": "Permiso {numero}: autorizado por su jefatura",
         "title": "Autorizado por jefatura",
-        "status": "Pendiente de verificación de RR.HH.",
+        "status": "Pendiente de procesamiento por RR.HH.",
         "message": "Su jefatura autorizó la solicitud. El trámite fue remitido a Recursos Humanos.",
     },
     "JEFATURA_RECHAZADO": {
@@ -69,10 +69,10 @@ EVENTS = {
         "message": "Su jefatura rechazó la solicitud.",
     },
     "RRHH_APROBADO": {
-        "subject": "Permiso {numero}: verificado por Recursos Humanos",
-        "title": "Verificado por Recursos Humanos",
-        "status": "Verificado por RR.HH.",
-        "message": "Recursos Humanos verificó la solicitud.",
+        "subject": "Permiso {numero}: procesado por Recursos Humanos",
+        "title": "Procesado por Recursos Humanos",
+        "status": "Procesado por RR.HH.",
+        "message": "La solicitud fue procesada por Recursos Humanos.",
     },
     "RRHH_RECHAZADO": {
         "subject": "Permiso {numero}: rechazado por Recursos Humanos",
@@ -357,15 +357,12 @@ def _html_body(p: dict, event: dict, observation: str | None) -> str:
         ("Tipo de salida", tipo),
         ("Destino", escape(str(p.get("lugar_destino") or "—"))),
         ("Jornada habitual", escape(f"{_fmt_time(p.get('jornada_desde'))} → {_fmt_time(p.get('jornada_hasta'))}")),
-        ("Tiempo calculado por el sistema", _fmt_minutes(p.get("minutos_calculados"))),
-        ("Tiempo de salida declarado por el agente", _fmt_minutes(p.get("minutos_declarados"))),
+        ("Tiempo computado automáticamente", _fmt_minutes(p.get("minutos_calculados"))),
         ("Compensación / devolución", escape(compensacion)),
         ("Estado actual", estado),
     ]
     if p.get("fecha_limite_devolucion"):
         rows.append(("Fecha límite sugerida de devolución", _fmt_date(p.get("fecha_limite_devolucion"))))
-    if p.get("justificacion_minutos"):
-        rows.append(("Justificación del tiempo declarado", escape(str(p.get("justificacion_minutos")))))
     if p.get("justificacion_fuera_plazo"):
         rows.append(("Registro histórico de devolución fuera de término", escape(str(p.get("justificacion_fuera_plazo")))))
     if p.get("observaciones"):
@@ -389,7 +386,7 @@ def _html_body(p: dict, event: dict, observation: str | None) -> str:
 
     critical_html = ""
     if p.get("tipo") == "PARTICULAR":
-        declared = int(p.get("minutos_declarados") or 0)
+        declared = int(p.get("minutos_calculados") or p.get("minutos_declarados") or 0)
         compensated = None
         if mode == "HORAS_EXTRAS_PREVIAS":
             compensated = p.get("minutos_horas_extra")
@@ -404,7 +401,7 @@ def _html_body(p: dict, event: dict, observation: str | None) -> str:
             critical_html = f"""
             <div style="margin-top:18px;padding:14px 16px;background:#fff1f0;border:1px solid #f5b7b1;border-left:5px solid #b42318;border-radius:8px;color:#8a1c14">
               <strong>Atención: la compensación informada es insuficiente.</strong><br>
-              Se informaron {_fmt_minutes(compensated)} para una salida declarada de {_fmt_minutes(declared)}.
+              Se informaron {_fmt_minutes(compensated)} para un tiempo computado de {_fmt_minutes(declared)}.
             </div>"""
 
     portal = _portal_url()

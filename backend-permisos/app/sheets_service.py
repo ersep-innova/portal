@@ -293,7 +293,7 @@ def sync_all() -> dict:
                     WHERE tipo='PARTICULAR'
                       AND date_trunc('month',fecha_salida)=date_trunc('month',CURRENT_DATE)
                   ) particulares_mes,
-                  COALESCE(SUM(minutos_declarados) FILTER (
+                  COALESCE(SUM(COALESCE(minutos_calculados,minutos_declarados,minutos_autorizados,0)) FILTER (
                     WHERE tipo='PARTICULAR'
                       AND date_trunc('month',fecha_salida)=date_trunc('month',CURRENT_DATE)
                   ),0) minutos_particulares_mes
@@ -304,7 +304,7 @@ def sync_all() -> dict:
     header = [
         "ID","Número","Fecha","Agente","DNI","Legajo","Gerencia/Área/Subdirección","Tipo","Destino",
         "Salida","Regreso","Sin regreso","Jornada desde","Jornada hasta",
-        "Minutos calculados","Minutos declarados","Justificación diferencia",
+        "Minutos computados automáticamente","Minutos declarados (histórico)","Justificación histórica",
         "Fecha devolución","Fecha límite 7 días hábiles","Fuera de plazo",
         "Justificación fuera de plazo","Jefe","Estado","Creado","Actualizado"
     ]

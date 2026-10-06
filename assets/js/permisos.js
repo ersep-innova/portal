@@ -8,7 +8,6 @@
   let currentUser = null;
   let returnDeadline = null;
   let monthlyQuota = null;
-  let declaredTouched = false;
   let adminUsersCache = [];
   let officesCache = [];
   let bossAgentsCache = [];
@@ -37,7 +36,7 @@
       BORRADOR: "Borrador",
       PENDIENTE_JEFE: "Pendiente de Jefatura",
       PENDIENTE_RRHH: "Pendiente de RR.HH.",
-      VERIFICADO_RRHH: "Verificado por RR.HH.",
+      VERIFICADO_RRHH: "Procesado por RR.HH.",
       RECHAZADO: "Rechazado",
       RECHAZADO_JEFE: "Rechazado por Jefatura",
       RECHAZADO_RRHH: "Rechazado por RR.HH.",
@@ -52,6 +51,38 @@
     else if (["PENDIENTE_JEFE", "PENDIENTE_RRHH", "BORRADOR"].includes(state)) cls = "yellow";
     else if (["RECHAZADO", "RECHAZADO_JEFE", "RECHAZADO_RRHH", "CANCELADO_AGENTE"].includes(state)) cls = "red";
     return `<span class="perm-badge ${cls}">${escapeHtml(prettyState(state))}</span>`;
+  }
+
+  function prettyEvent(event) {
+    const map = {
+      SOLICITUD_CREADA: "Solicitud creada",
+      ENVIADO_A_JEFE: "Enviado a Jefatura",
+      AUTORIZADO_JEFE: "Autorizado por Jefatura",
+      RECHAZADO_JEFE: "Rechazado por Jefatura",
+      VERIFICADO_RRHH: "Procesado por RR.HH.",
+      RECHAZADO_RRHH: "Rechazado por RR.HH.",
+      CANCELADO_AGENTE: "Cancelado por el agente"
+    };
+    return map[event] || String(event || "Movimiento").replaceAll("_", " ");
+  }
+
+  function detailStatusInfo(state) {
+    const map = {
+      BORRADOR: { title: "Borrador", text: "La solicitud todavía no fue enviada a Jefatura.", tone: "neutral" },
+      PENDIENTE_JEFE: { title: "Enviado a Jefatura", text: "La solicitud está esperando la decisión de la Jefatura.", tone: "pending" },
+      PENDIENTE_RRHH: { title: "Autorizado por Jefatura", text: "La solicitud fue enviada a Recursos Humanos para su procesamiento.", tone: "pending" },
+      VERIFICADO_RRHH: { title: "Procesado por RR.HH.", text: "El trámite fue procesado por Recursos Humanos.", tone: "success" },
+      RECHAZADO_JEFE: { title: "Rechazado por Jefatura", text: "La solicitud finalizó rechazada en la instancia de Jefatura.", tone: "danger" },
+      RECHAZADO_RRHH: { title: "Rechazado por RR.HH.", text: "La solicitud fue rechazada por Recursos Humanos.", tone: "danger" },
+      CANCELADO_AGENTE: { title: "Cancelado", text: "La solicitud fue cancelada por el agente.", tone: "neutral" }
+    };
+    return map[state] || { title: prettyState(state), text: "Estado actual del trámite.", tone: "neutral" };
+  }
+
+  function formatDateTime(value) {
+    if (!value) return "—";
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleString("es-AR");
   }
 
   function fmtDate(value) {
@@ -182,9 +213,7 @@
     </tr></thead><tbody>${rows.map(p => {
       const agent = p.agente_nombre || [currentUser?.nombre, currentUser?.apellido].filter(Boolean).join(" ");
       const departure = `${p.hora_salida || "—"} → ${p.sin_regreso ? "Sin regreso" : (p.hora_regreso || "—")}`;
-      const declared = p.minutos_declarados ?? p.minutos_autorizados;
-      const auto = p.minutos_calculados;
-      const diff = auto !== null && auto !== undefined && declared !== null && declared !== undefined && Number(auto) !== Number(declared);
+      const computed = p.minutos_calculados ?? p.minutos_declarados ?? p.minutos_autorizados;
       const rowClass = p.riesgo_critico ? "perm-row-critical" : (p.fuera_plazo_reglamentario ? "perm-row-warning" : "");
       return `<tr class="${rowClass}">
         <td><strong>${escapeHtml(p.numero_permiso || `#${p.id}`)}</strong>${p.riesgo_critico ? '<br><span class="perm-critical-flag">Crítico</span>' : (p.fuera_plazo_reglamentario ? '<br><span class="perm-mini-warning">Fuera de plazo</span>' : '')}</td>
@@ -192,9 +221,9 @@
         <td><strong>${escapeHtml(agent || "—")}</strong>${p.legajo ? `<br><small>Legajo ${escapeHtml(p.legajo)}</small>` : ""}</td>
         <td>${escapeHtml(p.oficina || currentUser?.oficina || "—")}</td>
         <td>${escapeHtml(departure)}</td>
-        <td><strong>${formatMinutes(declared)}</strong>${diff ? `<br><small>Sistema: ${formatMinutes(auto)}</small>` : ""}</td>
+        <td><strong>${formatMinutes(computed)}</strong><br><small>Cálculo automático</small></td>
         <td>${escapeHtml(compensationText(p))}</td>
-        <td>${badgeState(p.estado)}${p.decision_jefatura ? `<br><small>Jefatura: ${p.decision_jefatura === "APROBADO" ? "Autorizado" : "Rechazado"}</small>` : ""}</td>
+        <td>${badgeState(p.estado)}${p.decision_jefatura ? `<br><small>Jefatura: ${p.decision_jefatura === "APROBADO" ? "Autorizado" : "Rechazado"}</small>` : ""}${options.rrhhAudit && p.decision_rrhh ? `<div class="perm-rrhh-audit"><strong>${p.decision_rrhh === "VERIFICADO" ? "Procesado por" : "Rechazado por"}</strong><span>${escapeHtml(p.rrhh_usuario_nombre || "RR.HH.")}</span><small>${formatDateTime(p.decision_rrhh_fecha)}</small></div>` : ""}</td>
         <td>${riskMarkup(p)}</td>
         <td class="perm-row-actions"><button data-detail="${p.id}">Ver</button>${options.bossActions && p.estado === "PENDIENTE_JEFE" ? ` <button data-authorize="${p.id}">Autorizar</button> <button class="danger-link" data-reject="${p.id}">Rechazar</button>` : ""}${options.rrhhActions && p.estado === "PENDIENTE_RRHH" ? ` <button data-verify="${p.id}">Procesar</button> <button class="danger-link" data-reject-rrhh="${p.id}">Rechazar</button>` : ""}</td>
       </tr>`;
@@ -284,12 +313,12 @@
     const approved = rows.filter(x => x.estado === "VERIFICADO_RRHH").length;
     const official = rows.filter(x => x.tipo === "OFICIAL").length;
     const particular = rows.filter(x => x.tipo === "PARTICULAR").length;
-    const mins = rows.filter(x => x.tipo === "PARTICULAR").reduce((acc,x) => acc + Number(x.minutos_declarados ?? x.minutos_autorizados ?? 0), 0);
+    const mins = rows.filter(x => x.tipo === "PARTICULAR").reduce((acc,x) => acc + Number(x.minutos_calculados ?? x.minutos_declarados ?? x.minutos_autorizados ?? 0), 0);
     const last = rows[0];
     const jornada = `${a.jornada_desde || "08:00"} → ${a.jornada_hasta || "14:00"}`;
     target.innerHTML = `<div class="perm-profile-head"><div class="perm-profile-avatar">${escapeHtml((a.nombre?.[0] || a.apellido?.[0] || "A").toUpperCase())}</div><div><strong>${escapeHtml(`${a.nombre || ""} ${a.apellido || ""}`.trim())}</strong><span>Legajo ${escapeHtml(a.legajo || "—")} · ${escapeHtml(a.oficina || "Sin Gerencia/Área/Subdirección")}</span></div></div>
       <div class="perm-profile-data"><div><span>DNI</span><strong>${escapeHtml(a.dni || "—")}</strong></div><div><span>Email</span><strong>${escapeHtml(a.email || "—")}</strong></div><div><span>Jornada</span><strong>${escapeHtml(jornada)}</strong></div></div>
-      <div class="perm-profile-metrics"><div><b>${rows.length}</b><span>Permisos</span></div><div><b>${pending}</b><span>Pendientes</span></div><div><b>${approved}</b><span>Verificados</span></div><div><b>${official}</b><span>Oficiales</span></div><div><b>${particular}</b><span>Particulares</span></div><div><b>${formatMinutes(mins)}</b><span>Tiempo particular</span></div></div>
+      <div class="perm-profile-metrics"><div><b>${rows.length}</b><span>Permisos</span></div><div><b>${pending}</b><span>Pendientes</span></div><div><b>${approved}</b><span>Procesados</span></div><div><b>${official}</b><span>Oficiales</span></div><div><b>${particular}</b><span>Particulares</span></div><div><b>${formatMinutes(mins)}</b><span>Tiempo particular</span></div></div>
       <div class="perm-profile-last"><strong>Último registro</strong><span>${last ? `${fmtDate(last.fecha_salida)} · ${last.tipo} · ${prettyState(last.estado)}` : "Sin registros con los filtros actuales"}</span></div>`;
   }
 
@@ -379,7 +408,7 @@
       ]);
       const rows = data.items || [];
       rrhhCalendarRows = rows;
-      renderPermissionList($("#rrhh_permissions"), rows, { rrhhActions: true });
+      renderPermissionList($("#rrhh_permissions"), rows, { rrhhActions: true, rrhhAudit: true });
       renderCalendar($("#rrhh_calendar"), rows, rrhhCalendarCursor, "rrhh");
       renderAgentProfile($("#rrhh_agent_profile"), $("#rrhh_filter_agente_id")?.value, rrhhAgentsCache, rows, "agente");
       $("#rrhh_total_mes").textContent = dashboard.total ?? 0;
@@ -396,16 +425,21 @@
   async function openDetail(id) {
     try {
       const p = await PermisosAPI.request(`/api/permisos/${id}`);
-      const declared = p.minutos_declarados ?? p.minutos_autorizados;
-      const calculated = p.minutos_calculados;
+      const calculated = p.minutos_calculados ?? p.minutos_declarados ?? p.minutos_autorizados;
       const risks = p.riesgos || [];
       const modal = $("#modal_root");
       const riskBox = risks.length ? `<div class="perm-alert ${p.riesgo_critico ? "danger" : "warning"}"><strong>${p.riesgo_critico ? "REVISIÓN CRÍTICA" : "Atención"}</strong><span>${risks.map(x => escapeHtml(x.mensaje)).join(" · ")}</span></div>` : "";
       const compDetail = compensationText(p);
+      const statusInfo = detailStatusInfo(p.estado);
+      const isRRHHViewer = currentUser?.roles?.includes("RRHH") || currentUser?.roles?.includes("ADMIN");
+      const latestRRHHMove = [...(p.historial || [])].reverse().find(h => ["VERIFICADO_RRHH", "RECHAZADO_RRHH"].includes(h.evento));
+      const rrhhInternal = isRRHHViewer && latestRRHHMove ? `<div class="perm-rrhh-private"><div><span>Dato interno de RR.HH.</span><strong>${latestRRHHMove.evento === "VERIFICADO_RRHH" ? "Procesado por" : "Rechazado por"} ${escapeHtml(latestRRHHMove.usuario_nombre || "RR.HH.")}</strong></div><small>${formatDateTime(latestRRHHMove.fecha_hora)}</small></div>` : "";
 
       modal.innerHTML = `<div class="perm-modal-backdrop" id="detail_backdrop"><div class="perm-modal perm-modal-large">
         <div class="perm-modal-header"><div><h3>${escapeHtml(p.numero_permiso || `#${p.id}`)}</h3><small>${badgeState(p.estado)}</small></div><button class="perm-modal-close" id="detail_close">×</button></div>
         <div class="perm-card-body">
+          <div class="perm-status-hero ${statusInfo.tone}"><span>Estado actual</span><strong>${escapeHtml(statusInfo.title)}</strong><p>${escapeHtml(statusInfo.text)}</p></div>
+          ${rrhhInternal}
           ${riskBox}
           <div class="perm-detail-grid">
             <div><strong>Agente</strong><p>${escapeHtml(p.agente_nombre || "—")} · Legajo ${escapeHtml(p.legajo || "—")}</p></div>
@@ -416,16 +450,14 @@
             <div><strong>Fecha</strong><p>${fmtDate(p.fecha_salida)}</p></div>
             <div><strong>Hora de salida / regreso</strong><p>${escapeHtml(p.hora_salida || "—")} → ${p.sin_regreso ? "Sin regreso" : escapeHtml(p.hora_regreso || "—")}</p></div>
             <div><strong>Destino</strong><p>${escapeHtml(p.lugar_destino || "—")}</p></div>
-            <div><strong>Tiempo calculado</strong><p>${formatMinutes(calculated)}</p></div>
-            <div><strong>Tiempo de salida declarado</strong><p>${formatMinutes(declared)}</p></div>
+            <div><strong>Tiempo computado automáticamente</strong><p>${formatMinutes(calculated)}</p></div>
           </div>
-          ${p.justificacion_minutos ? `<div class="perm-detail-note"><strong>Justificación de diferencia de tiempo</strong><p>${escapeHtml(p.justificacion_minutos)}</p></div>` : ""}
           ${p.tipo === "PARTICULAR" ? `<div class="perm-detail-note ${p.riesgo_critico ? "danger-note" : ""}"><strong>Compensación informada</strong><p>${escapeHtml(compDetail)}</p>${p.fecha_limite_devolucion ? `<small>Fecha máxima permitida: hasta ${fmtDate(p.fecha_limite_devolucion)}</small>` : ""}</div>` : ""}
           ${p.justificacion_fuera_plazo ? `<div class="perm-detail-note warning-note"><strong>Observación histórica de devolución fuera de término</strong><p>${escapeHtml(p.justificacion_fuera_plazo)}</p></div>` : ""}
           <div class="perm-detail-note"><strong>Observaciones generales</strong><p>${escapeHtml(p.observaciones || "—")}</p></div>
           <hr class="perm-divider">
-          <h4>Trazabilidad</h4>
-          <div class="perm-timeline">${(p.historial || []).map(h => `<div class="perm-timeline-item"><div class="perm-timeline-dot"></div><div><strong>${escapeHtml(h.evento)}</strong><span>${escapeHtml(h.usuario_nombre || "Sistema")} · ${new Date(h.fecha_hora).toLocaleString("es-AR")}${h.detalle ? ` · ${escapeHtml(h.detalle)}` : ""}</span></div></div>`).join("") || '<div class="perm-empty">Sin historial.</div>'}</div>
+          <div class="perm-trace-heading"><div><span>Seguimiento del trámite</span><h4>Trazabilidad</h4></div><small>Los movimientos aparecen en orden cronológico.</small></div>
+          <div class="perm-timeline">${(p.historial || []).map((h, idx, arr) => `<div class="perm-timeline-item ${idx === arr.length - 1 ? "is-latest" : ""}"><div class="perm-timeline-dot"></div><div class="perm-timeline-card"><strong>${escapeHtml(prettyEvent(h.evento))}</strong><div class="perm-timeline-meta"><span>${escapeHtml(h.usuario_nombre || "Sistema")}</span><time>${formatDateTime(h.fecha_hora)}</time></div>${h.detalle ? `<p>${escapeHtml(h.detalle)}</p>` : ""}</div></div>`).join("") || '<div class="perm-empty">Sin historial.</div>'}</div>
         </div></div></div>`;
       $("#detail_close").onclick = () => modal.innerHTML = "";
       $("#detail_backdrop").addEventListener("click", e => { if (e.target.id === "detail_backdrop") modal.innerHTML = ""; });
@@ -536,46 +568,34 @@
     const end = noReturn ? (currentUser?.jornada_hasta || "14:00") : $("#form_hora_regreso").value;
     if (!end) return null;
     const mins = minutesBetweenClock(start, end);
-    if (noReturn) return Math.max(0, mins);
+    if (noReturn) return mins > 0 ? mins : null;
     return mins > 0 ? mins : null;
   }
 
-  function setDeclaredMinutes(total) {
-    total = Math.max(0, Number(total) || 0);
-    $("#form_tiempo_horas").value = Math.floor(total / 60);
-    $("#form_tiempo_minutos").value = total % 60;
-  }
-
-  function declaredMinutes() {
-    const h = Math.max(0, Number($("#form_tiempo_horas").value || 0));
-    const m = Math.min(59, Math.max(0, Number($("#form_tiempo_minutos").value || 0)));
-    return h * 60 + m;
-  }
-
-  function updateTimeDifference() {
-    const auto = autoMinutes();
-    if (auto === null) {
-      $("#time_difference_warning").hidden = true;
-      $("#field_time_reason").hidden = true;
-      $("#form_justificacion_minutos").required = false;
-      return;
-    }
-    const diff = declaredMinutes() !== auto;
-    $("#time_difference_warning").hidden = !diff;
-    $("#field_time_reason").hidden = !diff;
-    $("#form_justificacion_minutos").required = diff;
+  function calculatedMinutes() {
+    return autoMinutes();
   }
 
   function calculateDuration() {
-    const auto = autoMinutes();
+    const auto = calculatedMinutes();
+    const startInput = $("#form_hora_salida");
+    const returnInput = $("#form_hora_regreso");
+    if (startInput) startInput.setCustomValidity("");
+    if (returnInput) returnInput.setCustomValidity("");
     if (auto === null) {
-      $("#form_duracion").textContent = $("#form_hora_salida").value ? "Horario inválido o incompleto" : "—";
-      updateTimeDifference();
+      const hasStart = !!startInput?.value;
+      const noReturn = $("#form_regreso_tipo").value === "SIN_REGRESO";
+      const hasReturn = !!returnInput?.value;
+      if (hasStart && noReturn && startInput) {
+        startInput.setCustomValidity(`La hora de salida debe ser anterior al fin de tu jornada (${currentUser?.jornada_hasta || "14:00"}).`);
+      } else if (hasStart && !noReturn && hasReturn && returnInput) {
+        returnInput.setCustomValidity("La hora de regreso debe ser posterior a la hora de salida.");
+      }
+      $("#form_duracion").textContent = hasStart ? "Horario inválido o incompleto" : "—";
+      updateMonthlyQuotaPreview();
       return;
     }
     $("#form_duracion").textContent = formatMinutes(auto);
-    if (!declaredTouched) setDeclaredMinutes(auto);
-    updateTimeDifference();
     updateMonthlyQuotaPreview();
   }
 
@@ -646,8 +666,6 @@
       hora_salida: $("#form_hora_salida").value,
       hora_regreso: $("#form_regreso_tipo").value === "SIN_REGRESO" ? null : $("#form_hora_regreso").value,
       sin_regreso: $("#form_regreso_tipo").value === "SIN_REGRESO",
-      minutos_declarados: declaredMinutes(),
-      justificacion_minutos: $("#form_justificacion_minutos").value.trim() || null,
       compensacion_modo: privateOut ? mode : "DEVOLVER_HORAS",
       fecha_devolucion: privateOut && mode === "DEVOLVER_HORAS" ? $("#form_fecha_devolucion").value || null : null,
       banco_horas_confirmado: !!(privateOut && mode === "HORAS_EXTRAS_PREVIAS" && $("#form_banco_confirmado")?.checked),
@@ -676,28 +694,27 @@
   }
 
   function updateMonthlyQuotaPreview() {
-    const hoursInput = $("#form_tiempo_horas");
+    const timeInput = $("#form_hora_salida");
     const warning = $("#monthly_quota_exceeded");
-    if (!hoursInput) return;
+    if (!timeInput) return;
     if (selectedType() !== "PARTICULAR" || !monthlyQuota) {
-      hoursInput.setCustomValidity("");
+      timeInput.setCustomValidity("");
       if (warning) warning.hidden = true;
       return;
     }
-    const requested = declaredMinutes();
+    const requested = calculatedMinutes();
     const available = Number(monthlyQuota.disponibles_minutos || 0);
-    const exceeds = requested > available;
-    hoursInput.setCustomValidity(exceeds ? `Esta solicitud supera el límite mensual de 5 horas. Sólo quedan ${formatMinutes(available)} disponibles.` : "");
+    const exceeds = requested !== null && requested > available;
+    timeInput.setCustomValidity(exceeds ? `Esta salida supera el límite mensual de 5 horas. Sólo quedan ${formatMinutes(available)} disponibles.` : "");
     if (warning) warning.hidden = !exceeds;
     if (exceeds && $("#monthly_quota_exceeded_text")) {
-      $("#monthly_quota_exceeded_text").textContent = `Esta salida requiere ${formatMinutes(requested)}, pero sólo quedan ${formatMinutes(available)} disponibles en el mes.`;
+      $("#monthly_quota_exceeded_text").textContent = `El cálculo automático de esta salida es ${formatMinutes(requested)}, pero sólo quedan ${formatMinutes(available)} disponibles en el mes.`;
     }
   }
 
   function resetPermissionForm() {
     const form = $("#permission_form");
     form.reset();
-    declaredTouched = false;
     returnDeadline = null;
     monthlyQuota = null;
     const today = new Date();
@@ -707,14 +724,11 @@
     const todayIso = `${yyyy}-${mm}-${dd}`;
     $("#form_fecha").value = todayIso;
     $("#form_fecha").min = todayIso;
-    $("#form_tiempo_horas").value = 0;
-    $("#form_tiempo_minutos").value = 0;
     $("#return_deadline").textContent = "Seleccioná una salida particular";
     fillUser();
     updateFormRules();
     updateReturnRules();
     updateCompensationRules();
-    updateTimeDifference();
     updateDeadlineWarning();
     loadMonthlyQuota(todayIso);
   }
@@ -1017,17 +1031,6 @@
     $("#form_fecha").addEventListener("change", () => { loadReturnDeadline(); loadMonthlyQuota($("#form_fecha").value); });
     $("#form_fecha_devolucion").addEventListener("change", updateDeadlineWarning);
     $("#form_banco_confirmado").addEventListener("change", updateMonthlyQuotaPreview);
-    $("#form_tiempo_horas").addEventListener("input", () => { declaredTouched = true; updateTimeDifference(); updateMonthlyQuotaPreview(); });
-    $("#form_tiempo_minutos").addEventListener("input", () => { declaredTouched = true; updateTimeDifference(); updateMonthlyQuotaPreview(); });
-    $("#use_auto_time").addEventListener("click", () => {
-      const auto = autoMinutes();
-      if (auto === null) return toast("Primero completá el horario de salida/regreso.", "error");
-      declaredTouched = false;
-      setDeclaredMinutes(auto);
-      $("#form_justificacion_minutos").value = "";
-      updateTimeDifference();
-      updateMonthlyQuotaPreview();
-    });
     $("#permission_form").addEventListener("submit", e => { e.preventDefault(); createPermission(true); });
     $("#save_draft_btn").addEventListener("click", () => createPermission(false));
 
