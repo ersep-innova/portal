@@ -11,7 +11,34 @@
   <link rel="stylesheet" href="../../assets/css/birthday.css">
   <link rel="stylesheet" href="../../assets/css/auth.css">
   <link rel="icon" href="../../assets/img/favicon.ico">
-<link href="../../assets/css/institutional-theme.css" rel="stylesheet"/>
+  <link href="../../assets/css/institutional-theme.css" rel="stylesheet">
+  <!-- Corrección de los tooltips: sin cambiar ningún archivo CSS externo. -->
+  <style>
+    .birthday-calendar .calendar-tooltip { display: none !important; }
+    #ersep-birthday-floating-tooltip {
+      position: fixed; z-index: 2147483000;
+      width: max-content; max-width: min(360px, calc(100vw - 24px));
+      max-height: min(380px, calc(100vh - 24px)); overflow-y: auto;
+      box-sizing: border-box; padding: 14px 16px;
+      background: #fff; color: #242424; border: 1px solid #dedede;
+      border-radius: 12px; box-shadow: 0 12px 38px rgba(0,0,0,.20);
+      font-family: inherit; font-size: 13px; line-height: 1.4;
+      text-align: left; pointer-events: none;
+    }
+    #ersep-birthday-floating-tooltip[hidden] { display: none !important; }
+    #ersep-birthday-floating-tooltip > strong {
+      display: block; font-size: 13px; margin-bottom: 8px;
+      color: #bb1018; text-transform: capitalize;
+    }
+    #ersep-birthday-floating-tooltip > span {
+      display: block; padding: 7px 0; font-weight: 700; overflow-wrap: anywhere;
+    }
+    #ersep-birthday-floating-tooltip > span + span { border-top: 1px solid #e7e7e7; }
+    #ersep-birthday-floating-tooltip small {
+      display: block; color: #666; font-weight: 400;
+      font-size: 11px; margin-top: 2px;
+    }
+  </style>
 </head>
 <body class="tool-page area-institutional" data-auth-required="birthdays">
   <section class="auth-gate" id="auth_gate" hidden>
@@ -34,11 +61,9 @@
   </section>
 
   <div class="wrap" data-protected hidden>
-    <header class="header"><a class="page-brand" href="../../" aria-label="Volver al portal"><img src="../../assets/img/institucional/logo-ersep.png" alt="ERSeP"></a>
-      <div class="header-left">
-        <h1>Cumpleaños ERSeP</h1>
-        <span class="header-badge">Portal de Innovación y Análisis de Datos · Recursos Humanos</span>
-      </div>
+    <header class="header">
+      <a class="page-brand" href="../../" aria-label="Volver al portal"><img src="../../assets/img/institucional/logo-ersep.png" alt="ERSeP"></a>
+      <div class="header-left"><h1>Cumpleaños ERSeP</h1><span class="header-badge">Portal de Innovación y Análisis de Datos · Recursos Humanos</span></div>
       <div class="header-right">
         <span id="status">Preparando agenda…</span>
         <a class="nav-chip" href="../../"><span>⌂</span> Menú</a>
@@ -56,30 +81,16 @@
       <div class="birthday-hero-icon official-hero-logo institutional" aria-hidden="true"><img src="../../assets/img/institucional/logo-ersep.png" alt=""></div>
     </section>
 
-    <section class="card birthday-filter-card">
-      <div class="card-body">
-        <div class="birthday-filter-head">
-          <div><h3>Buscar y filtrar</h3><p>Todos los controles se aplican al calendario, los gráficos y el listado.</p></div>
-          <span class="birthday-filter-count" id="filter_count">Preparando filtros…</span>
-        </div>
-        <div class="birthday-filter-grid">
-          <label class="birthday-control birthday-search-control">
-            <span>Nombre o apellido</span>
-            <input id="birthday_search" type="search" placeholder="Ej.: Ramallo, Camila, Miguel…" autocomplete="off">
-          </label>
-          <label class="birthday-control">
-            <span>Dependencia</span>
-            <select id="area_filter"><option value="">Todas las dependencias</option></select>
-          </label>
-          <label class="birthday-control">
-            <span>Sede o ubicación</span>
-            <select id="location_filter"><option value="">Todas las sedes</option></select>
-          </label>
-          <button class="birthday-reset" id="reset_filters" type="button">Limpiar filtros</button>
-        </div>
-        <p class="birthday-no-results" id="filter_message" hidden>No se encontraron personas con los filtros seleccionados.</p>
+    <section class="card birthday-filter-card"><div class="card-body">
+      <div class="birthday-filter-head"><div><h3>Buscar y filtrar</h3><p>Todos los controles se aplican al calendario, los gráficos y el listado.</p></div><span class="birthday-filter-count" id="filter_count">Preparando filtros…</span></div>
+      <div class="birthday-filter-grid">
+        <label class="birthday-control birthday-search-control"><span>Nombre o apellido</span><input id="birthday_search" type="search" placeholder="Ej.: Ramallo, Camila, Miguel…" autocomplete="off"></label>
+        <label class="birthday-control"><span>Dependencia</span><select id="area_filter"><option value="">Todas las dependencias</option></select></label>
+        <label class="birthday-control"><span>Sede o ubicación</span><select id="location_filter"><option value="">Todas las sedes</option></select></label>
+        <button class="birthday-reset" id="reset_filters" type="button">Limpiar filtros</button>
       </div>
-    </section>
+      <p class="birthday-no-results" id="filter_message" hidden>No se encontraron personas con los filtros seleccionados.</p>
+    </div></section>
 
     <section class="birthday-summary-grid">
       <article class="card birthday-summary-card"><div class="card-body"><div class="birthday-summary-label">🎁 Próximo cumpleaños</div><strong class="birthday-summary-value" id="next_birthday_name">—</strong><p class="birthday-summary-detail" id="next_birthday_date">Calculando…</p></div></article>
@@ -88,63 +99,127 @@
     </section>
 
     <section class="birthday-main-grid">
-      <article class="card birthday-calendar-card">
-        <div class="card-body">
-          <div class="birthday-section-head calendar-heading">
-            <div><h3>Calendario de cumpleaños</h3><p>Los días destacados contienen uno o más cumpleaños.</p></div>
-            <div class="calendar-controls">
-              <button type="button" id="calendar_prev" aria-label="Mes anterior">←</button>
-              <strong id="calendar_title">—</strong>
-              <button type="button" id="calendar_next" aria-label="Mes siguiente">→</button>
-              <button type="button" id="calendar_today">Hoy</button>
-            </div>
+      <article class="card birthday-calendar-card"><div class="card-body">
+        <div class="birthday-section-head calendar-heading">
+          <div><h3>Calendario de cumpleaños</h3><p>Los días destacados contienen uno o más cumpleaños.</p></div>
+          <div class="calendar-controls">
+            <button type="button" id="calendar_prev" aria-label="Mes anterior">←</button>
+            <strong id="calendar_title">—</strong>
+            <button type="button" id="calendar_next" aria-label="Mes siguiente">→</button>
+            <button type="button" id="calendar_today">Hoy</button>
           </div>
-          <div class="birthday-calendar-weekdays" aria-hidden="true"><span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span></div>
-          <div class="birthday-calendar" id="calendar_grid" role="grid" aria-label="Calendario de cumpleaños"></div>
-          <p class="calendar-help">Pasá el cursor o tocá un día destacado para ver quiénes cumplen.</p>
         </div>
-      </article>
-
-      <article class="card birthday-month-card">
-        <div class="card-body">
-          <div class="birthday-section-head"><div><h3>Cumpleaños por mes</h3><p>Seleccioná una barra para ver el detalle.</p></div></div>
-          <div class="birthday-month-chart" id="chart_months" aria-label="Cantidad de cumpleaños por mes"></div>
-          <div class="birthday-month-detail" id="month_detail"></div>
-        </div>
-      </article>
+        <div class="birthday-calendar-weekdays" aria-hidden="true"><span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span></div>
+        <div class="birthday-calendar" id="calendar_grid" role="grid" aria-label="Calendario de cumpleaños"></div>
+        <p class="calendar-help">Pasá el cursor o tocá un día destacado para ver quiénes cumplen.</p>
+      </div></article>
+      <article class="card birthday-month-card"><div class="card-body">
+        <div class="birthday-section-head"><div><h3>Cumpleaños por mes</h3><p>Seleccioná una barra para ver el detalle.</p></div></div>
+        <div class="birthday-month-chart" id="chart_months" aria-label="Cantidad de cumpleaños por mes"></div>
+        <div class="birthday-month-detail" id="month_detail"></div>
+      </div></article>
     </section>
 
-    <section class="card birthday-analytics">
-      <div class="card-body">
-        <div class="birthday-section-head"><div><h3>Indicadores de la selección</h3><p>El resumen responde a la búsqueda y los filtros activos.</p></div></div>
-        <div class="analytics-kpis">
-          <div><span>Personas visibles</span><strong id="stat_total">—</strong></div>
-          <div><span>Mes con más cumpleaños</span><strong id="stat_peak_month">—</strong></div>
-          <div><span>Próximos 30 días</span><strong id="stat_next_30">—</strong></div>
-          <div><span>Sedes visibles</span><strong id="stat_locations">—</strong></div>
-        </div>
-        <div class="chart-grid single-chart-grid">
-          <article class="mini-chart"><h4>Dependencias con más personas</h4><div id="chart_areas" class="bar-chart"></div></article>
-        </div>
-        <p class="birthday-data-note"><strong>Sobre edades:</strong> la base contiene día y mes, pero no año de nacimiento. Por eso no se calculan edades ni rangos etarios.</p>
+    <section class="card birthday-analytics"><div class="card-body">
+      <div class="birthday-section-head"><div><h3>Indicadores de la selección</h3><p>El resumen responde a la búsqueda y los filtros activos.</p></div></div>
+      <div class="analytics-kpis">
+        <div><span>Personas visibles</span><strong id="stat_total">—</strong></div>
+        <div><span>Mes con más cumpleaños</span><strong id="stat_peak_month">—</strong></div>
+        <div><span>Próximos 30 días</span><strong id="stat_next_30">—</strong></div>
+        <div><span>Sedes visibles</span><strong id="stat_locations">—</strong></div>
       </div>
-    </section>
+      <div class="chart-grid single-chart-grid"><article class="mini-chart"><h4>Dependencias con más personas</h4><div id="chart_areas" class="bar-chart"></div></article></div>
+      <p class="birthday-data-note"><strong>Sobre edades:</strong> la base contiene día y mes, pero no año de nacimiento. Por eso no se calculan edades ni rangos etarios.</p>
+    </div></section>
 
-    <section class="card">
-      <div class="card-body">
-        <div class="birthday-section-head">
-          <div><h3>Próximos cumpleaños</h3><p id="birthday_list_subtitle">Ordenados por cercanía.</p></div>
-          <div class="birthday-legend"><span class="birthday-legend-item"><span class="birthday-dot danger"></span>0 a 7 días</span><span class="birthday-legend-item"><span class="birthday-dot warning"></span>8 a 30 días</span><span class="birthday-legend-item"><span class="birthday-dot safe"></span>Más de 30 días</span></div>
-        </div>
-        <div class="birthday-list" id="birthday_list"></div>
-        <p class="page-note" id="birthday_updated_at"></p>
+    <section class="card"><div class="card-body">
+      <div class="birthday-section-head">
+        <div><h3>Próximos cumpleaños</h3><p id="birthday_list_subtitle">Ordenados por cercanía.</p></div>
+        <div class="birthday-legend"><span class="birthday-legend-item"><span class="birthday-dot danger"></span>0 a 7 días</span><span class="birthday-legend-item"><span class="birthday-dot warning"></span>8 a 30 días</span><span class="birthday-legend-item"><span class="birthday-dot safe"></span>Más de 30 días</span></div>
       </div>
-    </section>
+      <div class="birthday-list" id="birthday_list"></div>
+      <p class="page-note" id="birthday_updated_at"></p>
+    </div></section>
   </div>
 
   <script src="../../assets/js/auth-config.js"></script>
   <script src="../../assets/js/auth.js"></script>
   <script src="../../assets/js/theme.js" defer></script>
   <script src="../../assets/js/birthday.js" defer></script>
+  <!-- Corrección autónoma de tooltip: va en el HTML, no en birthday.js. -->
+  <script>
+  (() => {
+    'use strict';
+    const selector = '.birthday-calendar .calendar-day.has-birthday';
+    let activeButton = null;
+    let pinnedButton = null;
+    const popover = document.createElement('div');
+    popover.id = 'ersep-birthday-floating-tooltip';
+    popover.setAttribute('role', 'tooltip');
+    popover.hidden = true;
+    document.body.append(popover);
+
+    function place() {
+      if (!activeButton || popover.hidden) return;
+      const rect = activeButton.getBoundingClientRect();
+      const gap = 10, margin = 12;
+      const width = popover.offsetWidth, height = popover.offsetHeight;
+      let left = rect.left + rect.width / 2 - width / 2;
+      left = Math.max(margin, Math.min(left, window.innerWidth - width - margin));
+      let top = rect.top - height - gap;
+      if (top < margin) top = rect.bottom + gap;
+      if (top + height > window.innerHeight - margin)
+        top = Math.max(margin, window.innerHeight - height - margin);
+      popover.style.left = `${Math.round(left)}px`;
+      popover.style.top = `${Math.round(top)}px`;
+    }
+    function show(button) {
+      const original = button?.querySelector('.calendar-tooltip');
+      if (!original) return;
+      activeButton = button;
+      popover.innerHTML = original.innerHTML;
+      popover.hidden = false;
+      place();
+    }
+    function hide() { activeButton = null; popover.hidden = true; }
+    document.addEventListener('pointerover', (event) => {
+      if (pinnedButton || event.pointerType === 'touch') return;
+      const button = event.target.closest?.(selector);
+      if (button) show(button);
+    });
+    document.addEventListener('pointerout', (event) => {
+      if (pinnedButton || !activeButton) return;
+      if (activeButton.contains(event.relatedTarget)) return;
+      hide();
+    });
+    document.addEventListener('focusin', (event) => {
+      if (pinnedButton) return;
+      const button = event.target.closest?.(selector);
+      if (button) show(button);
+    });
+    document.addEventListener('focusout', (event) => {
+      if (pinnedButton || !activeButton) return;
+      if (activeButton.contains(event.relatedTarget)) return;
+      hide();
+    });
+    document.addEventListener('click', (event) => {
+      const button = event.target.closest?.(selector);
+      if (button) {
+        if (pinnedButton === button) { pinnedButton = null; hide(); }
+        else { pinnedButton = button; show(button); }
+      } else { pinnedButton = null; hide(); }
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') { pinnedButton = null; hide(); }
+    });
+    function reposition() {
+      if (activeButton && !document.contains(activeButton)) {
+        pinnedButton = null; hide();
+      } else place();
+    }
+    window.addEventListener('resize', reposition);
+    window.addEventListener('scroll', reposition, true);
+  })();
+  </script>
 </body>
 </html>
